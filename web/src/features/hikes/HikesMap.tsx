@@ -1,12 +1,12 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 
-import { MapControls, MapRoute } from '@/components/ui/map'
+import { MapControls, MapRoute, useMap } from '@/components/ui/map'
 import { useMapView } from '@/features/map/basemaps'
 import { HeatmapLayer } from '@/features/map/HeatmapLayer'
 import { LayeredMap } from '@/features/map/LayeredMap'
 
-import type { Hike, Tracks } from './api'
-import { hikeColor } from './colors'
+import type { Bounds, Hike, Tracks } from './api'
+import { hikeColor, useHikeColors } from './colors'
 import { unionBounds } from './bounds'
 import { FitBounds } from './FitBounds'
 import { HikePopup, type PopupState } from './HikePopup'
@@ -23,13 +23,12 @@ type Props = {
   onRouteClick: (id: string, longitude: number, latitude: number) => void
   onHover: (id: string | null) => void
   onPopupClose: (nonce: number) => void
+  /** Called with the visible [minLon, minLat, maxLon, maxLat] whenever the map stops moving. */
+  onViewChange?: (bounds: Bounds) => void
 }
 
-export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose }: Props) {
-  const colorById = useMemo(
-    () => new globalThis.Map((colorFrom ?? hikes).map((h, i) => [h.id, hikeColor(i)])),
-    [colorFrom, hikes],
-  )
+export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose, onViewChange }: Props) {
+  const colorById = useHikeColors(hikes, colorFrom)
   const popupHike = popup ? hikes.find((h) => h.id === popup.hikeId) : undefined
   const heatmap = useMapView((s) => s.heatmap)
   const lines = useMemo(
@@ -46,6 +45,7 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
     <LayeredMap center={[2.35, 46.6]} zoom={5} className="size-full" heatmapToggle>
       <MapControls position="bottom-right" showZoom showCompass showLocate showFullscreen />
       <FitBounds bounds={fitTarget} />
+      {onViewChange && <ViewWatcher onChange={onViewChange} />}
       {heatmap && <HeatmapLayer lines={lines} />}
       {tracks?.features.flatMap((feature) => {
         const id = feature.properties.id
@@ -81,4 +81,18 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
       )}
     </LayeredMap>
   )
+}
+
+function ViewWatcher({ onChange }: { onChange: (bounds: Bounds) => void }) {
+  const { map, isLoaded } = useMap()
+  useEffect(() => {
+    if (!map || !isLoaded) return
+    const report = () => onChange(map.getBounds().toArray().flat() as Bounds)
+    report()
+    map.on('moveend', report)
+    return () => {
+      map.off('moveend', report)
+    }
+  }, [map, isLoaded, onChange])
+  return null
 }
