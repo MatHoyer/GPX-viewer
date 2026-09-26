@@ -187,6 +187,20 @@ func (s *Service) Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Pr
 	return BuildProfile(samples, ProfileMaxPoints), nil
 }
 
+// GPX returns a hike with its original GPX file, so anyone who can see the
+// hike can download it and follow the same route.
+func (s *Service) GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []byte, error) {
+	h, err := s.Get(ctx, viewer, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	raw, err := s.hikes.GetRawGPX(ctx, h.UserID, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	return h, raw, nil
+}
+
 func (s *Service) Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error) {
 	if err := s.authorize(ctx, viewer, owner); err != nil {
 		return nil, err

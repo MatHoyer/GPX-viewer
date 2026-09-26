@@ -1,4 +1,4 @@
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
@@ -111,6 +111,13 @@ export function HikePage() {
               <Skeleton className="h-6 w-48" />
             )}
           </div>
+          {hike.data && (
+            <Button asChild variant="outline" size="icon" aria-label="Download GPX" title="Download GPX">
+              <a href={`/api/hikes/${id}/gpx`} download>
+                <Download />
+              </a>
+            </Button>
+          )}
           {isOwner && (
             <Button variant="destructive" size="icon" onClick={() => setConfirmDelete(true)} aria-label="Delete hike">
               <Trash2 />

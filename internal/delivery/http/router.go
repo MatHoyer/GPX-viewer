@@ -77,6 +77,7 @@ func NewRouter(d Deps) http.Handler {
 
 			r.Get("/hikes/{id}", d.Hikes.Get)
 			r.Get("/hikes/{id}/profile", d.Hikes.Profile)
+			r.Get("/hikes/{id}/gpx", d.Hikes.GPX)
 
 			r.Get("/users/{id}", d.Social.Profile)
 			r.Get("/users/{id}/hikes", d.Hikes.UserList)
