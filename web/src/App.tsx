@@ -8,6 +8,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { ProfilePage } from '@/features/account/ProfilePage'
 import { AuthPage } from '@/features/auth/AuthPage'
 import { useMe } from '@/features/auth/useAuth'
+import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
 import { CalendarPage } from '@/features/calendar/CalendarPage'
 import { HikePage } from '@/features/hike-detail/HikePage'
 import { MapPage } from '@/features/hikes/MapPage'
@@ -35,6 +36,8 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<GuestOnly><AuthPage mode="login" /></GuestOnly>} />
               <Route path="/register" element={<GuestOnly><AuthPage mode="register" /></GuestOnly>} />
+              {/* Not guest-only: the link may be opened while signed in as someone else. */}
+              <Route path="/verify" element={<VerifyEmailPage />} />
               <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route path="/" element={<MapPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />

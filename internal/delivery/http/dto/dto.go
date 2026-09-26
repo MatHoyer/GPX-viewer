@@ -11,6 +11,10 @@ type Credentials struct {
 	Password string `json:"password"`
 }
 
+type VerifyEmail struct {
+	Token string `json:"token"`
+}
+
 type User struct {
 	ID         string    `json:"id"`
 	Email      string    `json:"email"`

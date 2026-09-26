@@ -16,6 +16,7 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/gpx"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/postgres"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/security"
+	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/smtp"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/account"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/auth"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/hike"
@@ -47,12 +48,20 @@ func run() error {
 		return err
 	}
 
+	mailer, err := smtp.NewMailer(smtp.Config(cfg.SMTP))
+	if err != nil {
+		return err
+	}
+
 	users := postgres.NewUserRepository(db)
 	authSvc, err := auth.NewService(
 		users,
 		postgres.NewSessionRepository(db),
+		postgres.NewEmailVerificationRepository(db),
 		security.NewBcryptHasher(0),
+		mailer,
 		cfg.SessionTTL,
+		cfg.AppURL,
 	)
 	if err != nil {
 		return err
@@ -61,7 +70,7 @@ func run() error {
 	socialSvc := social.NewService(users, postgres.NewFriendshipRepository(db))
 	hikeSvc := hike.NewService(postgres.NewHikeRepository(db), gpx.NewParser(), socialSvc)
 
-	go purgeSessions(ctx, authSvc)
+	go purgeExpired(ctx, authSvc)
 
 	router := httpdelivery.NewRouter(httpdelivery.Deps{
 		Auth:          handler.NewAuthHandler(authSvc, cfg.CookieSecure),
@@ -98,12 +107,12 @@ func run() error {
 	return srv.Shutdown(shutdownCtx)
 }
 
-func purgeSessions(ctx context.Context, svc *auth.Service) {
+func purgeExpired(ctx context.Context, svc *auth.Service) {
 	t := time.NewTicker(time.Hour)
 	defer t.Stop()
 	for {
-		if err := svc.PurgeExpiredSessions(ctx); err != nil && ctx.Err() == nil {
-			slog.Warn("purge expired sessions", "err", err)
+		if err := svc.PurgeExpired(ctx); err != nil && ctx.Err() == nil {
+			slog.Warn("purge expired sessions and verifications", "err", err)
 		}
 		select {
 		case <-ctx.Done():

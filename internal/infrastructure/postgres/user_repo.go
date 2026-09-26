@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -17,7 +18,15 @@ type UserRepository struct {
 func NewUserRepository(db *gorm.DB) *UserRepository { return &UserRepository{db: db} }
 
 func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
-	m := UserModel{ID: u.ID, Email: u.Email, Name: u.Name, PasswordHash: u.PasswordHash, Visibility: string(u.Visibility), CreatedAt: u.CreatedAt}
+	m := UserModel{
+		ID:              u.ID,
+		Email:           u.Email,
+		Name:            u.Name,
+		PasswordHash:    u.PasswordHash,
+		Visibility:      string(u.Visibility),
+		EmailVerifiedAt: u.EmailVerifiedAt,
+		CreatedAt:       u.CreatedAt,
+	}
 	err := r.db.WithContext(ctx).Create(&m).Error
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
 		return domain.ErrEmailTaken
@@ -39,6 +48,17 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 		return nil, mapErr(err)
 	}
 	return m.toDomain(), nil
+}
+
+func (r *UserRepository) MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error {
+	res := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ?", id).Update("email_verified_at", at)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }
 
 func (r *UserRepository) UpdateName(ctx context.Context, id uuid.UUID, name string) error {

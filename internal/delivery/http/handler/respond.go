@@ -27,6 +27,10 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusNotFound, dto.Error{Error: "not found"})
 	case errors.Is(err, domain.ErrInvalidCredentials):
 		writeJSON(w, http.StatusUnauthorized, dto.Error{Error: "invalid email or password"})
+	case errors.Is(err, domain.ErrEmailNotVerified):
+		writeJSON(w, http.StatusForbidden, dto.Error{Error: "email not verified", Field: "email"})
+	case errors.Is(err, domain.ErrInvalidToken):
+		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "this link is invalid or has expired"})
 	case errors.Is(err, domain.ErrUnauthorized):
 		writeJSON(w, http.StatusUnauthorized, dto.Error{Error: "unauthorized"})
 	case errors.Is(err, domain.ErrEmailTaken):
