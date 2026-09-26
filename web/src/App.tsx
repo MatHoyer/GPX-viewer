@@ -18,6 +18,7 @@ import { AppLayout } from '@/features/layout/AppLayout'
 import { GuestLayout } from '@/features/layout/GuestLayout'
 import { FriendsPage } from '@/features/social/FriendsPage'
 import { UserProfilePage } from '@/features/social/UserProfilePage'
+import { FeedPage } from '@/features/social/FeedPage'
 import { StatsPage } from '@/features/stats/StatsPage'
 import { ApiError } from '@/lib/api'
 
@@ -47,6 +48,7 @@ export default function App() {
                 <Route path="/" element={<MapPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/stats" element={<StatsPage />} />
+                <Route path="/feed" element={<FeedPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/friends" element={<FriendsPage />} />
               </Route>

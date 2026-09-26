@@ -401,3 +401,37 @@ func (r *HikeRepository) ListSimilar(ctx context.Context, userID, hikeID uuid.UU
 	}
 	return out, nil
 }
+
+// feedHikes selects the done hikes of friends who share their hikes, and
+// those the user was tagged on, excluding the user's own.
+const feedHikes = `NOT planned AND user_id <> @user AND (
+  user_id IN (
+    SELECT u.id FROM friendships f
+    JOIN users u ON u.id = CASE WHEN f.requester_id = @user THEN f.addressee_id ELSE f.requester_id END
+    WHERE f.accepted_at IS NOT NULL AND @user IN (f.requester_id, f.addressee_id)
+      AND u.visibility IN ('friends', 'public'))
+  OR id IN (SELECT hike_id FROM hike_participants WHERE user_id = @user))`
+
+const feedSortKey = "COALESCE(started_at, created_at)"
+
+func (r *HikeRepository) ListFeed(ctx context.Context, userID uuid.UUID, after *domain.FeedCursor, limit int) ([]domain.Hike, error) {
+	q := r.db.WithContext(ctx).
+		Scopes(withOwner, withDetails).
+		Omit("geom", "gpx_raw").
+		Where(feedHikes, map[string]any{"user": userID})
+	if after != nil {
+		q = q.Where("("+feedSortKey+", id) < (?, ?)", after.At, after.ID)
+	}
+	var ms []HikeModel
+	if err := q.Order(feedSortKey + " DESC, id DESC").Limit(limit).Find(&ms).Error; err != nil {
+		return nil, err
+	}
+	out := make([]domain.Hike, len(ms))
+	for i, m := range ms {
+		out[i] = m.toDomain()
+	}
+	if err := r.loadParticipants(ctx, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}

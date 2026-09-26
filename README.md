@@ -84,6 +84,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/labels` | labels on your hikes, most used first |
 | GET | `/api/tiles` | `{zoom, hikes: {id: [[x, y], …]}}`: the zoom-14 map tiles each of your hikes passes through |
 | GET | `/api/summits` | every peak you reached (track within 50 m), with the hikes that went over it |
+| GET | `/api/feed` | `{hikes, next}`: 20 recent done hikes from friends who share theirs and hikes you were tagged on; pass `?after=<next>` for the following page |
 | GET | `/api/hikes/{id}` | one hike with `owner` and `participants`; readable signed out when shared publicly |
 | GET | `/api/hikes/{id}/gpx` | the original GPX file, for whoever can see the hike |
 | GET | `/api/hikes/{id}/summits` | the named peaks the hike went over, highest first |
