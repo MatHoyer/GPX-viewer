@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gpx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gpx}
+      POSTGRES_DB: ${POSTGRES_DB:-gpx}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-gpx}:${POSTGRES_PASSWORD:-gpx}@db:5432/${POSTGRES_DB:-gpx}?sslmode=disable
+      PORT: "8080"
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
