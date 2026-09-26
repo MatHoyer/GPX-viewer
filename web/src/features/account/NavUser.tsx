@@ -80,7 +80,7 @@ export function NavUser() {
               </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => logout.mutate()}>
+            <DropdownMenuItem variant="destructive" onClick={() => logout.mutate()}>
               <LogOut />
               Log out
             </DropdownMenuItem>

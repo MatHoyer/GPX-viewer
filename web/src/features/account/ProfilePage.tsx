@@ -76,7 +76,7 @@ function AvatarCard({ user }: { user: User }) {
           </Button>
           {user.avatarUrl && (
             <Button
-              variant="ghost"
+              variant="destructive"
               disabled={busy}
               onClick={() =>
                 remove.mutate(undefined, {

@@ -83,7 +83,7 @@ export function HikePage() {
               <Skeleton className="h-6 w-48" />
             )}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setConfirmDelete(true)} aria-label="Delete hike" disabled={!hike.data}>
+          <Button variant="destructive" size="icon" onClick={() => setConfirmDelete(true)} aria-label="Delete hike" disabled={!hike.data}>
             <Trash2 />
           </Button>
         </div>
