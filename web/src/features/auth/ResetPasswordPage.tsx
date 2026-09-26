@@ -20,8 +20,9 @@ export function ResetPasswordPage() {
   const reset = useResetPassword()
 
   const error = reset.error instanceof ApiError ? reset.error : null
-  // Field errors can be fixed here; anything else means the link is unusable.
-  const linkFailed = !token || (reset.isError && !error?.field)
+  // A 400 without a field means the link itself is invalid or expired; other
+  // errors (bad password, rate limit) can be retried from this form.
+  const linkFailed = !token || (error?.status === 400 && !error.field)
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -42,8 +43,7 @@ export function ResetPasswordPage() {
         <CardHeader>
           <CardTitle>Could not reset your password</CardTitle>
           <CardDescription role="alert">
-            {token ? (error?.message ?? 'Something went wrong, try again later.') : 'This link is incomplete.'} Ask
-            for a new link.
+            {token ? error?.message : 'This link is incomplete.'} Ask for a new link.
           </CardDescription>
         </CardHeader>
         <CardFooter className="mt-6">
@@ -78,9 +78,9 @@ export function ResetPasswordPage() {
             aria-invalid={error?.field === 'password' || undefined}
             description="At least 8 characters."
           />
-          {error && (
+          {reset.isError && (
             <p role="alert" className="text-destructive text-sm">
-              {error.message}
+              {error?.message ?? 'Something went wrong, try again later.'}
             </p>
           )}
         </CardContent>

@@ -24,8 +24,10 @@ export function VerifyEmailPage() {
   }, [token, verify, navigate])
 
   const failed = !token || verify.isError
-  const message =
-    verify.error instanceof ApiError ? verify.error.message : 'Something went wrong, try again later.'
+  const error = verify.error instanceof ApiError ? verify.error : null
+  const message = error?.message ?? 'Something went wrong, try again later.'
+  // Rate limited: the link may still be good, so retrying beats signing in.
+  const hint = error?.status === 429 ? '' : ' Try signing in.'
 
   return (
     <AuthShell>
@@ -33,7 +35,8 @@ export function VerifyEmailPage() {
         <CardTitle>{failed ? 'Could not confirm your email' : 'Confirming your email…'}</CardTitle>
         {failed && (
           <CardDescription role="alert">
-            {token ? message : 'This link is incomplete.'} Try signing in.
+            {token ? message : 'This link is incomplete.'}
+            {hint}
           </CardDescription>
         )}
       </CardHeader>

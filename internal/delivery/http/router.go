@@ -3,6 +3,7 @@ package http
 import (
 	"io/fs"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -32,17 +33,26 @@ func NewRouter(d Deps) http.Handler {
 			w.WriteHeader(http.StatusNoContent)
 		})
 
-		r.Post("/auth/register", d.Auth.Register)
-		r.Post("/auth/login", d.Auth.Login)
+		// Guessing passwords and sending emails are the abusable endpoints.
+		loginByIP := middleware.NewLimiter(10, time.Minute, "sign-in attempts")
+		loginByEmail := middleware.NewLimiter(5, time.Minute, "sign-in attempts for this account")
+		register := middleware.NewLimiter(5, time.Hour, "accounts created from your network")
+		forgot := middleware.NewLimiter(5, 15*time.Minute, "password reset requests")
+		verify := middleware.NewLimiter(10, time.Minute, "attempts")
+		reset := middleware.NewLimiter(10, time.Minute, "attempts")
+		changePassword := middleware.NewLimiter(5, time.Minute, "password change attempts")
+
+		r.With(register.ByIP).Post("/auth/register", d.Auth.Register)
+		r.With(loginByIP.ByIP, loginByEmail.ByEmail).Post("/auth/login", d.Auth.Login)
 		r.Post("/auth/logout", d.Auth.Logout)
-		r.Post("/auth/verify", d.Auth.VerifyEmail)
-		r.Post("/auth/password/forgot", d.Auth.ForgotPassword)
-		r.Post("/auth/password/reset", d.Auth.ResetPassword)
+		r.With(verify.ByIP).Post("/auth/verify", d.Auth.VerifyEmail)
+		r.With(forgot.ByIP).Post("/auth/password/forgot", d.Auth.ForgotPassword)
+		r.With(reset.ByIP).Post("/auth/password/reset", d.Auth.ResetPassword)
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(d.Authenticator))
 			r.Get("/auth/me", d.Auth.Me)
-			r.Post("/auth/password", d.Auth.ChangePassword)
+			r.With(changePassword.ByUser).Post("/auth/password", d.Auth.ChangePassword)
 
 			r.Patch("/me", d.Account.Update)
 
