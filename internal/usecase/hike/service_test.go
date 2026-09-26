@@ -156,6 +156,16 @@ func (f *fakeRepo) ListSimilar(_ context.Context, userID, hikeID uuid.UUID, _ fl
 	return out, nil
 }
 
+func (f *fakeRepo) ListFeed(_ context.Context, userID uuid.UUID, after *domain.FeedCursor, limit int) ([]domain.Hike, error) {
+	var out []domain.Hike
+	for _, h := range f.hikes {
+		if h.UserID != userID && (after == nil || h.CreatedAt.Before(after.At)) && len(out) < limit {
+			out = append(out, *h)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeRepo) ListTiles(_ context.Context, userID uuid.UUID) (map[uuid.UUID][]domain.Tile, error) {
 	out := map[uuid.UUID][]domain.Tile{}
 	for _, h := range f.hikes {
@@ -504,5 +514,24 @@ func TestPlanned(t *testing.T) {
 	}
 	if got, _ := svc.Import(ctx, alice, "walk.gpx", nil); got.Planned {
 		t.Error("regular import is planned")
+	}
+}
+
+func TestFeedPages(t *testing.T) {
+	ctx := context.Background()
+	repo := &fakeRepo{}
+	alice, bob := uuid.New(), uuid.New()
+	t0 := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	for i := range FeedPageSize + 3 {
+		repo.hikes = append(repo.hikes, &domain.Hike{ID: uuid.New(), UserID: bob, CreatedAt: t0.Add(-time.Duration(i) * time.Hour)})
+	}
+	svc := NewService(repo, fakeParser{}, ownerOnly{})
+	page, next, err := svc.Feed(ctx, alice, nil)
+	if err != nil || len(page) != FeedPageSize || next == nil || !next.At.Equal(page[FeedPageSize-1].CreatedAt) {
+		t.Fatalf("first page = %d hikes, next %+v, %v", len(page), next, err)
+	}
+	page, next, err = svc.Feed(ctx, alice, next)
+	if err != nil || len(page) != 3 || next != nil {
+		t.Errorf("last page = %d hikes, next %+v, %v", len(page), next, err)
 	}
 }

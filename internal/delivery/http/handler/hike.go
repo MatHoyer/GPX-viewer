@@ -34,6 +34,7 @@ type HikeService interface {
 	Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error)
 	Tiles(ctx context.Context, viewer, owner uuid.UUID) (map[uuid.UUID][]domain.Tile, error)
 	Similar(ctx context.Context, viewer, id uuid.UUID) ([]domain.Hike, error)
+	Feed(ctx context.Context, userID uuid.UUID, after *domain.FeedCursor) ([]domain.Hike, *domain.FeedCursor, error)
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error)
 	GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []byte, error)
 	Export(ctx context.Context, userID uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error
@@ -296,6 +297,26 @@ func (h *HikeHandler) Labels(w http.ResponseWriter, r *http.Request) {
 		labels = []string{}
 	}
 	writeJSON(w, http.StatusOK, labels)
+}
+
+// Feed returns a page of friends' recent hikes. `after` is the `next` cursor of
+// the previous page.
+func (h *HikeHandler) Feed(w http.ResponseWriter, r *http.Request) {
+	var after *domain.FeedCursor
+	if c := r.URL.Query().Get("after"); c != "" {
+		cur, err := dto.ParseFeedCursor(c)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid cursor", Field: "after"})
+			return
+		}
+		after = cur
+	}
+	hikes, next, err := h.svc.Feed(r.Context(), middleware.UserFrom(r.Context()).ID, after)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dto.NewFeed(hikes, next))
 }
 
 // Similar returns the signed-in user's other hikes along the same route.

@@ -294,6 +294,24 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID, fn func(h *domai
 	return nil
 }
 
+// FeedPageSize is how many hikes a page of the activity feed holds.
+const FeedPageSize = 20
+
+// Feed returns a page of friends' recent hikes and those userID was tagged on,
+// after the cursor when set, with the cursor of the next page (nil at the end).
+func (s *Service) Feed(ctx context.Context, userID uuid.UUID, after *domain.FeedCursor) ([]domain.Hike, *domain.FeedCursor, error) {
+	hikes, err := s.hikes.ListFeed(ctx, userID, after, FeedPageSize)
+	if err != nil || len(hikes) < FeedPageSize {
+		return hikes, nil, err
+	}
+	last := hikes[len(hikes)-1]
+	at := last.CreatedAt
+	if last.StartedAt != nil {
+		at = *last.StartedAt
+	}
+	return hikes, &domain.FeedCursor{At: at, ID: last.ID}, nil
+}
+
 // SameRouteDeviationM is how far apart two tracks may stray and still be the same route.
 const SameRouteDeviationM = 200
 

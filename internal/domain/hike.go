@@ -76,6 +76,13 @@ type Hike struct {
 	Participants []User
 }
 
+// FeedCursor marks where a page of the activity feed ended: its last hike's
+// sort time (start, else upload) and id.
+type FeedCursor struct {
+	At time.Time
+	ID uuid.UUID
+}
+
 // HikeUpdate is a partial update of a hike; nil fields are left unchanged.
 type HikeUpdate struct {
 	Name    *string
@@ -119,6 +126,10 @@ type HikeRepository interface {
 	// hikeID, whose track follows hikeID's within maxDeviationM meters (either
 	// direction), without geometry or raw GPX, newest first.
 	ListSimilar(ctx context.Context, userID, hikeID uuid.UUID, maxDeviationM float64) ([]Hike, error)
+	// ListFeed returns up to limit done hikes, newest first and after `after`
+	// when set, that friends whose visibility allows it own, or that userID
+	// was tagged on by someone else. Loaded like ListByUser.
+	ListFeed(ctx context.Context, userID uuid.UUID, after *FeedCursor, limit int) ([]Hike, error)
 	// ListTiles returns the tiles of each done hike a user owns or is tagged on, by hike.
 	ListTiles(ctx context.Context, userID uuid.UUID) (map[uuid.UUID][]Tile, error)
 }

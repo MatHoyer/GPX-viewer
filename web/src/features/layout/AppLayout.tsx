@@ -1,4 +1,4 @@
-import { CalendarDays, ChartColumn, Map as MapIcon, MountainSnow, UsersRound } from 'lucide-react'
+import { Activity, CalendarDays, ChartColumn, Map as MapIcon, MountainSnow, UsersRound } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
 import {
@@ -25,6 +25,7 @@ const views = [
   { to: '/', label: 'Map', icon: MapIcon },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/stats', label: 'Stats', icon: ChartColumn },
+  { to: '/feed', label: 'Activity', icon: Activity },
   { to: '/friends', label: 'Friends', icon: UsersRound },
 ]
 
