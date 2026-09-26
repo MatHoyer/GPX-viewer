@@ -20,15 +20,16 @@ import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import { PlannedBadge } from '@/features/hikes/PlannedBadge'
 import { useDeleteHike, useHikeSummits, useUpdateHike } from '@/features/hikes/useHikes'
-import { Comments } from '@/features/interactions/Comments'
+import { CommentsPanel } from '@/features/interactions/CommentsPanel'
 import { KudosButton } from '@/features/interactions/KudosButton'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 
 import { useHike, useProfile } from './api'
 import { EditableTitle } from './EditableTitle'
-import { HikeNotes } from './HikeNotes'
 import { HikeSummits } from './HikeSummits'
+import { LabelPicker } from './LabelPicker'
+import { NotesBlock } from './NotesBlock'
 import { HikeStats } from './HikeStats'
 import { Participants } from './Participants'
 import { ProfileCharts } from './ProfileCharts'
@@ -157,12 +158,26 @@ export function HikePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-screen-2xl space-y-4 p-4">
+      <main className="mx-auto max-w-screen-2xl space-y-4 p-4 pb-20">
         {profile.data ? <HikeStats summary={profile.data.summary} /> : <Skeleton className="h-20 w-full" />}
-        {summits.data && <HikeSummits peaks={summits.data} />}
-        {hike.data && <HikeNotes hike={hike.data} isOwner={isOwner} />}
-        {hike.data && me.data && <SameRoute hike={hike.data} />}
-        {hike.data && <Comments hike={hike.data} viewerId={me.data?.id} />}
+        {hike.data && (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <LabelPicker
+                labels={hike.data.labels}
+                disabled={update.isPending}
+                onChange={
+                  isOwner
+                    ? (labels) =>
+                        update.mutate({ id, labels }, { onError: () => toast.error('Could not update labels') })
+                    : undefined
+                }
+              />
+              {summits.data && <HikeSummits peaks={summits.data} />}
+            </div>
+            <NotesBlock hike={hike.data} isOwner={isOwner} />
+          </div>
+        )}
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <section className="bg-card space-y-3 rounded-xl border p-3 lg:sticky lg:top-20 lg:self-start">
@@ -184,7 +199,10 @@ export function HikePage() {
             )}
           </section>
         </div>
+
+        {hike.data && me.data && <SameRoute hike={hike.data} />}
       </main>
+      {hike.data && <CommentsPanel hike={hike.data} viewerId={me.data?.id} />}
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
