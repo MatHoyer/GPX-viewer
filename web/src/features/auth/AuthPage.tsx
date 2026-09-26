@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 
@@ -116,6 +117,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
             </CardContent>
             <CardFooter className="mt-6 flex-col gap-3">
               <Button type="submit" size="lg" className="h-11 w-full rounded-xl" disabled={mutation.isPending}>
+                {mutation.isPending && <Loader2 className="animate-spin" aria-hidden />}
                 {t.submit}
               </Button>
               <p className="text-muted-foreground text-sm">
