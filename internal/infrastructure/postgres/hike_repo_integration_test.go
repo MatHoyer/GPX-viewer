@@ -102,6 +102,30 @@ func TestHikeRepository(t *testing.T) {
 	if _, err := hikes.GetRawGPX(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob raw err = %v", err)
 	}
+	moving, maxEle := int64(3600), 1300.0
+	if err := hikes.SaveDerived(ctx, h.ID, domain.HikeDerived{ElevationLossM: 12, MaxEleM: &maxEle, MovingS: &moving}, 5); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := hikes.GetByID(ctx, alice, h.ID); got == nil || got.DerivedVersion != 5 || got.ElevationLossM != 12 ||
+		got.MinEleM != nil || got.MaxEleM == nil || *got.MaxEleM != maxEle || got.MovingS == nil || *got.MovingS != moving {
+		t.Errorf("after save derived = %+v", got)
+	}
+	outdated := func(version int) bool {
+		list, err := hikes.ListOutdated(ctx, version, 10000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, o := range list {
+			if o.ID == h.ID {
+				return string(o.RawGPX) == "<gpx/>"
+			}
+		}
+		return false
+	}
+	if outdated(5) || !outdated(6) {
+		t.Errorf("outdated(5) = %v, outdated(6) = %v", outdated(5), outdated(6))
+	}
+
 	if err := hikes.Rename(ctx, bob, h.ID, "Stolen"); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob rename err = %v", err)
 	}

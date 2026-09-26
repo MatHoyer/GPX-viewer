@@ -17,6 +17,12 @@ export type Hike = {
   elevationGainM: number
   startedAt: string | null
   durationS: number
+  elevationLossM: number
+  /** Null when the track has no elevation. */
+  minEleM: number | null
+  maxEleM: number | null
+  /** Null when the track has no timestamps. */
+  movingS: number | null
   bounds: Bounds
   createdAt: string
   /** Omitted on hikes just returned by an upload. */

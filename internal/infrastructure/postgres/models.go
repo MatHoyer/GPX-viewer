@@ -100,14 +100,19 @@ func (m PasswordResetModel) toDomain() *domain.PasswordReset {
 }
 
 type HikeModel struct {
-	ID             uuid.UUID        `gorm:"type:uuid;primaryKey"`
-	UserID         uuid.UUID        `gorm:"type:uuid;not null;index"`
-	User           UserModel        `gorm:"constraint:OnDelete:CASCADE"`
-	Name           string           `gorm:"not null"`
-	DistanceM      float64          `gorm:"type:double precision;not null"`
-	ElevationGainM float64          `gorm:"type:double precision;not null"`
-	StartedAt      *time.Time       `gorm:"index"`
-	DurationS      int64            `gorm:"not null"`
+	ID             uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	UserID         uuid.UUID  `gorm:"type:uuid;not null;index"`
+	User           UserModel  `gorm:"constraint:OnDelete:CASCADE"`
+	Name           string     `gorm:"not null"`
+	DistanceM      float64    `gorm:"type:double precision;not null"`
+	ElevationGainM float64    `gorm:"type:double precision;not null"`
+	StartedAt      *time.Time `gorm:"index"`
+	DurationS      int64      `gorm:"not null"`
+	ElevationLossM float64    `gorm:"type:double precision;not null;default:0"`
+	MinEleM        *float64   `gorm:"type:double precision"`
+	MaxEleM        *float64   `gorm:"type:double precision"`
+	MovingS        *int64
+	DerivedVersion int              `gorm:"not null;default:0;index"`
 	MinLon         float64          `gorm:"type:double precision;not null"`
 	MinLat         float64          `gorm:"type:double precision;not null"`
 	MaxLon         float64          `gorm:"type:double precision;not null"`
@@ -144,6 +149,13 @@ func (m HikeModel) toDomain() domain.Hike {
 		ElevationGainM: m.ElevationGainM,
 		StartedAt:      m.StartedAt,
 		DurationS:      m.DurationS,
+		HikeDerived: domain.HikeDerived{
+			ElevationLossM: m.ElevationLossM,
+			MinEleM:        m.MinEleM,
+			MaxEleM:        m.MaxEleM,
+			MovingS:        m.MovingS,
+		},
+		DerivedVersion: m.DerivedVersion,
 		Bounds:         domain.Bounds{MinLon: m.MinLon, MinLat: m.MinLat, MaxLon: m.MaxLon, MaxLat: m.MaxLat},
 		RawGPX:         m.GPXRaw,
 		CreatedAt:      m.CreatedAt,

@@ -20,6 +20,15 @@ type Bounds struct {
 	MinLon, MinLat, MaxLon, MaxLat float64
 }
 
+// HikeDerived holds statistics computed from the original GPX. Pointers are
+// nil when the track lacks the data (no elevation or no timestamps).
+type HikeDerived struct {
+	ElevationLossM float64
+	MinEleM        *float64
+	MaxEleM        *float64
+	MovingS        *int64
+}
+
 type Hike struct {
 	ID             uuid.UUID
 	UserID         uuid.UUID
@@ -28,6 +37,10 @@ type Hike struct {
 	ElevationGainM float64
 	StartedAt      *time.Time
 	DurationS      int64
+	HikeDerived
+	// DerivedVersion is the version of the code that computed HikeDerived;
+	// hikes below the current version are recomputed in the background.
+	DerivedVersion int
 	Segments       []Segment
 	Bounds         Bounds
 	RawGPX         []byte
@@ -63,4 +76,8 @@ type HikeRepository interface {
 	// AddParticipant is a no-op when the user is already tagged.
 	AddParticipant(ctx context.Context, hikeID, userID uuid.UUID, at time.Time) error
 	RemoveParticipant(ctx context.Context, hikeID, userID uuid.UUID) error
+	// ListOutdated returns up to limit hikes whose derived data is below
+	// version, with only their ID and raw GPX loaded.
+	ListOutdated(ctx context.Context, version, limit int) ([]Hike, error)
+	SaveDerived(ctx context.Context, id uuid.UUID, d HikeDerived, version int) error
 }

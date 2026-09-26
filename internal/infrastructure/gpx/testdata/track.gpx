@@ -10,6 +10,7 @@
     </trkseg>
     <trkseg>
       <trkpt lat="45.9150" lon="6.8150"><ele>1200</ele><time>2026-07-01T09:30:00Z</time></trkpt>
+      <trkpt lat="45.9175" lon="6.8175"><ele>1400</ele><time>2026-07-01T09:45:00Z</time></trkpt>
       <trkpt lat="45.9200" lon="6.8200"><ele>1300</ele><time>2026-07-01T10:00:00Z</time></trkpt>
     </trkseg>
   </trk>

@@ -8,6 +8,7 @@ type ParsedTrack struct {
 	Segments       []Segment
 	DistanceM      float64
 	ElevationGainM float64
+	ElevationLossM float64
 	StartedAt      *time.Time
 	DurationS      int64
 }

@@ -54,6 +54,10 @@ func (s *Service) Import(ctx context.Context, userID uuid.UUID, filename string,
 	if countPoints(parsed.Segments) < 2 {
 		return nil, domain.ErrInvalidGPX
 	}
+	samples, err := s.parser.Samples(data)
+	if err != nil {
+		return nil, err
+	}
 
 	name := strings.TrimSpace(parsed.Name)
 	if name == "" {
@@ -71,6 +75,8 @@ func (s *Service) Import(ctx context.Context, userID uuid.UUID, filename string,
 		ElevationGainM: parsed.ElevationGainM,
 		StartedAt:      parsed.StartedAt,
 		DurationS:      parsed.DurationS,
+		HikeDerived:    derive(parsed, samples),
+		DerivedVersion: DerivedVersion,
 		Segments:       parsed.Segments,
 		Bounds:         computeBounds(parsed.Segments),
 		RawGPX:         data,

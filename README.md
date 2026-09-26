@@ -62,6 +62,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 - Avatars are [blobatars](https://github.com/Alain00/blobatar) generated from the user id; there is no picture upload.
 - A hike is visible to whoever may see its owner's hikes or those of a tagged participant; anything else answers 404.
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.
+- Stats derived from the GPX (elevation loss, min/max elevation, moving time) are computed on import and stamped with `derived_version`; on startup a background job recomputes hikes stored by an older version (bump `hike.DerivedVersion` when adding one).
 - `GET /api/hikes/tracks` returns a simplified GeoJSON `FeatureCollection` (`ST_SimplifyPreserveTopology`) for the map.
 
 ### API
