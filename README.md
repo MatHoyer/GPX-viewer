@@ -73,6 +73,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/hikes/tracks` | GeoJSON of all tracks |
 | GET | `/api/hikes/{id}` | one hike |
 | GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |
+| PATCH | `/api/hikes/{id}` | `{name}` to rename a hike |
 | DELETE | `/api/hikes/{id}` | delete a hike |
 
 ### Configuration
