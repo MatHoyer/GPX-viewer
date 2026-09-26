@@ -19,6 +19,7 @@ type DatedHike = { hike: Hike; color: string; start: Date }
 
 const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
 const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
+const dayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 // 2024-01-01 is a Monday; the grid starts weeks on Monday.
 const weekdays = Array.from({ length: 7 }, (_, i) => weekdayFormatter.format(new Date(2024, 0, 1 + i)))
 
@@ -56,14 +57,13 @@ export function CalendarPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex flex-wrap items-center gap-2 border-b px-2 py-2 sm:px-4">
+      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
         <SidebarTrigger />
         <h1 className="min-w-0 flex-1 truncate text-lg font-semibold capitalize">
           {monthFormatter.format(new Date(month.year, month.month, 1))}
         </h1>
-        <p className="text-muted-foreground hidden text-sm tabular-nums md:block">
-          {inMonth.length} {inMonth.length === 1 ? 'hike' : 'hikes'} · {formatDistance(monthDistance)} ·{' '}
-          {formatElevation(monthElevation)} D+
+        <p className="text-muted-foreground hidden text-sm tabular-nums sm:block">
+          <MonthSummary count={inMonth.length} distance={monthDistance} elevation={monthElevation} />
         </p>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="sm" onClick={() => goTo(currentMonth())}>
@@ -86,36 +86,65 @@ export function CalendarPage() {
         ))}
       </div>
 
-      <div className="grid flex-1 auto-rows-fr grid-cols-7 overflow-y-auto">
-        {days.map((day) => {
-          const key = dayKey(day)
-          const outside = day.getMonth() !== month.month
-          const entries = byDay.get(key) ?? []
-          return (
-            <div
-              key={key}
-              className={cn(
-                'flex min-h-20 min-w-0 flex-col gap-1 border-r border-b p-1 [&:nth-child(7n)]:border-r-0 sm:min-h-28',
-                outside && 'bg-muted/40',
-              )}
-            >
-              <span
+      {/* Phones get a compact grid with the month's hikes listed below it; wider screens a full-height grid. */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="grid grid-cols-7 sm:h-full sm:auto-rows-fr">
+          {days.map((day) => {
+            const key = dayKey(day)
+            const outside = day.getMonth() !== month.month
+            const entries = byDay.get(key) ?? []
+            return (
+              <div
+                key={key}
                 className={cn(
-                  'flex size-6 items-center justify-center self-end rounded-full text-xs tabular-nums',
-                  outside && 'text-muted-foreground',
-                  key === today && 'bg-primary text-primary-foreground font-semibold',
+                  'relative flex min-h-14 min-w-0 flex-col items-center gap-1 border-r border-b p-1 [&:nth-child(7n)]:border-r-0 sm:min-h-28 sm:items-stretch',
+                  outside && 'bg-muted/40',
                 )}
               >
-                {day.getDate()}
-              </span>
-              {hikes.isLoading ? (
-                <Skeleton className="h-5 w-full" />
-              ) : (
-                entries.map((entry) => <HikeChip key={entry.hike.id} {...entry} muted={outside} />)
-              )}
-            </div>
-          )
-        })}
+                <span
+                  className={cn(
+                    'flex size-6 items-center justify-center rounded-full text-xs tabular-nums sm:self-end',
+                    outside && 'text-muted-foreground',
+                    key === today && 'bg-primary text-primary-foreground font-semibold',
+                  )}
+                >
+                  {day.getDate()}
+                </span>
+                {hikes.isLoading ? (
+                  <Skeleton className="h-2 w-6 sm:h-5 sm:w-full" />
+                ) : (
+                  <>
+                    <div className={cn('flex flex-wrap justify-center gap-0.5 sm:hidden', outside && 'opacity-60')}>
+                      {entries.map(({ hike, color }) => (
+                        <span key={hike.id} className="size-1.5 rounded-full" style={{ backgroundColor: color }} />
+                      ))}
+                    </div>
+                    <div className="hidden min-w-0 flex-col gap-1 sm:flex">
+                      {entries.map((entry) => (
+                        <HikeChip key={entry.hike.id} {...entry} muted={outside} />
+                      ))}
+                    </div>
+                  </>
+                )}
+                {entries.length > 0 && !outside && (
+                  <button
+                    type="button"
+                    className="absolute inset-0 sm:hidden"
+                    aria-label={`Show hikes on ${dayFormatter.format(day)}`}
+                    onClick={() => document.getElementById(`day-${key}`)?.scrollIntoView({ behavior: 'smooth' })}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <MonthAgenda
+          byDay={byDay}
+          days={days.filter((d) => d.getMonth() === month.month)}
+          loading={hikes.isLoading}
+          summary={<MonthSummary count={inMonth.length} distance={monthDistance} elevation={monthElevation} />}
+        />
       </div>
 
       {undated > 0 && (
@@ -128,22 +157,92 @@ export function CalendarPage() {
   )
 }
 
-function HikeChip({ hike, color, muted }: DatedHike & { muted: boolean }) {
+function MonthSummary({ count, distance, elevation }: { count: number; distance: number; elevation: number }) {
+  return (
+    <>
+      {count} {count === 1 ? 'hike' : 'hikes'} · {formatDistance(distance)} · {formatElevation(elevation)} D+
+    </>
+  )
+}
+
+type AgendaProps = { byDay: Map<string, DatedHike[]>; days: Date[]; loading: boolean; summary: React.ReactNode }
+
+function MonthAgenda({ byDay, days, loading, summary }: AgendaProps) {
+  const withHikes = days.filter((d) => byDay.has(dayKey(d)))
+  return (
+    <section className="sm:hidden">
+      {withHikes.length > 0 && <h2 className="text-muted-foreground px-4 pt-4 pb-2 text-sm tabular-nums">{summary}</h2>}
+      {loading ? (
+        <div className="space-y-2 p-4">
+          <Skeleton className="h-14" />
+          <Skeleton className="h-14" />
+        </div>
+      ) : withHikes.length === 0 ? (
+        <p className="text-muted-foreground p-4 text-sm">No hikes this month.</p>
+      ) : (
+        <ol className="divide-y border-y">
+          {withHikes.map((day) => {
+            const key = dayKey(day)
+            return (
+              <li key={key} id={`day-${key}`} className="flex scroll-mt-2 gap-3 px-4 py-3">
+                <div className="w-9 shrink-0 text-center">
+                  <p className="text-muted-foreground text-[11px] uppercase">{weekdayFormatter.format(day)}</p>
+                  <p className="text-lg leading-tight font-semibold tabular-nums">{day.getDate()}</p>
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  {byDay.get(key)!.map((entry) => (
+                    <AgendaItem key={entry.hike.id} {...entry} />
+                  ))}
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </section>
+  )
+}
+
+function AgendaItem({ hike, color }: DatedHike) {
   const owner = taggedBy(hike, useMe().data?.id)
+  return (
+    <Link
+      to={`/hikes/${hike.id}`}
+      className="hover:bg-accent active:bg-accent -mx-2 flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors"
+    >
+      <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{hike.name}</span>
+        <span className="text-muted-foreground block truncate text-xs tabular-nums">
+          {hikeDetails(hike).join(' · ')}
+          {owner && ` · tagged by ${owner}`}
+        </span>
+      </span>
+      <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+    </Link>
+  )
+}
+
+function hikeDetails(hike: Hike): string[] {
   const details = [formatDistance(hike.distanceM), `${formatElevation(hike.elevationGainM)} D+`]
   if (hike.durationS > 0) details.push(formatDuration(hike.durationS))
+  return details
+}
+
+function HikeChip({ hike, color, muted }: DatedHike & { muted: boolean }) {
+  const owner = taggedBy(hike, useMe().data?.id)
 
   return (
     <Link
       to={`/hikes/${hike.id}`}
-      title={`${hike.name}${owner ? ` (tagged by ${owner})` : ''} — ${details.join(' · ')}`}
+      title={`${hike.name}${owner ? ` (tagged by ${owner})` : ''} — ${hikeDetails(hike).join(' · ')}`}
       className={cn(
         'hover:bg-accent flex min-w-0 items-center gap-1.5 rounded-sm px-1 py-0.5 text-xs transition-colors',
         muted && 'opacity-60',
       )}
     >
       <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-      <span className="hidden min-w-0 flex-col sm:flex">
+      <span className="flex min-w-0 flex-col">
         <span className="truncate font-medium">{hike.name}</span>
         <span className="text-muted-foreground truncate tabular-nums">{formatDistance(hike.distanceM)}</span>
       </span>

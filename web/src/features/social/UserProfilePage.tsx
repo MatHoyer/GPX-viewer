@@ -80,12 +80,12 @@ function ProfileCard({ profile, signedIn }: { profile: UserProfile; signedIn: bo
   return (
     <Card>
       <CardContent className="flex flex-wrap items-center gap-4">
-        <UserAvatar user={user} className="size-20" />
+        <UserAvatar user={user} className="size-16 sm:size-20" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-2xl font-semibold">{displayName(user)}</p>
           <p className="text-muted-foreground text-sm">Hiking since {formatDate(user.createdAt)}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 max-sm:basis-full max-sm:[&>*]:flex-1">
           {visibility === 'public' && (
             <Button variant="outline" onClick={copyLink}>
               <Link2 />
@@ -94,7 +94,7 @@ function ProfileCard({ profile, signedIn }: { profile: UserProfile; signedIn: bo
           )}
           {relation === 'self' ? (
             <Button asChild variant="outline">
-              <Link to="/profile">
+              <Link to="/settings">
                 <Pencil />
                 Edit profile
               </Link>

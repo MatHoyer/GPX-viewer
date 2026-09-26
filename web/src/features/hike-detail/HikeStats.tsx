@@ -34,7 +34,8 @@ export function HikeStats({ summary }: { summary: ProfileSummary }) {
   ].filter(Boolean) as Stat[]
 
   return (
-    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    // Cards stretch to fill the row; on phones an odd last card spans both columns.
+    <dl className="grid grid-cols-2 gap-3 max-sm:[&>:last-child:nth-child(odd)]:col-span-2 sm:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">
       {stats.map((stat) => (
         <div key={stat.label} className="bg-card rounded-lg border px-3 py-2.5">
           <dt className="text-muted-foreground text-xs">{stat.label}</dt>
