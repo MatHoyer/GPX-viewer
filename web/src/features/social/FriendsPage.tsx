@@ -125,7 +125,7 @@ function PeopleCard({ title, people, relation, empty }: PeopleCardProps) {
           <ul className="divide-y">
             {people.map((u) => (
               <PersonRow key={u.id} user={u}>
-                <FriendButton userId={u.id} relation={relation} size="sm" />
+                <FriendButton userId={u.id} relation={relation} size="sm" showStatus={relation !== 'friends'} />
               </PersonRow>
             ))}
           </ul>
