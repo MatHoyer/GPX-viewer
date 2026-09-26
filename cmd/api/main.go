@@ -72,6 +72,7 @@ func run() error {
 	hikeSvc := hike.NewService(postgres.NewHikeRepository(db), gpx.NewParser(), socialSvc)
 
 	go purgeExpired(ctx, authSvc)
+	go refreshDerived(ctx, hikeSvc)
 
 	router := httpdelivery.NewRouter(httpdelivery.Deps{
 		Auth:          handler.NewAuthHandler(authSvc, cfg.CookieSecure),
@@ -107,6 +108,17 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
+}
+
+// refreshDerived backfills statistics of hikes imported by an older version.
+func refreshDerived(ctx context.Context, svc *hike.Service) {
+	n, err := svc.RefreshDerived(ctx)
+	if err != nil && ctx.Err() == nil {
+		slog.Warn("refresh derived hike stats", "err", err)
+	}
+	if n > 0 {
+		slog.Info("refreshed derived hike stats", "hikes", n)
+	}
 }
 
 func purgeExpired(ctx context.Context, svc *auth.Service) {

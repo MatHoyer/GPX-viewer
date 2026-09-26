@@ -27,7 +27,7 @@ func TestParseTrack(t *testing.T) {
 	if got.Name != "Col de la Croix" {
 		t.Errorf("name = %q", got.Name)
 	}
-	if len(got.Segments) != 2 || len(got.Segments[0]) != 3 || len(got.Segments[1]) != 2 {
+	if len(got.Segments) != 2 || len(got.Segments[0]) != 3 || len(got.Segments[1]) != 3 {
 		t.Fatalf("unexpected segments: %+v", got.Segments)
 	}
 	if p := got.Segments[0][0]; p.Lon != 6.8 || p.Lat != 45.9 || p.Ele != 1000 {
@@ -38,6 +38,9 @@ func TestParseTrack(t *testing.T) {
 	}
 	if got.ElevationGainM <= 0 {
 		t.Errorf("elevation gain = %v", got.ElevationGainM)
+	}
+	if got.ElevationLossM <= 0 || got.ElevationLossM >= got.ElevationGainM {
+		t.Errorf("elevation loss = %v", got.ElevationLossM)
 	}
 	wantStart := time.Date(2026, 7, 1, 8, 0, 0, 0, time.UTC)
 	if got.StartedAt == nil || !got.StartedAt.Equal(wantStart) {

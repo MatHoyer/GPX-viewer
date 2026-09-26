@@ -76,11 +76,13 @@ func (p *Parser) Parse(data []byte) (*domain.ParsedTrack, error) {
 		segments = append(segments, seg)
 	}
 
+	updown := g.UphillDownhill()
 	res := &domain.ParsedTrack{
 		Name:           trackName(g),
 		Segments:       segments,
 		DistanceM:      round1(g.Length2D()),
-		ElevationGainM: round1(g.UphillDownhill().Uphill),
+		ElevationGainM: round1(updown.Uphill),
+		ElevationLossM: round1(updown.Downhill),
 	}
 	// gpxgo's HasTimes/TimeBounds are unreliable, so time bounds are computed above.
 	if !start.IsZero() {

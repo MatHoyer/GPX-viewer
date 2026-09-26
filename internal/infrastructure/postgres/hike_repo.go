@@ -44,6 +44,11 @@ func (r *HikeRepository) Create(ctx context.Context, h *domain.Hike) error {
 		ElevationGainM: h.ElevationGainM,
 		StartedAt:      h.StartedAt,
 		DurationS:      h.DurationS,
+		ElevationLossM: h.ElevationLossM,
+		MinEleM:        h.MinEleM,
+		MaxEleM:        h.MaxEleM,
+		MovingS:        h.MovingS,
+		DerivedVersion: h.DerivedVersion,
 		MinLon:         h.Bounds.MinLon,
 		MinLat:         h.Bounds.MinLat,
 		MaxLon:         h.Bounds.MaxLon,
@@ -187,4 +192,35 @@ func (r *HikeRepository) AddParticipant(ctx context.Context, hikeID, userID uuid
 
 func (r *HikeRepository) RemoveParticipant(ctx context.Context, hikeID, userID uuid.UUID) error {
 	return r.db.WithContext(ctx).Where("hike_id = ? AND user_id = ?", hikeID, userID).Delete(&HikeParticipantModel{}).Error
+}
+
+func (r *HikeRepository) ListOutdated(ctx context.Context, version, limit int) ([]domain.Hike, error) {
+	var ms []HikeModel
+	err := r.db.WithContext(ctx).
+		Select("id, gpx_raw").
+		Where("derived_version < ?", version).
+		Order("id").
+		Limit(limit).
+		Find(&ms).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.Hike, len(ms))
+	for i, m := range ms {
+		out[i] = domain.Hike{ID: m.ID, RawGPX: m.GPXRaw}
+	}
+	return out, nil
+}
+
+func (r *HikeRepository) SaveDerived(ctx context.Context, id uuid.UUID, d domain.HikeDerived, version int) error {
+	return r.db.WithContext(ctx).
+		Model(&HikeModel{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+			"elevation_loss_m": d.ElevationLossM,
+			"min_ele_m":        d.MinEleM,
+			"max_ele_m":        d.MaxEleM,
+			"moving_s":         d.MovingS,
+			"derived_version":  version,
+		}).Error
 }

@@ -105,6 +105,25 @@ func (f *fakeRepo) RemoveParticipant(_ context.Context, id, user uuid.UUID) erro
 	return nil
 }
 
+func (f *fakeRepo) ListOutdated(_ context.Context, version, limit int) ([]domain.Hike, error) {
+	var out []domain.Hike
+	for _, h := range f.hikes {
+		if h.DerivedVersion < version && len(out) < limit {
+			out = append(out, domain.Hike{ID: h.ID, RawGPX: h.RawGPX})
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeRepo) SaveDerived(_ context.Context, id uuid.UUID, d domain.HikeDerived, version int) error {
+	h, err := f.Find(context.Background(), id)
+	if err != nil {
+		return err
+	}
+	h.HikeDerived, h.DerivedVersion = d, version
+	return nil
+}
+
 // ownerOnly lets users see their own hikes, plus those of anyone in shared.
 // Everyone in friends is friends with everyone else in it.
 type ownerOnly struct{ shared, friends map[uuid.UUID]bool }

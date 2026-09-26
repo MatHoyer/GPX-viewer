@@ -125,6 +125,10 @@ type Hike struct {
 	ElevationGainM float64    `json:"elevationGainM"`
 	StartedAt      *time.Time `json:"startedAt"`
 	DurationS      int64      `json:"durationS"`
+	ElevationLossM float64    `json:"elevationLossM"`
+	MinEleM        *float64   `json:"minEleM"`
+	MaxEleM        *float64   `json:"maxEleM"`
+	MovingS        *int64     `json:"movingS"`
 	// Bounds is [minLon, minLat, maxLon, maxLat].
 	Bounds    [4]float64 `json:"bounds"`
 	CreatedAt time.Time  `json:"createdAt"`
@@ -149,6 +153,10 @@ func NewHike(h *domain.Hike) Hike {
 		ElevationGainM: h.ElevationGainM,
 		StartedAt:      h.StartedAt,
 		DurationS:      h.DurationS,
+		ElevationLossM: h.ElevationLossM,
+		MinEleM:        h.MinEleM,
+		MaxEleM:        h.MaxEleM,
+		MovingS:        h.MovingS,
 		Bounds:         [4]float64{h.Bounds.MinLon, h.Bounds.MinLat, h.Bounds.MaxLon, h.Bounds.MaxLat},
 		CreatedAt:      h.CreatedAt,
 		Participants:   NewPublicUsers(h.Participants),
