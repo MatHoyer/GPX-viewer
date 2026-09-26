@@ -12,7 +12,7 @@ Import your GPX files and see all your hikes on one map.
 docker compose up --build
 ```
 
-Open http://localhost:8080, create an account and import `.gpx` files.
+Open http://localhost:8080, create an account and import `.gpx` files. The email verification link lands in Mailpit at http://localhost:8025.
 
 ## Development
 
@@ -20,7 +20,7 @@ Requires Go 1.26+, Node 24+, pnpm and Docker.
 
 ```bash
 cp .env.example .env
-make dev-db     # PostGIS in docker
+make dev-db     # PostGIS + Mailpit (catches emails, inbox on :8025) in docker
 make web        # build the frontend once (embedded into the Go binary)
 make dev-api    # API + built frontend on :8080
 make dev-web    # optional: Vite dev server with HMR on :5173, /api proxied to :8080
@@ -48,6 +48,7 @@ internal/
     postgres/               GORM models, PostGIS geometry type, repositories
     gpx/                    GPX parsing (tkrajina/gpxgo)
     security/               bcrypt password hashing
+    smtp/                   SMTP mailer (net/smtp, STARTTLS or implicit TLS on 465)
   delivery/http/            chi router, handlers, DTOs, middleware, SPA serving
 web/                        React app; web/embed.go embeds web/dist
 ```
@@ -56,7 +57,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 ### Data
 
-- `users` (with a `visibility`: `private`, `friends` or `public`), `sessions` (server-side, only the SHA-256 of the token is stored), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike).
+- `users` (with a `visibility`: `private`, `friends` or `public`, and `email_verified_at`), `sessions` (server-side, only the SHA-256 of the token is stored), `email_verifications` (one pending link per user, hashed like sessions, valid 24h), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike).
 - Avatars are [blobatars](https://github.com/Alain00/blobatar) generated from the user id; there is no picture upload.
 - A hike is visible to whoever may see its owner's hikes or those of a tagged participant; anything else answers 404.
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.
@@ -66,8 +67,9 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 | Method | Path | Description |
 | --- | --- | --- |
-| POST | `/api/auth/register` | `{email, password}`, starts a session |
-| POST | `/api/auth/login` | `{email, password}`, sets the `session` cookie |
+| POST | `/api/auth/register` | `{email, password}`, emails a verification link; no session until verified |
+| POST | `/api/auth/login` | `{email, password}`, sets the `session` cookie; `403` while the email is unverified, emailing a new link if the last one expired |
+| POST | `/api/auth/verify` | `{token}` from the emailed `/verify?token=` link, verifies and sets the `session` cookie |
 | POST | `/api/auth/logout` | |
 | GET | `/api/auth/me` | current user (`name`, `visibility`, `createdAt`) |
 | PATCH | `/api/me` | `{name}` to set the display name (empty clears it), `{visibility}` to set who sees your hikes |
@@ -95,3 +97,10 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | `PORT` | `8080` | |
 | `COOKIE_SECURE` | `false` | set `true` behind HTTPS |
 | `MAX_UPLOAD_MB` | `20` | per file |
+| `APP_URL` | `http://localhost:$PORT` | public URL, used in emailed links |
+| `SMTP_HOST` | required | |
+| `SMTP_PORT` | `587` | `465` uses implicit TLS, other ports STARTTLS when offered |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | empty | no auth when empty; never sent unencrypted except to localhost |
+| `SMTP_FROM` | required | e.g. `GPX Viewer <noreply@example.com>` |
+
+Accounts created before email verification existed start unverified: their first sign-in attempt emails them a link.

@@ -9,6 +9,8 @@ var (
 	ErrInvalidGPX         = errors.New("invalid gpx file")
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrConflict           = errors.New("conflict")
+	ErrEmailNotVerified   = errors.New("email not verified")
+	ErrInvalidToken       = errors.New("invalid or expired token")
 )
 
 // ValidationError reports invalid user input.

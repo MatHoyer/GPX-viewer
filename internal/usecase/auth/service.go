@@ -7,7 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/mail"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,30 +19,60 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
 )
 
-const MinPasswordLength = 8
+const (
+	MinPasswordLength = 8
+	// VerificationTTL is how long an email verification link stays valid. No
+	// new link is sent while one is still valid.
+	VerificationTTL = 24 * time.Hour
+)
 
 type Service struct {
-	users     domain.UserRepository
-	sessions  domain.SessionRepository
-	hasher    domain.PasswordHasher
-	ttl       time.Duration
-	now       func() time.Time
-	dummyHash string
+	users         domain.UserRepository
+	sessions      domain.SessionRepository
+	verifications domain.EmailVerificationRepository
+	hasher        domain.PasswordHasher
+	mailer        domain.Mailer
+	ttl           time.Duration
+	appURL        string
+	now           func() time.Time
+	dummyHash     string
 }
 
-func NewService(users domain.UserRepository, sessions domain.SessionRepository, hasher domain.PasswordHasher, ttl time.Duration) (*Service, error) {
+// NewService builds the auth service. appURL is the public base URL of the
+// app, used in verification links.
+func NewService(
+	users domain.UserRepository,
+	sessions domain.SessionRepository,
+	verifications domain.EmailVerificationRepository,
+	hasher domain.PasswordHasher,
+	mailer domain.Mailer,
+	ttl time.Duration,
+	appURL string,
+) (*Service, error) {
 	// Used to keep login timing constant when the email is unknown.
 	dummy, err := hasher.Hash("dummy-password-for-timing")
 	if err != nil {
 		return nil, err
 	}
-	return &Service{users: users, sessions: sessions, hasher: hasher, ttl: ttl, now: time.Now, dummyHash: dummy}, nil
+	return &Service{
+		users:         users,
+		sessions:      sessions,
+		verifications: verifications,
+		hasher:        hasher,
+		mailer:        mailer,
+		ttl:           ttl,
+		appURL:        strings.TrimRight(appURL, "/"),
+		now:           time.Now,
+		dummyHash:     dummy,
+	}, nil
 }
 
 func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
+// Register creates an unverified account and emails it a verification link.
+// The account cannot sign in until the link is followed.
 func (s *Service) Register(ctx context.Context, email, password string) (*domain.User, error) {
 	email = normalizeEmail(email)
 	if addr, err := mail.ParseAddress(email); err != nil || addr.Address != email {
@@ -65,6 +98,10 @@ func (s *Service) Register(ctx context.Context, email, password string) (*domain
 	if err := s.users.Create(ctx, u); err != nil {
 		return nil, err
 	}
+	// The account exists either way; the next sign-in attempt retries.
+	if err := s.sendVerification(ctx, u); err != nil {
+		slog.Error("send verification email", "user", u.ID, "err", err)
+	}
 	return u, nil
 }
 
@@ -81,13 +118,89 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, *d
 	if err := s.hasher.Compare(u.PasswordHash, password); err != nil {
 		return "", nil, domain.ErrInvalidCredentials
 	}
+	if u.EmailVerifiedAt == nil {
+		if err := s.ensureVerificationSent(ctx, u); err != nil {
+			slog.Error("send verification email", "user", u.ID, "err", err)
+		}
+		return "", nil, domain.ErrEmailNotVerified
+	}
+	return s.startSession(ctx, u.ID)
+}
 
+// VerifyEmail consumes a verification token, marks the email verified and
+// signs the user in.
+func (s *Service) VerifyEmail(ctx context.Context, token string) (string, *domain.Session, error) {
+	if token == "" {
+		return "", nil, domain.ErrInvalidToken
+	}
+	v, err := s.verifications.Consume(ctx, hashToken(token))
+	if errors.Is(err, domain.ErrNotFound) {
+		return "", nil, domain.ErrInvalidToken
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	now := s.now()
+	if !now.Before(v.ExpiresAt) {
+		return "", nil, domain.ErrInvalidToken
+	}
+	if err := s.users.MarkEmailVerified(ctx, v.UserID, now); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return "", nil, domain.ErrInvalidToken
+		}
+		return "", nil, err
+	}
+	return s.startSession(ctx, v.UserID)
+}
+
+// ensureVerificationSent emails a verification link unless a valid one was
+// already sent, so repeated sign-in attempts cannot spam the inbox.
+func (s *Service) ensureVerificationSent(ctx context.Context, u *domain.User) error {
+	prev, err := s.verifications.GetByUserID(ctx, u.ID)
+	if err == nil && s.now().Before(prev.ExpiresAt) {
+		return nil
+	}
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return err
+	}
+	return s.sendVerification(ctx, u)
+}
+
+func (s *Service) sendVerification(ctx context.Context, u *domain.User) (err error) {
+	token, err := newToken()
+	if err != nil {
+		return err
+	}
+	now := s.now()
+	v := &domain.EmailVerification{TokenHash: hashToken(token), UserID: u.ID, ExpiresAt: now.Add(VerificationTTL), CreatedAt: now}
+	if err := s.verifications.Replace(ctx, v); err != nil {
+		return err
+	}
+	link := s.appURL + "/verify?token=" + url.QueryEscape(token)
+	defer func() {
+		// An undelivered link must not block the next attempt until it expires.
+		if err != nil {
+			_ = s.verifications.DeleteByUserID(context.WithoutCancel(ctx), u.ID)
+		}
+	}()
+	body := fmt.Sprintf(`Welcome to GPX Viewer!
+
+Confirm your email address by opening this link:
+
+%s
+
+The link expires in 24 hours. If you did not create an account, ignore this email.
+`, link)
+	return s.mailer.Send(ctx, u.Email, "Confirm your email address", body)
+}
+
+func (s *Service) startSession(ctx context.Context, userID uuid.UUID) (string, *domain.Session, error) {
 	token, err := newToken()
 	if err != nil {
 		return "", nil, err
 	}
 	now := s.now()
-	sess := &domain.Session{TokenHash: hashToken(token), UserID: u.ID, ExpiresAt: now.Add(s.ttl), CreatedAt: now}
+	sess := &domain.Session{TokenHash: hashToken(token), UserID: userID, ExpiresAt: now.Add(s.ttl), CreatedAt: now}
 	if err := s.sessions.Create(ctx, sess); err != nil {
 		return "", nil, err
 	}
@@ -124,8 +237,10 @@ func (s *Service) Authenticate(ctx context.Context, token string) (*domain.User,
 	return u, err
 }
 
-func (s *Service) PurgeExpiredSessions(ctx context.Context) error {
-	return s.sessions.DeleteExpired(ctx, s.now())
+// PurgeExpired deletes expired sessions and verification links.
+func (s *Service) PurgeExpired(ctx context.Context) error {
+	now := s.now()
+	return errors.Join(s.sessions.DeleteExpired(ctx, now), s.verifications.DeleteExpired(ctx, now))
 }
 
 func newToken() (string, error) {

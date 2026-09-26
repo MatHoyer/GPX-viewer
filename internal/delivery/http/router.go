@@ -35,6 +35,7 @@ func NewRouter(d Deps) http.Handler {
 		r.Post("/auth/register", d.Auth.Register)
 		r.Post("/auth/login", d.Auth.Login)
 		r.Post("/auth/logout", d.Auth.Logout)
+		r.Post("/auth/verify", d.Auth.VerifyEmail)
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(d.Authenticator))

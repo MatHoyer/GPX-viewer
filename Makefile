@@ -3,8 +3,8 @@ export
 
 .PHONY: dev-db dev-api dev-web web build test test-integration lint up down release
 
-dev-db: ## Start PostGIS only
-	docker compose up -d db
+dev-db: ## Start PostGIS and Mailpit (inbox at http://localhost:8025)
+	docker compose up -d db mailpit
 
 dev-api: ## Run the API locally (serves the last frontend build)
 	go run ./cmd/api

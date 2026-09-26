@@ -14,19 +14,22 @@ type UserModel struct {
 	Name         string    `gorm:"not null;default:''"`
 	PasswordHash string    `gorm:"not null"`
 	Visibility   string    `gorm:"not null;default:private"`
-	CreatedAt    time.Time `gorm:"not null"`
+	// EmailVerifiedAt is nil until the email verification link is followed.
+	EmailVerifiedAt *time.Time
+	CreatedAt       time.Time `gorm:"not null"`
 }
 
 func (UserModel) TableName() string { return "users" }
 
 func (m UserModel) toDomain() *domain.User {
 	return &domain.User{
-		ID:           m.ID,
-		Email:        m.Email,
-		Name:         m.Name,
-		PasswordHash: m.PasswordHash,
-		Visibility:   domain.Visibility(m.Visibility),
-		CreatedAt:    m.CreatedAt,
+		ID:              m.ID,
+		Email:           m.Email,
+		Name:            m.Name,
+		PasswordHash:    m.PasswordHash,
+		Visibility:      domain.Visibility(m.Visibility),
+		EmailVerifiedAt: m.EmailVerifiedAt,
+		CreatedAt:       m.CreatedAt,
 	}
 }
 
@@ -64,6 +67,21 @@ func (SessionModel) TableName() string { return "sessions" }
 
 func (m SessionModel) toDomain() *domain.Session {
 	return &domain.Session{TokenHash: m.TokenHash, UserID: m.UserID, ExpiresAt: m.ExpiresAt, CreatedAt: m.CreatedAt}
+}
+
+// EmailVerificationModel is a pending verification link, one per user.
+type EmailVerificationModel struct {
+	UserID    uuid.UUID `gorm:"type:uuid;primaryKey"`
+	User      UserModel `gorm:"constraint:OnDelete:CASCADE"`
+	TokenHash string    `gorm:"not null;uniqueIndex"`
+	ExpiresAt time.Time `gorm:"not null;index"`
+	CreatedAt time.Time `gorm:"not null"`
+}
+
+func (EmailVerificationModel) TableName() string { return "email_verifications" }
+
+func (m EmailVerificationModel) toDomain() *domain.EmailVerification {
+	return &domain.EmailVerification{TokenHash: m.TokenHash, UserID: m.UserID, ExpiresAt: m.ExpiresAt, CreatedAt: m.CreatedAt}
 }
 
 type HikeModel struct {

@@ -30,8 +30,17 @@ export function login(credentials: Credentials) {
   return api<void>('/auth/login', { method: 'POST', body: JSON.stringify(credentials) })
 }
 
+/**
+ * Creates an unverified account; it can sign in once the emailed link is followed.
+ * Signing in while unverified answers 403 and emails a new link if the last one expired.
+ */
 export function register(credentials: Credentials) {
   return api<User>('/auth/register', { method: 'POST', body: JSON.stringify(credentials) })
+}
+
+/** Consumes the token from the verification link and starts a session. */
+export function verifyEmail(token: string) {
+  return api<void>('/auth/verify', { method: 'POST', body: JSON.stringify({ token }) })
 }
 
 export function logout() {

@@ -1,12 +1,13 @@
-import { MountainSnow } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { FloatingInput } from '@/components/ui/floating-input'
 import { ApiError } from '@/lib/api'
 
+import { AuthShell } from './AuthShell'
+import { CheckInbox } from './CheckInbox'
 import { useLogin, useRegister } from './useAuth'
 
 type Mode = 'login' | 'register'
@@ -37,6 +38,8 @@ export function AuthPage({ mode }: { mode: Mode }) {
   const mutation = mode === 'login' ? loginMutation : registerMutation
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // Set once the account exists but its email is not confirmed yet.
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
   const t = copy[mode]
 
   const error = mutation.error instanceof ApiError ? mutation.error : null
@@ -44,17 +47,39 @@ export function AuthPage({ mode }: { mode: Mode }) {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    mutation.mutate({ email, password }, { onSuccess: () => navigate('/', { replace: true }) })
+    if (mode === 'register') {
+      registerMutation.mutate({ email, password }, { onSuccess: (user) => setUnverifiedEmail(user.email) })
+      return
+    }
+    loginMutation.mutate(
+      { email, password },
+      {
+        onSuccess: () => navigate('/', { replace: true }),
+        onError: (err) => {
+          if (err instanceof ApiError && err.status === 403) setUnverifiedEmail(email.trim())
+        },
+      },
+    )
+  }
+
+  function onBack() {
+    setUnverifiedEmail(null)
+    setPassword('')
+    loginMutation.reset()
+    registerMutation.reset()
+    navigate('/login')
+  }
+
+  if (unverifiedEmail) {
+    return (
+      <AuthShell>
+        <CheckInbox email={unverifiedEmail} onBack={onBack} />
+      </AuthShell>
+    )
   }
 
   return (
-    <div className="bg-muted/40 flex min-h-svh items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex items-center justify-center gap-2 text-lg font-semibold">
-          <MountainSnow className="size-6" />
-          GPX Viewer
-        </div>
-        <Card>
+    <AuthShell>
           <CardHeader>
             <CardTitle>{t.title}</CardTitle>
             <CardDescription>{t.description}</CardDescription>
@@ -101,8 +126,6 @@ export function AuthPage({ mode }: { mode: Mode }) {
               </p>
             </CardFooter>
           </form>
-        </Card>
-      </div>
-    </div>
+    </AuthShell>
   )
 }

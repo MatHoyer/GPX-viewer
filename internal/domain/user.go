@@ -30,13 +30,16 @@ type User struct {
 	Name         string
 	PasswordHash string
 	Visibility   Visibility
-	CreatedAt    time.Time
+	// EmailVerifiedAt is nil until the user follows the link sent to Email.
+	EmailVerifiedAt *time.Time
+	CreatedAt       time.Time
 }
 
 type UserRepository interface {
 	Create(ctx context.Context, u *User) error
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
+	MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error
 }
 
 // UserDirectory looks users up on behalf of other users.

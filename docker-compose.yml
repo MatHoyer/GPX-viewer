@@ -15,17 +15,34 @@ services:
       timeout: 5s
       retries: 10
 
+  # Catches every email sent by the app; inbox at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    restart: unless-stopped
+
   app:
     build: .
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-gpx}:${POSTGRES_PASSWORD:-gpx}@db:5432/${POSTGRES_DB:-gpx}?sslmode=disable
       PORT: "8080"
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      # Not SMTP_HOST/SMTP_PORT: .env points those at localhost for `make dev-api`.
+      SMTP_HOST: ${SMTP_HOST_DOCKER:-mailpit}
+      SMTP_PORT: ${SMTP_PORT_DOCKER:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-GPX Viewer <noreply@gpx.local>}
     ports:
       - "${APP_PORT:-8080}:8080"
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
