@@ -207,6 +207,29 @@ func (s *Service) GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, 
 	return h, raw, nil
 }
 
+// Export calls fn with each hike userID owns and its original GPX, newest
+// first. Hikes they are only tagged on belong to their owner and are skipped.
+func (s *Service) Export(ctx context.Context, userID uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error {
+	hikes, err := s.hikes.ListByUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for i := range hikes {
+		h := &hikes[i]
+		if h.UserID != userID {
+			continue
+		}
+		raw, err := s.hikes.GetRawGPX(ctx, userID, h.ID)
+		if err != nil {
+			return err
+		}
+		if err := fn(h, raw); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *Service) Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error) {
 	if err := s.authorize(ctx, viewer, owner); err != nil {
 		return nil, err

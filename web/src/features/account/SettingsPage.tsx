@@ -1,4 +1,4 @@
-import { ExternalLink, Globe, Lock, UsersRound } from 'lucide-react'
+import { Download, ExternalLink, Globe, Lock, UsersRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -34,6 +34,7 @@ export function SettingsPage() {
             <DetailsCard key={me.data.name} user={me.data} />
             <PasswordCard user={me.data} />
             <VisibilityCard user={me.data} />
+            <ExportCard />
             <AppearanceCard />
           </div>
         )}
@@ -229,6 +230,27 @@ function VisibilityCard({ user }: { user: User }) {
             <ExternalLink />
             View my profile
           </Link>
+        </Button>
+      </CardFooter>
+    </Card>
+  )
+}
+
+function ExportCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Export</CardTitle>
+        <CardDescription>
+          Download the original GPX files of all your hikes as a zip. Hikes you are tagged on stay with their owner.
+        </CardDescription>
+      </CardHeader>
+      <CardFooter className="justify-end">
+        <Button asChild variant="outline">
+          <a href="/api/hikes/export" download>
+            <Download />
+            Download my hikes
+          </a>
         </Button>
       </CardFooter>
     </Card>

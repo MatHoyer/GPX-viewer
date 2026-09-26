@@ -78,7 +78,9 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/hikes` | your hikes and those you are tagged on, with stats, bounds and `owner` |
 | POST | `/api/hikes` | multipart `files` (one or more GPX), per-file results |
 | GET | `/api/hikes/tracks` | GeoJSON of all tracks |
+| GET | `/api/hikes/export` | zip of the original GPX of every hike you own, named `YYYY-MM-DD name.gpx` |
 | GET | `/api/hikes/{id}` | one hike with `owner` and `participants`; readable signed out when shared publicly |
+| GET | `/api/hikes/{id}/gpx` | the original GPX file, for whoever can see the hike |
 | GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |
 | PATCH | `/api/hikes/{id}` | `{name}` to rename a hike |
 | DELETE | `/api/hikes/{id}` | delete a hike |
