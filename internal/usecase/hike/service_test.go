@@ -137,6 +137,17 @@ func (f *fakeRepo) ListOutdated(_ context.Context, version, limit int) ([]domain
 	return out, nil
 }
 
+func (f *fakeRepo) ReplaceTrack(ctx context.Context, userID, id uuid.UUID, t *domain.Hike) error {
+	h, err := f.GetByID(ctx, userID, id)
+	if err != nil {
+		return err
+	}
+	h.Planned = false
+	h.DistanceM, h.StartedAt, h.DurationS = t.DistanceM, t.StartedAt, t.DurationS
+	h.HikeDerived, h.Segments, h.Bounds, h.RawGPX = t.HikeDerived, t.Segments, t.Bounds, t.RawGPX
+	return nil
+}
+
 func (f *fakeRepo) SaveDerived(_ context.Context, id uuid.UUID, d domain.HikeDerived, version int) error {
 	h, err := f.Find(context.Background(), id)
 	if err != nil {
@@ -200,6 +211,11 @@ type fakeParser struct {
 	res     *domain.ParsedTrack
 	err     error
 	samples []domain.Sample
+}
+
+// Route marks the data it strips so tests can tell it was called.
+func (p fakeParser) Route(data []byte) ([]byte, error) {
+	return append([]byte("route:"), data...), p.err
 }
 
 func (p fakeParser) Parse([]byte) (*domain.ParsedTrack, error) { return p.res, p.err }
@@ -512,16 +528,58 @@ func TestPlanned(t *testing.T) {
 	ctx := context.Background()
 	svc := NewService(&fakeRepo{}, fakeParser{res: &domain.ParsedTrack{Segments: twoPoints}}, ownerOnly{})
 	alice := uuid.New()
-	h, err := svc.ImportPlanned(ctx, alice, "route.gpx", nil)
+	h, err := svc.ImportPlanned(ctx, alice, "route.gpx", []byte("gpx"))
 	if err != nil || !h.Planned {
 		t.Fatalf("planned import = %+v, %v", h, err)
 	}
-	done := false
-	if got, err := svc.Update(ctx, alice, h.ID, domain.HikeUpdate{Planned: &done}); err != nil || got.Planned {
+	if string(h.RawGPX) != "route:gpx" {
+		t.Errorf("planned raw GPX = %q, want stripped route", h.RawGPX)
+	}
+	if got, _ := svc.Import(ctx, alice, "walk.gpx", []byte("gpx")); got.Planned || string(got.RawGPX) != "gpx" {
+		t.Errorf("regular import = %+v", got)
+	}
+	if _, err := svc.MarkDone(ctx, uuid.New(), h.ID, nil); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("other user mark done err = %v", err)
+	}
+	if got, err := svc.MarkDone(ctx, alice, h.ID, nil); err != nil || got.Planned || string(got.RawGPX) != "route:gpx" {
 		t.Errorf("mark done = %+v, %v", got, err)
 	}
-	if got, _ := svc.Import(ctx, alice, "walk.gpx", nil); got.Planned {
-		t.Error("regular import is planned")
+	var verr *domain.ValidationError
+	if _, err := svc.MarkDone(ctx, alice, h.ID, nil); !errors.As(err, &verr) {
+		t.Errorf("mark done twice err = %v", err)
+	}
+}
+
+func TestMarkDoneWithRecording(t *testing.T) {
+	ctx := context.Background()
+	start := time.Date(2026, 7, 1, 8, 0, 0, 0, time.UTC)
+	parser := &fakeParser{res: &domain.ParsedTrack{Segments: twoPoints, DistanceM: 1000}}
+	svc := NewService(&fakeRepo{}, parser, ownerOnly{})
+	alice := uuid.New()
+	h, err := svc.ImportPlanned(ctx, alice, "route.gpx", []byte("plan"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes := "bring water"
+	if _, err := svc.Update(ctx, alice, h.ID, domain.HikeUpdate{Notes: &notes}); err != nil {
+		t.Fatal(err)
+	}
+	parser.res = &domain.ParsedTrack{Name: "Garmin", Segments: twoPoints, DistanceM: 1100, StartedAt: &start, DurationS: 3600}
+	got, err := svc.MarkDone(ctx, alice, h.ID, []byte("walk"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Planned || string(got.RawGPX) != "walk" || got.DistanceM != 1100 || got.StartedAt == nil || got.DurationS != 3600 {
+		t.Errorf("recorded track not applied: %+v", got)
+	}
+	if got.Name != h.Name || got.Notes != "bring water" {
+		t.Errorf("planned details lost: name %q notes %q", got.Name, got.Notes)
+	}
+
+	plan, _ := svc.ImportPlanned(ctx, alice, "route.gpx", []byte("plan"))
+	parser.err = domain.ErrInvalidGPX
+	if _, err := svc.MarkDone(ctx, alice, plan.ID, []byte("bad")); !errors.Is(err, domain.ErrInvalidGPX) {
+		t.Errorf("invalid recording err = %v", err)
 	}
 }
 

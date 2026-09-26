@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarCheck, Download, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
@@ -29,6 +29,7 @@ import { useHike, useProfile } from './api'
 import { EditableTitle } from './EditableTitle'
 import { HikeSummits } from './HikeSummits'
 import { LabelPicker } from './LabelPicker'
+import { MarkDoneDialog } from './MarkDoneDialog'
 import { NotesBlock } from './NotesBlock'
 import { HikeStats } from './HikeStats'
 import { Participants } from './Participants'
@@ -131,25 +132,7 @@ export function HikePage() {
               </a>
             </Button>
           )}
-          {isOwner && hike.data?.planned && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={update.isPending}
-              onClick={() =>
-                update.mutate(
-                  { id, planned: false },
-                  {
-                    onSuccess: () => toast.success('Marked as done'),
-                    onError: () => toast.error('Could not update hike'),
-                  },
-                )
-              }
-            >
-              <CalendarCheck />
-              <span className="hidden sm:inline">Mark as done</span>
-            </Button>
-          )}
+          {isOwner && hike.data?.planned && <MarkDoneDialog id={id} />}
           {isOwner && (
             <Button variant="destructive" size="icon" onClick={() => setConfirmDelete(true)} aria-label="Delete hike">
               <Trash2 />

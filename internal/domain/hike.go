@@ -124,6 +124,9 @@ type HikeRepository interface {
 	// version, with only their ID and raw GPX loaded.
 	ListOutdated(ctx context.Context, version, limit int) ([]Hike, error)
 	SaveDerived(ctx context.Context, id uuid.UUID, d HikeDerived, version int) error
+	// ReplaceTrack swaps a planned hike's track for the one in h, walked:
+	// geometry, stats, derived data and raw GPX change and it is no longer planned.
+	ReplaceTrack(ctx context.Context, userID, id uuid.UUID, h *Hike) error
 	// ListSimilar returns the done hikes userID owns or is tagged on, other than
 	// hikeID, whose track follows hikeID's within maxDeviationM meters (either
 	// direction), without geometry or raw GPX, newest first.

@@ -212,10 +212,9 @@ func NewHikeTiles(tiles map[uuid.UUID][]domain.Tile) HikeTiles {
 
 // UpdateHike is a partial update; nil fields are left unchanged.
 type UpdateHike struct {
-	Name    *string   `json:"name"`
-	Notes   *string   `json:"notes"`
-	Labels  *[]string `json:"labels"`
-	Planned *bool     `json:"planned"`
+	Name   *string   `json:"name"`
+	Notes  *string   `json:"notes"`
+	Labels *[]string `json:"labels"`
 }
 
 type UploadResult struct {

@@ -363,6 +363,51 @@ func (r *HikeRepository) SaveDerived(ctx context.Context, id uuid.UUID, d domain
 	})
 }
 
+func (r *HikeRepository) ReplaceTrack(ctx context.Context, userID, id uuid.UUID, h *domain.Hike) error {
+	g, err := segmentsToGeom(h.Segments)
+	if err != nil {
+		return err
+	}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&HikeModel{}).
+			Where("user_id = ? AND id = ?", userID, id).
+			Updates(map[string]any{
+				"planned":          false,
+				"distance_m":       h.DistanceM,
+				"elevation_gain_m": h.ElevationGainM,
+				"started_at":       h.StartedAt,
+				"duration_s":       h.DurationS,
+				"elevation_loss_m": h.ElevationLossM,
+				"min_ele_m":        h.MinEleM,
+				"max_ele_m":        h.MaxEleM,
+				"moving_s":         h.MovingS,
+				"derived_version":  h.DerivedVersion,
+				"min_lon":          h.Bounds.MinLon,
+				"min_lat":          h.Bounds.MinLat,
+				"max_lon":          h.Bounds.MaxLon,
+				"max_lat":          h.Bounds.MaxLat,
+				"geom":             g,
+				"gpx_raw":          h.RawGPX,
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return domain.ErrNotFound
+		}
+		if err := tx.Where("hike_id = ?", id).Delete(&HikeBestEffortModel{}).Error; err != nil {
+			return err
+		}
+		if err := createBestEfforts(tx, id, h.BestEfforts); err != nil {
+			return err
+		}
+		if err := tx.Where("hike_id = ?", id).Delete(&HikeTileModel{}).Error; err != nil {
+			return err
+		}
+		return createTiles(tx, id, h.Tiles)
+	})
+}
+
 func (r *HikeRepository) ListTiles(ctx context.Context, userID uuid.UUID) (map[uuid.UUID][]domain.Tile, error) {
 	var ms []HikeTileModel
 	err := r.db.WithContext(ctx).

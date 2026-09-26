@@ -17,6 +17,9 @@ type TrackParser interface {
 	Parse(data []byte) (*ParsedTrack, error)
 	// Samples returns every point with its optional sensor data.
 	Samples(data []byte) ([]Sample, error)
+	// Route returns the file with only its geometry and elevation, dropping
+	// timestamps and sensor data.
+	Route(data []byte) ([]byte, error)
 }
 
 type PasswordHasher interface {

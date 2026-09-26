@@ -118,6 +118,38 @@ func (p *Parser) Samples(data []byte) ([]domain.Sample, error) {
 	return out, nil
 }
 
+// Route returns the GPX with only its geometry and elevation: timestamps and
+// extensions, which carry sensor data such as heart rate and cadence, are
+// dropped, so a route recorded by someone else stores none of their effort.
+func (p *Parser) Route(data []byte) ([]byte, error) {
+	g, err := gpx.ParseBytes(data)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrInvalidGPX, err)
+	}
+	strip := func(pts []gpx.GPXPoint) {
+		for i := range pts {
+			pts[i].Timestamp = time.Time{}
+			pts[i].Extensions = gpx.Extension{}
+		}
+	}
+	g.Time = nil
+	g.Extensions = gpx.Extension{}
+	g.MetadataExtensions = gpx.Extension{}
+	strip(g.Waypoints)
+	for i := range g.Routes {
+		g.Routes[i].Extensions = gpx.Extension{}
+		strip(g.Routes[i].Points)
+	}
+	for i := range g.Tracks {
+		g.Tracks[i].Extensions = gpx.Extension{}
+		for j := range g.Tracks[i].Segments {
+			g.Tracks[i].Segments[j].Extensions = gpx.Extension{}
+			strip(g.Tracks[i].Segments[j].Points)
+		}
+	}
+	return g.ToXml(gpx.ToXmlParams{Version: "1.1", Indent: true})
+}
+
 // readExtensions extracts sensor values from vendor extensions such as
 // Garmin TrackPointExtension (<gpxtpx:hr>, <gpxtpx:cad>, <gpxtpx:atemp>),
 // matching on local element names so any namespace prefix works.
