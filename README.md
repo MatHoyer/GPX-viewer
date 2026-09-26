@@ -85,13 +85,17 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/tiles` | `{zoom, hikes: {id: [[x, y], …]}}`: the zoom-14 map tiles each of your hikes passes through |
 | GET | `/api/summits` | every peak you reached (track within 50 m), with the hikes that went over it |
 | GET | `/api/feed` | `{hikes, next}`: 20 recent done hikes from friends who share theirs and hikes you were tagged on; pass `?after=<next>` for the following page |
-| GET | `/api/hikes/{id}` | one hike with `owner` and `participants`; readable signed out when shared publicly |
+| GET | `/api/hikes/{id}` | one hike with `owner`, `participants` and `interactions` (`{kudos, comments, kudoed}`); readable signed out when shared publicly |
 | GET | `/api/hikes/{id}/gpx` | the original GPX file, for whoever can see the hike |
 | GET | `/api/hikes/{id}/summits` | the named peaks the hike went over, highest first |
 | GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |
 | PATCH | `/api/hikes/{id}` | any of `{name, notes, labels, planned}`; labels are lowercased, deduplicated and sorted, `[]` clears them |
 | DELETE | `/api/hikes/{id}` | delete a hike |
 | GET | `/api/hikes/{id}/similar` | your other hikes along the same route (tracks within 200 m of each other, either direction) |
+| PUT / DELETE | `/api/hikes/{id}/kudos` | give or take back kudos on a hike you can see |
+| GET | `/api/hikes/{id}/comments` | comments with their authors, oldest first; readable like the hike |
+| POST | `/api/hikes/{id}/comments` | `{body}` (up to 2000 characters), on a hike you can see |
+| DELETE | `/api/hikes/{id}/comments/{commentId}` | by its author or the hike's owner |
 | PUT | `/api/hikes/{id}/participants/{userId}` | tag a friend on your hike |
 | DELETE | `/api/hikes/{id}/participants/{userId}` | untag (owner, or the participant themselves) |
 | GET | `/api/users/{id}` | public profile: `user`, `visibility`, `relation`, `canView`; signed out only when public |

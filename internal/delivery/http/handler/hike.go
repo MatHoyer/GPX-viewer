@@ -42,13 +42,40 @@ type HikeService interface {
 	Untag(ctx context.Context, viewer, id, participant uuid.UUID) error
 }
 
-type HikeHandler struct {
-	svc         HikeService
-	maxFileSize int64
+// InteractionCounts sums up kudos and comments for the hikes a response shows.
+type InteractionCounts interface {
+	Counts(ctx context.Context, viewer uuid.UUID, hikeIDs []uuid.UUID) (map[uuid.UUID]domain.HikeInteractions, error)
 }
 
-func NewHikeHandler(svc HikeService, maxFileSize int64) *HikeHandler {
-	return &HikeHandler{svc: svc, maxFileSize: maxFileSize}
+type HikeHandler struct {
+	svc          HikeService
+	interactions InteractionCounts
+	maxFileSize  int64
+}
+
+// NewHikeHandler builds the hike endpoints. interactions may be nil, leaving
+// kudos and comment counts out of responses.
+func NewHikeHandler(svc HikeService, interactions InteractionCounts, maxFileSize int64) *HikeHandler {
+	return &HikeHandler{svc: svc, interactions: interactions, maxFileSize: maxFileSize}
+}
+
+// withInteractions adds kudos and comment counts to hikes in a response.
+func (h *HikeHandler) withInteractions(ctx context.Context, viewer uuid.UUID, hikes []dto.Hike) error {
+	if h.interactions == nil || len(hikes) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, len(hikes))
+	for i, hk := range hikes {
+		ids[i] = uuid.MustParse(hk.ID)
+	}
+	counts, err := h.interactions.Counts(ctx, viewer, ids)
+	if err != nil {
+		return err
+	}
+	for i := range hikes {
+		hikes[i].Interactions = dto.NewHikeInteractions(counts[ids[i]])
+	}
+	return nil
 }
 
 // Upload imports every file in the multipart "files" field and reports per-file
@@ -149,12 +176,18 @@ func (h *HikeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	hike, err := h.svc.Get(r.Context(), middleware.ViewerID(r.Context()), id)
+	viewer := middleware.ViewerID(r.Context())
+	hike, err := h.svc.Get(r.Context(), viewer, id)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, dto.NewHike(hike))
+	out := []dto.Hike{dto.NewHike(hike)}
+	if err := h.withInteractions(r.Context(), viewer, out); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out[0])
 }
 
 func (h *HikeHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -311,12 +344,18 @@ func (h *HikeHandler) Feed(w http.ResponseWriter, r *http.Request) {
 		}
 		after = cur
 	}
-	hikes, next, err := h.svc.Feed(r.Context(), middleware.UserFrom(r.Context()).ID, after)
+	user := middleware.UserFrom(r.Context()).ID
+	hikes, next, err := h.svc.Feed(r.Context(), user, after)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, dto.NewFeed(hikes, next))
+	feed := dto.NewFeed(hikes, next)
+	if err := h.withInteractions(r.Context(), user, feed.Hikes); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, feed)
 }
 
 // Similar returns the signed-in user's other hikes along the same route.

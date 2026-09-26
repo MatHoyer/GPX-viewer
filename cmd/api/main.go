@@ -21,6 +21,7 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/account"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/auth"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/hike"
+	"github.com/MatHoyer/gpx-viewer/internal/usecase/interaction"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/social"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/summit"
 	"github.com/MatHoyer/gpx-viewer/web"
@@ -76,6 +77,7 @@ func run() error {
 	accountSvc := account.NewService(users)
 	socialSvc := social.NewService(users, postgres.NewFriendshipRepository(db))
 	hikeSvc := hike.NewService(postgres.NewHikeRepository(db), gpx.NewParser(), socialSvc)
+	interactionSvc := interaction.NewService(postgres.NewInteractionRepository(db), hikeSvc)
 	summitSvc := summit.NewService(postgres.NewPeakRepository(db), overpass.NewClient(overpass.DefaultURL), hikeSvc)
 
 	go purgeExpired(ctx, authSvc)
@@ -84,9 +86,10 @@ func run() error {
 	router := httpdelivery.NewRouter(httpdelivery.Deps{
 		Auth:          handler.NewAuthHandler(authSvc, cfg.CookieSecure),
 		Account:       handler.NewAccountHandler(accountSvc),
-		Hikes:         handler.NewHikeHandler(hikeSvc, cfg.MaxUploadMB<<20),
+		Hikes:         handler.NewHikeHandler(hikeSvc, interactionSvc, cfg.MaxUploadMB<<20),
 		Social:        handler.NewSocialHandler(socialSvc),
 		Summits:       handler.NewSummitHandler(summitSvc),
+		Interactions:  handler.NewInteractionHandler(interactionSvc),
 		Authenticator: authSvc,
 		Static:        web.Dist(),
 		AppURL:        cfg.AppURL,

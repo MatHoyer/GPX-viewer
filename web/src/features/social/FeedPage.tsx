@@ -1,4 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { MessageCircle } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,7 @@ import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import type { Hike } from '@/features/hikes/api'
+import { KudosButton } from '@/features/interactions/KudosButton'
 import { api } from '@/lib/api'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 
@@ -94,6 +96,13 @@ function FeedCard({ hike, viewerId }: { hike: Hike; viewerId: string | undefined
           {others.length > 0 && `${taggedMe ? ', ' : ' '}${others.map(displayName).join(', ')}`}
         </p>
       )}
+      <div className="flex items-center gap-3 pt-1">
+        <KudosButton hike={hike} viewerId={viewerId} />
+        <Link to={`/hikes/${hike.id}#comments`} className="text-muted-foreground inline-flex items-center gap-1 text-sm hover:underline">
+          <MessageCircle className="size-4" />
+          {hike.interactions?.comments ? hike.interactions.comments : 'Comment'}
+        </Link>
+      </div>
       {hike.labels.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {hike.labels.map((l) => (

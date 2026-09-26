@@ -20,6 +20,8 @@ import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import { PlannedBadge } from '@/features/hikes/PlannedBadge'
 import { useDeleteHike, useHikeSummits, useUpdateHike } from '@/features/hikes/useHikes'
+import { Comments } from '@/features/interactions/Comments'
+import { KudosButton } from '@/features/interactions/KudosButton'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 
@@ -114,6 +116,7 @@ export function HikePage() {
                   )}
                   <Participants hike={hike.data} isOwner={isOwner} viewerId={me.data?.id} />
                   {me.data && <RecordBadge hikeId={hike.data.id} />}
+                  <KudosButton hike={hike.data} viewerId={me.data?.id} />
                 </div>
               </>
             ) : (
@@ -159,6 +162,7 @@ export function HikePage() {
         {summits.data && <HikeSummits peaks={summits.data} />}
         {hike.data && <HikeNotes hike={hike.data} isOwner={isOwner} />}
         {hike.data && me.data && <SameRoute hike={hike.data} />}
+        {hike.data && <Comments hike={hike.data} viewerId={me.data?.id} />}
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <section className="bg-card space-y-3 rounded-xl border p-3 lg:sticky lg:top-20 lg:self-start">
