@@ -136,7 +136,7 @@ type Hike struct {
 	CreatedAt time.Time  `json:"createdAt"`
 	// Owner is omitted on hikes just created by an upload.
 	Owner *PublicUser `json:"owner,omitempty"`
-	// Participants is only set on single-hike reads.
+	// Participants is omitted on hikes just created by an upload.
 	Participants []PublicUser `json:"participants,omitempty"`
 }
 

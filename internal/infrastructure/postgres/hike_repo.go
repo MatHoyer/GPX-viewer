@@ -81,7 +81,42 @@ func (r *HikeRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]do
 	for i, m := range ms {
 		out[i] = m.toDomain()
 	}
+	if err := r.loadParticipants(ctx, out); err != nil {
+		return nil, err
+	}
 	return out, nil
+}
+
+// loadParticipants fills each hike's participants with one query.
+func (r *HikeRepository) loadParticipants(ctx context.Context, hikes []domain.Hike) error {
+	if len(hikes) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, len(hikes))
+	byID := make(map[uuid.UUID]*domain.Hike, len(hikes))
+	for i := range hikes {
+		ids[i] = hikes[i].ID
+		byID[hikes[i].ID] = &hikes[i]
+	}
+	var rows []struct {
+		HikeID uuid.UUID
+		UserModel
+	}
+	err := r.db.WithContext(ctx).
+		Table("users").
+		Select("p.hike_id, users.id, users.email, users.name, users.visibility, users.created_at").
+		Joins("JOIN hike_participants p ON p.user_id = users.id").
+		Where("p.hike_id IN ?", ids).
+		Order("p.created_at").
+		Scan(&rows).Error
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		h := byID[row.HikeID]
+		h.Participants = append(h.Participants, *row.UserModel.toDomain())
+	}
+	return nil
 }
 
 func (r *HikeRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*domain.Hike, error) {

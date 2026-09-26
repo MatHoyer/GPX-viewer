@@ -11,6 +11,8 @@ import { HikePopup, type PopupState } from './HikePopup'
 
 type Props = {
   hikes: Hike[]
+  /** Hikes that set colors, so a hike keeps its color when others are filtered out. Defaults to `hikes`. */
+  colorFrom?: Hike[]
   userId: string | undefined
   tracks: Tracks | undefined
   selectedId: string | null
@@ -21,8 +23,11 @@ type Props = {
   onPopupClose: (nonce: number) => void
 }
 
-export function HikesMap({ hikes, userId, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose }: Props) {
-  const colorById = useMemo(() => new globalThis.Map(hikes.map((h, i) => [h.id, hikeColor(i)])), [hikes])
+export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose }: Props) {
+  const colorById = useMemo(
+    () => new globalThis.Map((colorFrom ?? hikes).map((h, i) => [h.id, hikeColor(i)])),
+    [colorFrom, hikes],
+  )
   const popupHike = popup ? hikes.find((h) => h.id === popup.hikeId) : undefined
 
   const fitTarget = useMemo(() => {
