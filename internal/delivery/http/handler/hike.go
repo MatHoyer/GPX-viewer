@@ -25,6 +25,7 @@ const maxFilesPerUpload = 50
 
 type HikeService interface {
 	Import(ctx context.Context, userID uuid.UUID, filename string, data []byte) (*domain.Hike, error)
+	ImportPlanned(ctx context.Context, userID uuid.UUID, filename string, data []byte) (*domain.Hike, error)
 	List(ctx context.Context, viewer, owner uuid.UUID) ([]domain.Hike, error)
 	Get(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
@@ -49,9 +50,14 @@ func NewHikeHandler(svc HikeService, maxFileSize int64) *HikeHandler {
 	return &HikeHandler{svc: svc, maxFileSize: maxFileSize}
 }
 
-// Upload imports every file in the multipart "files" field and reports per-file results.
+// Upload imports every file in the multipart "files" field and reports per-file
+// results. With ?planned=true the files are routes to do rather than hikes done.
 func (h *HikeHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFrom(r.Context())
+	importFile := h.svc.Import
+	if r.URL.Query().Get("planned") == "true" {
+		importFile = h.svc.ImportPlanned
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, h.maxFileSize*maxFilesPerUpload)
 
 	mr, err := r.MultipartReader()
@@ -90,7 +96,7 @@ func (h *HikeHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		case int64(len(data)) > h.maxFileSize:
 			res.Error = fmt.Sprintf("file exceeds %d MB", h.maxFileSize>>20)
 		default:
-			hike, err := h.svc.Import(r.Context(), user.ID, part.FileName(), data)
+			hike, err := importFile(r.Context(), user.ID, part.FileName(), data)
 			if err != nil {
 				if !errors.Is(err, domain.ErrInvalidGPX) {
 					writeError(w, r, err)
@@ -159,11 +165,11 @@ func (h *HikeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if in.Name == nil && in.Notes == nil && in.Labels == nil {
+	if in.Name == nil && in.Notes == nil && in.Labels == nil && in.Planned == nil {
 		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update"})
 		return
 	}
-	u := domain.HikeUpdate{Name: in.Name, Notes: in.Notes, Labels: in.Labels}
+	u := domain.HikeUpdate{Name: in.Name, Notes: in.Notes, Labels: in.Labels, Planned: in.Planned}
 	hike, err := h.svc.Update(r.Context(), middleware.UserFrom(r.Context()).ID, id, u)
 	if err != nil {
 		writeError(w, r, err)

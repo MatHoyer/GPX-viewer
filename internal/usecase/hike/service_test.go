@@ -76,6 +76,9 @@ func (f *fakeRepo) Update(ctx context.Context, userID, id uuid.UUID, u domain.Hi
 	if u.Labels != nil {
 		h.Labels = *u.Labels
 	}
+	if u.Planned != nil {
+		h.Planned = *u.Planned
+	}
 	return nil
 }
 
@@ -484,5 +487,22 @@ func TestSimilarNeedsAccess(t *testing.T) {
 	}
 	if _, err := svc.Similar(ctx, bob, a1.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob similar err = %v", err)
+	}
+}
+
+func TestPlanned(t *testing.T) {
+	ctx := context.Background()
+	svc := NewService(&fakeRepo{}, fakeParser{res: &domain.ParsedTrack{Segments: twoPoints}}, ownerOnly{})
+	alice := uuid.New()
+	h, err := svc.ImportPlanned(ctx, alice, "route.gpx", nil)
+	if err != nil || !h.Planned {
+		t.Fatalf("planned import = %+v, %v", h, err)
+	}
+	done := false
+	if got, err := svc.Update(ctx, alice, h.ID, domain.HikeUpdate{Planned: &done}); err != nil || got.Planned {
+		t.Errorf("mark done = %+v, %v", got, err)
+	}
+	if got, _ := svc.Import(ctx, alice, "walk.gpx", nil); got.Planned {
+		t.Error("regular import is planned")
 	}
 }

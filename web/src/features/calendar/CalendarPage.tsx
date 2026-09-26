@@ -46,7 +46,8 @@ export function CalendarPage() {
   // Colors follow the unfiltered list order so a hike has the same color as on the map.
   const { byDay, undated } = useMemo(() => {
     const all = hikes.data ?? []
-    const shown = new Set(filterHikes(all, filters, me.data?.id))
+    // Planned routes have no real date yet; keep them off the calendar.
+    const shown = new Set(filterHikes(all, filters, me.data?.id).filter((h) => !h.planned))
     const byDay = new Map<string, DatedHike[]>()
     let undated = 0
     all.forEach((hike, i) => {

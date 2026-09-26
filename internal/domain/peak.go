@@ -34,7 +34,7 @@ type PeakRepository interface {
 	// OnHike returns the peaks within radiusM meters of a hike's track, highest first.
 	OnHike(ctx context.Context, hikeID uuid.UUID, radiusM float64) ([]Peak, error)
 	// OfUser returns the peaks within radiusM meters of the hikes a user owns
-	// or is tagged on.
+	// or is tagged on, leaving out planned hikes.
 	OfUser(ctx context.Context, userID uuid.UUID, radiusM float64) ([]Summit, error)
 }
 

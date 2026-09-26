@@ -22,6 +22,8 @@ export type Hike = {
   startedAt: string | null
   durationS: number
   notes: string
+  /** A route not walked yet: shown on the map, left out of stats. */
+  planned: boolean
   /** The owner's labels, lowercase and sorted. */
   labels: string[]
   elevationLossM: number
@@ -63,14 +65,19 @@ export function getTracks() {
   return api<Tracks>('/hikes/tracks')
 }
 
-export async function uploadHikes(files: File[]) {
+export async function uploadHikes({ files, planned = false }: { files: File[]; planned?: boolean }) {
   const body = new FormData()
   for (const f of files) body.append('files', f)
-  const res = await api<{ results: UploadResult[] }>('/hikes', { method: 'POST', body })
+  const res = await api<{ results: UploadResult[] }>(planned ? '/hikes?planned=true' : '/hikes', { method: 'POST', body })
   return res.results
 }
 
-export type HikeUpdate = { name?: string; notes?: string; labels?: string[] }
+export type HikeUpdate = { name?: string; notes?: string; labels?: string[]; planned?: boolean }
+
+/** Hikes actually walked, for stats and records. */
+export function doneHikes(hikes: Hike[]): Hike[] {
+  return hikes.filter((h) => !h.planned)
+}
 
 export function updateHike({ id, ...patch }: { id: string } & HikeUpdate) {
   return api<Hike>(`/hikes/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })

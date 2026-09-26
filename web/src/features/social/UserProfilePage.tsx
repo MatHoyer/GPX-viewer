@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
-import type { Hike } from '@/features/hikes/api'
+import { doneHikes, type Hike } from '@/features/hikes/api'
 import { HikesMapView } from '@/features/hikes/HikesMapView'
 import { TaggedBy } from '@/features/hikes/TaggedBy'
 import { ApiError } from '@/lib/api'
@@ -142,7 +142,7 @@ function EmptyState({ icon, title, children }: { icon: React.ReactNode; title: s
 
 function Totals({ hikes }: { hikes: Hike[] | undefined }) {
   const totals = useMemo(() => {
-    const list = hikes ?? []
+    const list = doneHikes(hikes ?? [])
     return {
       count: list.length,
       distance: list.reduce((s, h) => s + h.distanceM, 0),

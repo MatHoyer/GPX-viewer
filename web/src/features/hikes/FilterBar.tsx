@@ -97,6 +97,19 @@ function FilterSheet({ hikes, userId, matched }: Omit<Props, 'className'>) {
       </SheetHeader>
 
       <div className="space-y-6 px-4">
+        <Chips label="Show" hint="Walked hikes or planned routes">
+          {(
+            [
+              ['all', 'All'],
+              ['done', 'Done'],
+              ['planned', 'Planned'],
+            ] as const
+          ).map(([value, label]) => (
+            <Chip key={value} pressed={filters.status === value} onClick={() => setFilters({ status: value })}>
+              {label}
+            </Chip>
+          ))}
+        </Chips>
         <Range
           label="Date"
           type="date"

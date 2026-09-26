@@ -48,6 +48,7 @@ func (r *HikeRepository) Create(ctx context.Context, h *domain.Hike) error {
 		UserID:         h.UserID,
 		Name:           h.Name,
 		Notes:          h.Notes,
+		Planned:        h.Planned,
 		DistanceM:      h.DistanceM,
 		ElevationGainM: h.ElevationGainM,
 		StartedAt:      h.StartedAt,
@@ -199,6 +200,9 @@ func (r *HikeRepository) Update(ctx context.Context, userID, id uuid.UUID, u dom
 		if u.Notes != nil {
 			cols["notes"] = *u.Notes
 		}
+		if u.Planned != nil {
+			cols["planned"] = *u.Planned
+		}
 		if len(cols) > 0 {
 			if err := tx.Model(&HikeModel{}).Where("id = ?", id).Updates(cols).Error; err != nil {
 				return err
@@ -349,7 +353,7 @@ func (r *HikeRepository) SaveDerived(ctx context.Context, id uuid.UUID, d domain
 func (r *HikeRepository) ListTiles(ctx context.Context, userID uuid.UUID) (map[uuid.UUID][]domain.Tile, error) {
 	var ms []HikeTileModel
 	err := r.db.WithContext(ctx).
-		Where("hike_id IN (SELECT id FROM hikes WHERE "+ownedOrTagged+")", userID, userID).
+		Where("hike_id IN (SELECT id FROM hikes WHERE NOT planned AND ("+ownedOrTagged+"))", userID, userID).
 		Order("hike_id, x, y").
 		Find(&ms).Error
 	if err != nil {
@@ -371,6 +375,7 @@ SELECT h2.id FROM hikes h1
 JOIN hikes h2 ON h2.id <> h1.id
 WHERE h1.id = @hike
   AND (h2.user_id = @user OR h2.id IN (SELECT hike_id FROM hike_participants WHERE user_id = @user))
+  AND NOT h2.planned
   AND h2.min_lon <= h1.max_lon AND h2.max_lon >= h1.min_lon
   AND h2.min_lat <= h1.max_lat AND h2.max_lat >= h1.min_lat
   AND h2.distance_m BETWEEN h1.distance_m / 1.25 AND h1.distance_m * 1.25

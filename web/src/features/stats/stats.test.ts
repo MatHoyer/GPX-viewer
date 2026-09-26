@@ -14,6 +14,7 @@ function hike(startedAt: string | null, over: Partial<Hike> = {}): Hike {
     startedAt,
     durationS: 7200,
     notes: '',
+    planned: false,
     labels: [],
     elevationLossM: 500,
     minEleM: null,

@@ -18,7 +18,7 @@ export function SameRoute({ hike }: { hike: Hike }) {
   if (!similar.data || similar.data.length === 0) return null
 
   // Include this hike when it is one of the viewer's own.
-  const own = mine.data?.some((h) => h.id === hike.id) ?? false
+  const own = !hike.planned && (mine.data?.some((h) => h.id === hike.id) ?? false)
   const rows = [...(own ? [hike] : []), ...similar.data].sort(
     (a, b) => (b.startedAt ?? '').localeCompare(a.startedAt ?? ''),
   )

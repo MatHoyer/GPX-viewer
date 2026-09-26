@@ -84,7 +84,8 @@ func (r *PeakRepository) OfUser(ctx context.Context, userID uuid.UUID, radiusM f
 	err := r.db.WithContext(ctx).Raw(`
 SELECT p.id, p.name, p.ele_m, ST_X(p.geom) AS lon, ST_Y(p.geom) AS lat, h.id AS hike_id, h.started_at
 FROM hikes h JOIN peaks p ON `+nearTrack+`
-WHERE h.user_id = @user OR h.id IN (SELECT hike_id FROM hike_participants WHERE user_id = @user)
+WHERE NOT h.planned
+  AND (h.user_id = @user OR h.id IN (SELECT hike_id FROM hike_participants WHERE user_id = @user))
 ORDER BY p.ele_m DESC NULLS LAST, p.name, p.id, h.started_at DESC NULLS LAST`,
 		map[string]any{"user": userID, "radius": radiusM}).Scan(&rows).Error
 	if err != nil {

@@ -48,6 +48,15 @@ func (s *Service) authorize(ctx context.Context, viewer, owner uuid.UUID) error 
 
 // Import parses a GPX file and stores it as a hike owned by userID.
 func (s *Service) Import(ctx context.Context, userID uuid.UUID, filename string, data []byte) (*domain.Hike, error) {
+	return s.importHike(ctx, userID, filename, data, false)
+}
+
+// ImportPlanned stores a GPX route as a hike userID plans to do.
+func (s *Service) ImportPlanned(ctx context.Context, userID uuid.UUID, filename string, data []byte) (*domain.Hike, error) {
+	return s.importHike(ctx, userID, filename, data, true)
+}
+
+func (s *Service) importHike(ctx context.Context, userID uuid.UUID, filename string, data []byte, planned bool) (*domain.Hike, error) {
 	parsed, err := s.parser.Parse(data)
 	if err != nil {
 		return nil, err
@@ -72,6 +81,7 @@ func (s *Service) Import(ctx context.Context, userID uuid.UUID, filename string,
 		ID:             uuid.New(),
 		UserID:         userID,
 		Name:           name,
+		Planned:        planned,
 		DistanceM:      parsed.DistanceM,
 		ElevationGainM: parsed.ElevationGainM,
 		StartedAt:      parsed.StartedAt,

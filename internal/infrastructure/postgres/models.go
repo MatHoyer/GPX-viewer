@@ -109,6 +109,7 @@ type HikeModel struct {
 	StartedAt      *time.Time            `gorm:"index"`
 	DurationS      int64                 `gorm:"not null"`
 	Notes          string                `gorm:"not null;default:''"`
+	Planned        bool                  `gorm:"not null;default:false"`
 	Labels         []HikeLabelModel      `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
 	BestEfforts    []HikeBestEffortModel `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
 	Tiles          []HikeTileModel       `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
@@ -200,6 +201,7 @@ func (m HikeModel) toDomain() domain.Hike {
 		StartedAt:      m.StartedAt,
 		DurationS:      m.DurationS,
 		Notes:          m.Notes,
+		Planned:        m.Planned,
 		Labels:         labels,
 		HikeDerived: domain.HikeDerived{
 			ElevationLossM: m.ElevationLossM,
