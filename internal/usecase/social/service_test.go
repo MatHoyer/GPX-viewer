@@ -20,10 +20,6 @@ func (f fakeUsers) GetByID(_ context.Context, id uuid.UUID) (*domain.User, error
 	return nil, domain.ErrNotFound
 }
 
-func (f fakeUsers) GetAvatar(context.Context, uuid.UUID) (*domain.Avatar, error) {
-	return &domain.Avatar{ContentType: "image/png"}, nil
-}
-
 func (f fakeUsers) Search(_ context.Context, query string, exclude uuid.UUID, _ int) ([]domain.User, error) {
 	var out []domain.User
 	for _, u := range f {

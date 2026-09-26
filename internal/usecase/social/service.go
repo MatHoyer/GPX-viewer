@@ -83,14 +83,6 @@ func (s *Service) AreFriends(ctx context.Context, a, b uuid.UUID) (bool, error) 
 	return rel == domain.RelationFriends, err
 }
 
-// Avatar returns a user's picture to anyone who can see their profile card.
-func (s *Service) Avatar(ctx context.Context, viewer, id uuid.UUID) (*domain.Avatar, error) {
-	if _, err := s.Profile(ctx, viewer, id); err != nil {
-		return nil, err
-	}
-	return s.users.GetAvatar(ctx, id)
-}
-
 func (s *Service) Search(ctx context.Context, viewer uuid.UUID, query string) ([]domain.User, error) {
 	query = strings.TrimSpace(query)
 	if utf8.RuneCountInString(query) < MinSearchLength {

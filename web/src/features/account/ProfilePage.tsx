@@ -1,5 +1,5 @@
-import { ExternalLink, Globe, ImageUp, Lock, Trash2, UsersRound } from 'lucide-react'
-import { useRef, useState, type FormEvent } from 'react'
+import { ExternalLink, Globe, Lock, UsersRound } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 
@@ -14,8 +14,8 @@ import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-import { AVATAR_TYPES, MAX_AVATAR_BYTES, MAX_NAME_LENGTH } from './api'
-import { useDeleteAvatar, useUpdateAccount, useUploadAvatar } from './useAccount'
+import { MAX_NAME_LENGTH } from './api'
+import { useUpdateAccount } from './useAccount'
 import { UserAvatar } from './UserAvatar'
 
 export function ProfilePage() {
@@ -30,7 +30,6 @@ export function ProfilePage() {
       <main className="flex-1 overflow-y-auto">
         {me.data && (
           <div className="mx-auto max-w-2xl space-y-4 p-4">
-            <AvatarCard user={me.data} />
             {/* Keyed so the form resets if the saved name changes elsewhere. */}
             <DetailsCard key={me.data.name} user={me.data} />
             <VisibilityCard user={me.data} />
@@ -43,69 +42,6 @@ export function ProfilePage() {
 
 function errorMessage(err: unknown, fallback: string) {
   return err instanceof ApiError ? err.message : fallback
-}
-
-function AvatarCard({ user }: { user: User }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const upload = useUploadAvatar()
-  const remove = useDeleteAvatar()
-  const busy = upload.isPending || remove.isPending
-
-  function onFile(file: File | undefined) {
-    if (!file) return
-    if (!AVATAR_TYPES.includes(file.type)) return toast.error('Use a PNG, JPEG, WebP or GIF image')
-    if (file.size > MAX_AVATAR_BYTES) return toast.error(`Image must be at most ${MAX_AVATAR_BYTES >> 20} MB`)
-    upload.mutate(file, {
-      onSuccess: () => toast.success('Profile picture updated'),
-      onError: (err) => toast.error(errorMessage(err, 'Could not upload picture')),
-    })
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Profile picture</CardTitle>
-        <CardDescription>
-          PNG, JPEG, WebP or GIF, up to {MAX_AVATAR_BYTES >> 20} MB. Without one, you get a blobatar generated for your
-          account.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-wrap items-center gap-4">
-        <UserAvatar user={user} className="size-20" />
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
-            <ImageUp />
-            {upload.isPending ? 'Uploading…' : 'Upload picture'}
-          </Button>
-          {user.avatarUrl && (
-            <Button
-              variant="destructive"
-              disabled={busy}
-              onClick={() =>
-                remove.mutate(undefined, {
-                  onSuccess: () => toast.success('Profile picture removed'),
-                  onError: (err) => toast.error(errorMessage(err, 'Could not remove picture')),
-                })
-              }
-            >
-              <Trash2 />
-              Remove
-            </Button>
-          )}
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={AVATAR_TYPES.join(',')}
-          hidden
-          onChange={(e) => {
-            onFile(e.target.files?.[0])
-            e.target.value = ''
-          }}
-        />
-      </CardContent>
-    </Card>
-  )
 }
 
 function DetailsCard({ user }: { user: User }) {
@@ -133,6 +69,7 @@ function DetailsCard({ user }: { user: User }) {
           <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <UserAvatar user={user} className="size-16" />
           <div className="space-y-2">
             <Label htmlFor="profile-name">Display name</Label>
             <Input

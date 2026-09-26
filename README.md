@@ -56,7 +56,9 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 ### Data
 
-- `users`, `user_avatars` (uploaded profile pictures, kept apart so auth lookups never load image bytes), `sessions` (server-side, only the SHA-256 of the token is stored), `hikes`.
+- `users` (with a `visibility`: `private`, `friends` or `public`), `sessions` (server-side, only the SHA-256 of the token is stored), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike).
+- Avatars are [blobatars](https://github.com/Alain00/blobatar) generated from the user id; there is no picture upload.
+- A hike is visible to whoever may see its owner's hikes or those of a tagged participant; anything else answers 404.
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.
 - `GET /api/hikes/tracks` returns a simplified GeoJSON `FeatureCollection` (`ST_SimplifyPreserveTopology`) for the map.
 
@@ -67,18 +69,24 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | POST | `/api/auth/register` | `{email, password}`, starts a session |
 | POST | `/api/auth/login` | `{email, password}`, sets the `session` cookie |
 | POST | `/api/auth/logout` | |
-| GET | `/api/auth/me` | current user (`name`, `avatarUrl` or null, `createdAt`) |
-| PATCH | `/api/me` | `{name}` to set the display name (empty clears it) |
-| GET | `/api/me/avatar` | uploaded profile picture |
-| PUT | `/api/me/avatar` | multipart `avatar` (PNG, JPEG, WebP or GIF, max 2 MB) |
-| DELETE | `/api/me/avatar` | remove the picture; the app falls back to a [blobatar](https://github.com/Alain00/blobatar) |
-| GET | `/api/hikes` | hikes with stats and bounds |
+| GET | `/api/auth/me` | current user (`name`, `visibility`, `createdAt`) |
+| PATCH | `/api/me` | `{name}` to set the display name (empty clears it), `{visibility}` to set who sees your hikes |
+| GET | `/api/hikes` | your hikes and those you are tagged on, with stats, bounds and `owner` |
 | POST | `/api/hikes` | multipart `files` (one or more GPX), per-file results |
 | GET | `/api/hikes/tracks` | GeoJSON of all tracks |
-| GET | `/api/hikes/{id}` | one hike |
+| GET | `/api/hikes/{id}` | one hike with `owner` and `participants`; readable signed out when shared publicly |
 | GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |
 | PATCH | `/api/hikes/{id}` | `{name}` to rename a hike |
 | DELETE | `/api/hikes/{id}` | delete a hike |
+| PUT | `/api/hikes/{id}/participants/{userId}` | tag a friend on your hike |
+| DELETE | `/api/hikes/{id}/participants/{userId}` | untag (owner, or the participant themselves) |
+| GET | `/api/users/search?q=` | users by name (non-private only) or exact email |
+| GET | `/api/users/{id}` | public profile: `user`, `visibility`, `relation`, `canView`; signed out only when public |
+| GET | `/api/users/{id}/hikes` | their hikes, if visible to you |
+| GET | `/api/users/{id}/hikes/tracks` | GeoJSON of their tracks, if visible to you |
+| GET | `/api/friends` | `{friends, incoming, outgoing}` |
+| PUT | `/api/friends/{id}` | send a friend request, or accept theirs |
+| DELETE | `/api/friends/{id}` | unfriend, cancel or decline |
 
 ### Configuration
 

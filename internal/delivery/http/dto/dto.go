@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
@@ -13,13 +12,11 @@ type Credentials struct {
 }
 
 type User struct {
-	ID         string `json:"id"`
-	Email      string `json:"email"`
-	Name       string `json:"name"`
-	Visibility string `json:"visibility"`
-	// AvatarURL is null when the user has not uploaded an avatar.
-	AvatarURL *string   `json:"avatarUrl"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID         string    `json:"id"`
+	Email      string    `json:"email"`
+	Name       string    `json:"name"`
+	Visibility string    `json:"visibility"`
+	CreatedAt  time.Time `json:"createdAt"`
 }
 
 func NewUser(u *domain.User) User {
@@ -28,7 +25,6 @@ func NewUser(u *domain.User) User {
 		Email:      u.Email,
 		Name:       u.Name,
 		Visibility: string(u.Visibility),
-		AvatarURL:  avatarURL("/api/me/avatar", u),
 		CreatedAt:  u.CreatedAt,
 	}
 }
@@ -37,7 +33,6 @@ func NewUser(u *domain.User) User {
 type PublicUser struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
-	AvatarURL *string   `json:"avatarUrl"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -45,7 +40,6 @@ func NewPublicUser(u *domain.User) PublicUser {
 	return PublicUser{
 		ID:        u.ID.String(),
 		Name:      u.Name,
-		AvatarURL: avatarURL("/api/users/"+u.ID.String()+"/avatar", u),
 		CreatedAt: u.CreatedAt,
 	}
 }
@@ -56,15 +50,6 @@ func NewPublicUsers(us []domain.User) []PublicUser {
 		out[i] = NewPublicUser(&us[i])
 	}
 	return out
-}
-
-// avatarURL is versioned so the image can be cached forever and still refresh on change.
-func avatarURL(path string, u *domain.User) *string {
-	if u.AvatarUpdatedAt == nil {
-		return nil
-	}
-	url := path + "?v=" + strconv.FormatInt(u.AvatarUpdatedAt.UnixMilli(), 10)
-	return &url
 }
 
 // UserProfile is a user as seen by the viewer. CanView is false when their

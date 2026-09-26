@@ -41,9 +41,6 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/auth/me", d.Auth.Me)
 
 			r.Patch("/me", d.Account.Update)
-			r.Get("/me/avatar", d.Account.Avatar)
-			r.Put("/me/avatar", d.Account.UploadAvatar)
-			r.Delete("/me/avatar", d.Account.DeleteAvatar)
 
 			r.Get("/hikes", d.Hikes.List)
 			r.Post("/hikes", d.Hikes.Upload)
@@ -67,7 +64,6 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/hikes/{id}/profile", d.Hikes.Profile)
 
 			r.Get("/users/{id}", d.Social.Profile)
-			r.Get("/users/{id}/avatar", d.Social.Avatar)
 			r.Get("/users/{id}/hikes", d.Hikes.UserList)
 			r.Get("/users/{id}/hikes/tracks", d.Hikes.UserTracks)
 		})

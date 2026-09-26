@@ -14,7 +14,6 @@ import (
 
 type SocialService interface {
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*social.Profile, error)
-	Avatar(ctx context.Context, viewer, id uuid.UUID) (*domain.Avatar, error)
 	Search(ctx context.Context, viewer uuid.UUID, query string) ([]domain.User, error)
 	Connections(ctx context.Context, viewer uuid.UUID) ([]domain.Connection, error)
 	AddFriend(ctx context.Context, viewer, other uuid.UUID) (domain.Relation, error)
@@ -45,19 +44,6 @@ func (h *SocialHandler) Profile(w http.ResponseWriter, r *http.Request) {
 		Relation:   string(p.Relation),
 		CanView:    p.CanView,
 	})
-}
-
-func (h *SocialHandler) Avatar(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(w, r)
-	if !ok {
-		return
-	}
-	a, err := h.svc.Avatar(r.Context(), middleware.ViewerID(r.Context()), id)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeAvatar(w, a)
 }
 
 func (h *SocialHandler) Search(w http.ResponseWriter, r *http.Request) {
