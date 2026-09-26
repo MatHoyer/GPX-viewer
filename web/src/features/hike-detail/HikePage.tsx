@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Trash2 } from 'lucide-react'
+import { ArrowLeft, CalendarCheck, Download, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
@@ -18,7 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
-import { useDeleteHike, useHikeSummits } from '@/features/hikes/useHikes'
+import { PlannedBadge } from '@/features/hikes/PlannedBadge'
+import { useDeleteHike, useHikeSummits, useUpdateHike } from '@/features/hikes/useHikes'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 
@@ -45,6 +46,7 @@ export function HikePage() {
   const profile = useProfile(id)
   const summits = useHikeSummits(id)
   const deleteHike = useDeleteHike()
+  const update = useUpdateHike()
   const [confirmDelete, setConfirmDelete] = useState(false)
   // Someone else's hike, shared with the viewer: read-only, credited to its owner.
   const ownerId = hike.data?.userId
@@ -98,6 +100,7 @@ export function HikePage() {
                   <h1 className="truncate text-lg leading-tight font-semibold">{hike.data.name}</h1>
                 )}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {hike.data.planned && <PlannedBadge />}
                   {date && <p className="text-muted-foreground text-sm">{date}</p>}
                   {!isOwner && hike.data.owner && (
                     <Link
@@ -122,6 +125,25 @@ export function HikePage() {
               <a href={`/api/hikes/${id}/gpx`} download>
                 <Download />
               </a>
+            </Button>
+          )}
+          {isOwner && hike.data?.planned && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={update.isPending}
+              onClick={() =>
+                update.mutate(
+                  { id, planned: false },
+                  {
+                    onSuccess: () => toast.success('Marked as done'),
+                    onError: () => toast.error('Could not update hike'),
+                  },
+                )
+              }
+            >
+              <CalendarCheck />
+              <span className="hidden sm:inline">Mark as done</span>
             </Button>
           )}
           {isOwner && (

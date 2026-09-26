@@ -48,6 +48,7 @@ func TestListSimilar(t *testing.T) {
 	}
 	add := func(name string, seg domain.Segment) uuid.UUID {
 		h := &domain.Hike{ID: uuid.New(), UserID: alice.ID, Name: name, DistanceM: 2700, Segments: []domain.Segment{seg}, CreatedAt: time.Now()}
+		h.Planned = name == "planned"
 		h.Bounds = domain.Bounds{MinLon: 180, MinLat: 90, MaxLon: -180, MaxLat: -90}
 		for _, p := range seg {
 			h.Bounds.MinLon, h.Bounds.MaxLon = min(h.Bounds.MinLon, p.Lon), max(h.Bounds.MaxLon, p.Lon)
@@ -63,6 +64,7 @@ func TestListSimilar(t *testing.T) {
 	reversed := add("reversed", route(0, true, nil))
 	detour := add("detour ~1 km", route(0, false, &domain.Point{Lon: 6.823, Lat: 45.905}))
 	add("elsewhere", route(0.1, false, nil))
+	add("planned", route(0, false, nil))
 
 	got, err := hikes.ListSimilar(ctx, alice.ID, base, 200)
 	if err != nil {

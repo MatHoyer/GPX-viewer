@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 
 import type { Bounds, Hike } from './api'
 import { intersects } from './bounds'
+import { PlannedBadge } from './PlannedBadge'
 
 type Props = {
   hikes: Hike[]
@@ -70,7 +71,10 @@ export function HikeList({ hikes, colors, view, selectedId, onSelect, onHover }:
               >
                 <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ backgroundColor: colors.get(h.id) }} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{h.name}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-medium">{h.name}</span>
+                    {h.planned && <PlannedBadge />}
+                  </span>
                   <span className="text-muted-foreground block text-xs tabular-nums">
                     {[formatDate(h.startedAt), formatDistance(h.distanceM), `${formatElevation(h.elevationGainM)} D+`]
                       .filter(Boolean)

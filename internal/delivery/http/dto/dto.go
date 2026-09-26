@@ -128,6 +128,7 @@ type Hike struct {
 	StartedAt      *time.Time   `json:"startedAt"`
 	DurationS      int64        `json:"durationS"`
 	Notes          string       `json:"notes"`
+	Planned        bool         `json:"planned"`
 	Labels         []string     `json:"labels"`
 	ElevationLossM float64      `json:"elevationLossM"`
 	MinEleM        *float64     `json:"minEleM"`
@@ -163,6 +164,7 @@ func NewHike(h *domain.Hike) Hike {
 		StartedAt:      h.StartedAt,
 		DurationS:      h.DurationS,
 		Notes:          h.Notes,
+		Planned:        h.Planned,
 		Labels:         labels,
 		ElevationLossM: h.ElevationLossM,
 		MinEleM:        h.MinEleM,
@@ -208,9 +210,10 @@ func NewHikeTiles(tiles map[uuid.UUID][]domain.Tile) HikeTiles {
 
 // UpdateHike is a partial update; nil fields are left unchanged.
 type UpdateHike struct {
-	Name   *string   `json:"name"`
-	Notes  *string   `json:"notes"`
-	Labels *[]string `json:"labels"`
+	Name    *string   `json:"name"`
+	Notes   *string   `json:"notes"`
+	Labels  *[]string `json:"labels"`
+	Planned *bool     `json:"planned"`
 }
 
 type UploadResult struct {

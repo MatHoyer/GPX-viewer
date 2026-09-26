@@ -6,6 +6,7 @@ import { MapPopup } from '@/components/ui/map'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 
 import type { Hike } from './api'
+import { PlannedBadge } from './PlannedBadge'
 import { TaggedBy } from './TaggedBy'
 
 export type PopupState = {
@@ -39,6 +40,7 @@ export function HikePopup({ hike, userId, popup, color, onClose }: Props) {
           <div className="flex items-center gap-2">
             <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
             <h3 className="truncate leading-tight font-semibold">{hike.name}</h3>
+            {hike.planned && <PlannedBadge />}
           </div>
           {date && <p className="text-muted-foreground text-xs">{date}</p>}
           <TaggedBy hike={hike} userId={userId} />

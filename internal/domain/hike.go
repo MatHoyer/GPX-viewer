@@ -57,6 +57,9 @@ type Hike struct {
 	StartedAt      *time.Time
 	DurationS      int64
 	Notes          string
+	// Planned hikes are routes not walked yet: they show on the map but
+	// count toward no stats, records, tiles, summits or repeated routes.
+	Planned bool
 	// Labels are the owner's free-form labels, lowercase and sorted.
 	Labels []string
 	HikeDerived
@@ -75,9 +78,10 @@ type Hike struct {
 
 // HikeUpdate is a partial update of a hike; nil fields are left unchanged.
 type HikeUpdate struct {
-	Name   *string
-	Notes  *string
-	Labels *[]string
+	Name    *string
+	Notes   *string
+	Labels  *[]string
+	Planned *bool
 }
 
 // HikeTrack is a lightweight, possibly simplified geometry for map display.
@@ -111,10 +115,10 @@ type HikeRepository interface {
 	// version, with only their ID and raw GPX loaded.
 	ListOutdated(ctx context.Context, version, limit int) ([]Hike, error)
 	SaveDerived(ctx context.Context, id uuid.UUID, d HikeDerived, version int) error
-	// ListSimilar returns the hikes userID owns or is tagged on, other than
+	// ListSimilar returns the done hikes userID owns or is tagged on, other than
 	// hikeID, whose track follows hikeID's within maxDeviationM meters (either
 	// direction), without geometry or raw GPX, newest first.
 	ListSimilar(ctx context.Context, userID, hikeID uuid.UUID, maxDeviationM float64) ([]Hike, error)
-	// ListTiles returns the tiles of each hike a user owns or is tagged on, by hike.
+	// ListTiles returns the tiles of each done hike a user owns or is tagged on, by hike.
 	ListTiles(ctx context.Context, userID uuid.UUID) (map[uuid.UUID][]Tile, error)
 }

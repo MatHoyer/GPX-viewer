@@ -21,6 +21,7 @@ export function UploadDialog() {
   const [open, setOpen] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [dragging, setDragging] = useState(false)
+  const [planned, setPlanned] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const upload = useUploadHikes()
 
@@ -41,16 +42,17 @@ export function UploadDialog() {
     setOpen(next)
     if (!next) {
       setFiles([])
+      setPlanned(false)
       upload.reset()
     }
   }
 
   function submit() {
-    upload.mutate(files, {
+    upload.mutate({ files, planned }, {
       onSuccess: (results) => {
         const ok = results.filter((r) => r.hike).length
         const failed = results.filter((r) => r.error)
-        if (ok > 0) toast.success(`Imported ${ok} hike${ok > 1 ? 's' : ''}`)
+        if (ok > 0) toast.success(`Imported ${ok} ${planned ? 'planned ' : ''}hike${ok > 1 ? 's' : ''}`)
         for (const f of failed) toast.error(`${f.filename}: ${f.error}`)
         onOpenChange(false)
       },
@@ -111,6 +113,14 @@ export function UploadDialog() {
             ))}
           </ul>
         )}
+
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" checked={planned} onChange={(e) => setPlanned(e.target.checked)} className="accent-primary mt-0.5" />
+          <span>
+            Routes I plan to do
+            <span className="text-muted-foreground block text-xs">Shown dashed on the map and left out of stats until marked done.</span>
+          </span>
+        </label>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

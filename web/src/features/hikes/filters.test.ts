@@ -17,6 +17,7 @@ function hike(over: Partial<Hike>): Hike {
     startedAt: '2026-07-01T08:00:00Z',
     durationS: 3600,
     notes: '',
+    planned: false,
     labels: [],
     elevationLossM: 500,
     minEleM: null,
@@ -58,6 +59,13 @@ describe('filterHikes', () => {
   it('filters by distance and elevation gain', () => {
     expect(names({ maxKm: 5 })).toEqual(['Short loop'])
     expect(names({ minGainM: 100, maxKm: 10 })).toEqual(['Lac Blanc', 'With Bo', 'Undated'])
+  })
+
+  it('filters walked hikes or planned routes', () => {
+    const withPlan = [...hikes, hike({ name: 'Plan', planned: true })]
+    const run = (status: 'done' | 'planned') => filterHikes(withPlan, { ...noFilters, status }, 'me').map((h) => h.name)
+    expect(run('planned')).toEqual(['Plan'])
+    expect(run('done')).not.toContain('Plan')
   })
 
   it('requires every selected label and person', () => {

@@ -9,6 +9,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useMe } from '@/features/auth/useAuth'
+import { doneHikes } from '@/features/hikes/api'
 import { FilterBar } from '@/features/hikes/FilterBar'
 import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
 import { useHikes, useSummits, useTiles } from '@/features/hikes/useHikes'
@@ -51,7 +52,8 @@ export function StatsPage() {
   const [period, setPeriod] = useState<string>('all')
   const [metric, setMetric] = useState<Metric>('distance')
 
-  const all = useMemo(() => hikes.data ?? [], [hikes.data])
+  // Planned routes are not walked yet, so they count toward nothing here.
+  const all = useMemo(() => doneHikes(hikes.data ?? []), [hikes.data])
   const shown = useMemo(() => filterHikes(all, filters, me.data?.id), [all, filters, me.data?.id])
   const years = useMemo(() => hikeYears(all), [all])
   const year = period === 'all' ? null : Number(period)

@@ -2,6 +2,7 @@ import { Trophy } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { doneHikes } from '@/features/hikes/api'
 import { personalRecords } from '@/features/stats/records'
 import { useHikes } from '@/features/hikes/useHikes'
 
@@ -9,7 +10,7 @@ import { useHikes } from '@/features/hikes/useHikes'
 export function RecordBadge({ hikeId }: { hikeId: string }) {
   const hikes = useHikes()
   const held = useMemo(
-    () => personalRecords(hikes.data ?? []).filter((r) => r.hike.id === hikeId),
+    () => personalRecords(doneHikes(hikes.data ?? [])).filter((r) => r.hike.id === hikeId),
     [hikes.data, hikeId],
   )
   if (held.length === 0) return null

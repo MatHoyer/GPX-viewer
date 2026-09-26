@@ -44,6 +44,11 @@ func TestPeakRepository(t *testing.T) {
 	if err := hikes.Create(ctx, h); err != nil {
 		t.Fatal(err)
 	}
+	// A planned route over the same peaks doesn't count as reaching them.
+	planned := &domain.Hike{ID: uuid.New(), UserID: alice.ID, Name: "Plan", Planned: true, CreatedAt: time.Now(), Segments: h.Segments}
+	if err := hikes.Create(ctx, planned); err != nil {
+		t.Fatal(err)
+	}
 
 	ele := func(v float64) *float64 { return &v }
 	ids := []int64{-1001, -1002, -1003}
@@ -62,6 +67,9 @@ func TestPeakRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if on, _ := peaks.OnHike(ctx, planned.ID, 50); len(on) != 2 {
+		t.Errorf("planned route passes %d peaks", len(on))
+	}
 	on, err := peaks.OnHike(ctx, h.ID, 50)
 	if err != nil {
 		t.Fatal(err)

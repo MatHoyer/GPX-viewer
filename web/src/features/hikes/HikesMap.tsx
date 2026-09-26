@@ -35,14 +35,18 @@ type Props = {
 export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose, onViewChange, explorable = false }: Props) {
   const colorById = useHikeColors(hikes, colorFrom)
   const popupHike = popup ? hikes.find((h) => h.id === popup.hikeId) : undefined
+  const planned = useMemo(() => new Set(hikes.filter((h) => h.planned).map((h) => h.id)), [hikes])
   const heatmap = useMapView((s) => s.heatmap)
   const showTiles = useMapView((s) => s.tiles) && explorable
   const tiles = useTiles(showTiles)
   const explored = useMemo(() => exploredTiles(tiles.data, hikes.map((h) => h.id)), [tiles.data, hikes])
   const square = useMemo(() => maxSquare(explored), [explored])
   const lines = useMemo(
-    () => (tracks?.features ?? []).flatMap((f) => f.geometry.coordinates as [number, number][][]),
-    [tracks],
+    () =>
+      (tracks?.features ?? [])
+        .filter((f) => !planned.has(f.properties.id))
+        .flatMap((f) => f.geometry.coordinates as [number, number][][]),
+    [tracks, planned],
   )
 
   const fitTarget = useMemo(() => {
@@ -68,6 +72,7 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
             coordinates={line as [number, number][]}
             color={colorById.get(id) ?? hikeColor(0)}
             width={3}
+            dashArray={planned.has(id) ? [2, 2] : undefined}
             // Under the heatmap, routes stay faintly visible and clickable.
             opacity={heatmap && !highlighted ? 0.2 : dimmed ? 0.35 : 0.85}
             active={highlighted}

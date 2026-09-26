@@ -19,6 +19,8 @@ export type HikeFilters = {
   labels: string[]
   /** Hikes must include every selected person, as owner or participant. */
   people: string[]
+  /** Walked hikes, planned routes, or both. */
+  status: 'all' | 'done' | 'planned'
 }
 
 export const noFilters: HikeFilters = {
@@ -31,6 +33,7 @@ export const noFilters: HikeFilters = {
   maxGainM: null,
   labels: [],
   people: [],
+  status: 'all',
 }
 
 /** Number of filters in use, for a badge. Each range counts once. */
@@ -42,6 +45,7 @@ export function activeFilterCount(f: HikeFilters): number {
     f.minGainM !== null || f.maxGainM !== null,
     f.labels.length > 0,
     f.people.length > 0,
+    f.status !== 'all',
   ].filter(Boolean).length
 }
 
@@ -55,6 +59,7 @@ export function filterHikes(hikes: Hike[], f: HikeFilters, userId: string | unde
   if (activeFilterCount(f) === 0) return hikes
   const query = f.query.trim().toLowerCase()
   return hikes.filter((h) => {
+    if ((f.status === 'done' && h.planned) || (f.status === 'planned' && !h.planned)) return false
     if (query && ![h.name, h.notes, ...h.labels].some((s) => s.toLowerCase().includes(query))) return false
     if (f.from || f.to) {
       if (!h.startedAt) return false
