@@ -34,7 +34,7 @@ export function MapPage() {
           No hikes match these filters.
         </p>
       )}
-      <HikesMapView hikes={shown} colorFrom={all} tracks={shownTracks} userId={userId} />
+      <HikesMapView hikes={shown} colorFrom={all} tracks={shownTracks} userId={userId} list />
     </>
   )
 }
