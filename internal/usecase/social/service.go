@@ -4,18 +4,11 @@ package social
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/google/uuid"
 
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
-)
-
-const (
-	MinSearchLength  = 2
-	MaxSearchResults = 20
 )
 
 // Profile is a user as seen by a viewer. CanView tells whether the viewer
@@ -81,14 +74,6 @@ func (s *Service) CanView(ctx context.Context, viewer, owner uuid.UUID) (bool, e
 func (s *Service) AreFriends(ctx context.Context, a, b uuid.UUID) (bool, error) {
 	rel, err := s.relation(ctx, a, b)
 	return rel == domain.RelationFriends, err
-}
-
-func (s *Service) Search(ctx context.Context, viewer uuid.UUID, query string) ([]domain.User, error) {
-	query = strings.TrimSpace(query)
-	if utf8.RuneCountInString(query) < MinSearchLength {
-		return []domain.User{}, nil
-	}
-	return s.users.Search(ctx, query, viewer, MaxSearchResults)
 }
 
 func (s *Service) Connections(ctx context.Context, viewer uuid.UUID) ([]domain.Connection, error) {

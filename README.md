@@ -80,7 +80,6 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | DELETE | `/api/hikes/{id}` | delete a hike |
 | PUT | `/api/hikes/{id}/participants/{userId}` | tag a friend on your hike |
 | DELETE | `/api/hikes/{id}/participants/{userId}` | untag (owner, or the participant themselves) |
-| GET | `/api/users/search?q=` | users by name (non-private only) or exact email |
 | GET | `/api/users/{id}` | public profile: `user`, `visibility`, `relation`, `canView`; signed out only when public |
 | GET | `/api/users/{id}/hikes` | their hikes, if visible to you |
 | GET | `/api/users/{id}/hikes/tracks` | GeoJSON of their tracks, if visible to you |

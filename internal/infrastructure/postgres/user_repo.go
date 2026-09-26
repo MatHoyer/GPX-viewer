@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -62,29 +61,6 @@ func (r *UserRepository) UpdateVisibility(ctx context.Context, id uuid.UUID, v d
 		return domain.ErrNotFound
 	}
 	return nil
-}
-
-var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-
-// Search matches an exact email, or a name fragment among users who are not
-// private: a private user can only be found by someone who knows their email.
-func (r *UserRepository) Search(ctx context.Context, query string, exclude uuid.UUID, limit int) ([]domain.User, error) {
-	var ms []UserModel
-	err := r.db.WithContext(ctx).
-		Where("id <> ?", exclude).
-		Where("email = ? OR (visibility <> ? AND name ILIKE ?)",
-			strings.ToLower(query), string(domain.VisibilityPrivate), "%"+likeEscaper.Replace(query)+"%").
-		Order("name, created_at").
-		Limit(limit).
-		Find(&ms).Error
-	if err != nil {
-		return nil, err
-	}
-	out := make([]domain.User, len(ms))
-	for i, m := range ms {
-		out[i] = *m.toDomain()
-	}
-	return out, nil
 }
 
 func mapErr(err error) error {

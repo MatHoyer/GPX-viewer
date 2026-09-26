@@ -42,8 +42,6 @@ type UserRepository interface {
 // UserDirectory looks users up on behalf of other users.
 type UserDirectory interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
-	// Search matches an exact email, or a name fragment among non-private users.
-	Search(ctx context.Context, query string, exclude uuid.UUID, limit int) ([]User, error)
 }
 
 // AccountRepository manages the editable parts of a user's profile.

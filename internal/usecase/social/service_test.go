@@ -20,16 +20,6 @@ func (f fakeUsers) GetByID(_ context.Context, id uuid.UUID) (*domain.User, error
 	return nil, domain.ErrNotFound
 }
 
-func (f fakeUsers) Search(_ context.Context, query string, exclude uuid.UUID, _ int) ([]domain.User, error) {
-	var out []domain.User
-	for _, u := range f {
-		if u.ID != exclude && u.Email == query {
-			out = append(out, *u)
-		}
-	}
-	return out, nil
-}
-
 type fakeFriends struct{ rows []*domain.Friendship }
 
 func (f *fakeFriends) find(a, b uuid.UUID) int {
@@ -163,15 +153,5 @@ func TestVisibility(t *testing.T) {
 		if tt.visitor != (err == nil) {
 			t.Errorf("%s: anonymous profile err = %v", tt.visibility, err)
 		}
-	}
-}
-
-func TestSearchNeedsTwoCharacters(t *testing.T) {
-	svc, alice, bob := setup(domain.VisibilityPrivate)
-	if got, _ := svc.Search(context.Background(), bob, "a"); len(got) != 0 {
-		t.Errorf("one-letter search returned %d users", len(got))
-	}
-	if got, _ := svc.Search(context.Background(), bob, " alice@x.io "); len(got) != 1 || got[0].ID != alice {
-		t.Errorf("email search = %+v", got)
 	}
 }

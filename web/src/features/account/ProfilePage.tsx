@@ -120,7 +120,7 @@ function VisibilityCard({ user }: { user: User }) {
     <Card>
       <CardHeader>
         <CardTitle>Who can see my hikes</CardTitle>
-        <CardDescription>Others can always find your name and picture to send you a friend request.</CardDescription>
+        <CardDescription>Anyone with your friend ID can see your name and picture to send you a friend request.</CardDescription>
       </CardHeader>
       <CardContent>
         <div role="radiogroup" aria-label="Profile visibility" className="grid gap-2 sm:grid-cols-3">
