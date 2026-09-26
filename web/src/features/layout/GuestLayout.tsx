@@ -8,10 +8,11 @@ export function GuestLayout() {
   return (
     <div className="flex h-svh flex-col">
       <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
-        <Link to="/login" className="flex items-center gap-2 font-semibold">
+        {/* A full page load: the home page is served by the server, not the app. */}
+        <a href="/" className="flex items-center gap-2 font-semibold">
           <MountainSnow className="size-5" />
           GPX Viewer
-        </Link>
+        </a>
         <div className="flex gap-2">
           <Button asChild variant="ghost" size="sm">
             <Link to="/login">Sign in</Link>

@@ -80,6 +80,7 @@ func run() error {
 		Social:        handler.NewSocialHandler(socialSvc),
 		Authenticator: authSvc,
 		Static:        web.Dist(),
+		AppURL:        cfg.AppURL,
 	})
 
 	srv := &http.Server{

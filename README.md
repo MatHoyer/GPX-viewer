@@ -5,6 +5,7 @@ Import your GPX files and see all your hikes on one map.
 - **Backend**: Go, chi, GORM (AutoMigrate), PostgreSQL + PostGIS
 - **Frontend**: React, Vite, TypeScript, shadcn/ui, [mapcn](https://mapcn.dev) (MapLibre)
 - The Go binary embeds the built frontend and serves it alongside the API.
+- The home page (`web/home.html`, `web/src/home/`) is prerendered to static HTML at build time and served at `/` to signed-out visitors; signed-in users get the app there. `robots.txt` and `sitemap.xml` are generated from `APP_URL`.
 
 ## Quick start
 
@@ -97,7 +98,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | `PORT` | `8080` | |
 | `COOKIE_SECURE` | `false` | set `true` behind HTTPS |
 | `MAX_UPLOAD_MB` | `20` | per file |
-| `APP_URL` | `http://localhost:$PORT` | public URL, used in emailed links |
+| `APP_URL` | `http://localhost:$PORT` | public URL, used in emailed links, canonical and Open Graph links, and the sitemap |
 | `SMTP_HOST` | required | |
 | `SMTP_PORT` | `587` | `465` uses implicit TLS, other ports STARTTLS when offered |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | empty | no auth when empty; never sent unencrypted except to localhost |
