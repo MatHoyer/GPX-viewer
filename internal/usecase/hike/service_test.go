@@ -143,6 +143,16 @@ func (f *fakeRepo) SaveDerived(_ context.Context, id uuid.UUID, d domain.HikeDer
 	return nil
 }
 
+func (f *fakeRepo) ListSimilar(_ context.Context, userID, hikeID uuid.UUID, _ float64) ([]domain.Hike, error) {
+	var out []domain.Hike
+	for _, h := range f.hikes {
+		if h.ID != hikeID && (h.UserID == userID || slices.Contains(f.tags[h.ID], userID)) {
+			out = append(out, *h)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeRepo) ListTiles(_ context.Context, userID uuid.UUID) (map[uuid.UUID][]domain.Tile, error) {
 	out := map[uuid.UUID][]domain.Tile{}
 	for _, h := range f.hikes {
@@ -460,5 +470,19 @@ func TestUpdateNotesAndLabels(t *testing.T) {
 	}
 	if _, err := svc.Update(ctx, bob, h.ID, domain.HikeUpdate{Labels: &labels}); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob label err = %v", err)
+	}
+}
+
+func TestSimilarNeedsAccess(t *testing.T) {
+	ctx := context.Background()
+	svc := NewService(&fakeRepo{}, fakeParser{res: &domain.ParsedTrack{Segments: twoPoints}}, ownerOnly{})
+	alice, bob := uuid.New(), uuid.New()
+	a1, _ := svc.Import(ctx, alice, "a.gpx", nil)
+	a2, _ := svc.Import(ctx, alice, "b.gpx", nil)
+	if got, err := svc.Similar(ctx, alice, a1.ID); err != nil || len(got) != 1 || got[0].ID != a2.ID {
+		t.Errorf("similar = %+v, %v", got, err)
+	}
+	if _, err := svc.Similar(ctx, bob, a1.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("bob similar err = %v", err)
 	}
 }

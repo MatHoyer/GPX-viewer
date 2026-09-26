@@ -361,3 +361,38 @@ func (r *HikeRepository) ListTiles(ctx context.Context, userID uuid.UUID) (map[u
 	}
 	return out, nil
 }
+
+// similarHikes finds the viewer's hikes that follow the same route as a given
+// hike. Cheap filters (overlapping bounds, distance within 20%) narrow the
+// candidates before the Hausdorff distance, which is measured on ~10 m
+// simplified tracks in web mercator and scaled back to ground meters.
+const similarHikes = `
+SELECT h2.id FROM hikes h1
+JOIN hikes h2 ON h2.id <> h1.id
+WHERE h1.id = @hike
+  AND (h2.user_id = @user OR h2.id IN (SELECT hike_id FROM hike_participants WHERE user_id = @user))
+  AND h2.min_lon <= h1.max_lon AND h2.max_lon >= h1.min_lon
+  AND h2.min_lat <= h1.max_lat AND h2.max_lat >= h1.min_lat
+  AND h2.distance_m BETWEEN h1.distance_m / 1.25 AND h1.distance_m * 1.25
+  AND ST_HausdorffDistance(
+        ST_Transform(ST_Force2D(ST_Simplify(h1.geom, 0.0001)), 3857),
+        ST_Transform(ST_Force2D(ST_Simplify(h2.geom, 0.0001)), 3857)
+      ) * cos(radians((h1.min_lat + h1.max_lat) / 2)) <= @max`
+
+func (r *HikeRepository) ListSimilar(ctx context.Context, userID, hikeID uuid.UUID, maxDeviationM float64) ([]domain.Hike, error) {
+	var ms []HikeModel
+	err := r.db.WithContext(ctx).
+		Scopes(withOwner, withDetails).
+		Omit("geom", "gpx_raw").
+		Where("id IN ("+similarHikes+")", map[string]any{"hike": hikeID, "user": userID, "max": maxDeviationM}).
+		Order(hikeOrder).
+		Find(&ms).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.Hike, len(ms))
+	for i, m := range ms {
+		out[i] = m.toDomain()
+	}
+	return out, nil
+}

@@ -111,6 +111,10 @@ type HikeRepository interface {
 	// version, with only their ID and raw GPX loaded.
 	ListOutdated(ctx context.Context, version, limit int) ([]Hike, error)
 	SaveDerived(ctx context.Context, id uuid.UUID, d HikeDerived, version int) error
+	// ListSimilar returns the hikes userID owns or is tagged on, other than
+	// hikeID, whose track follows hikeID's within maxDeviationM meters (either
+	// direction), without geometry or raw GPX, newest first.
+	ListSimilar(ctx context.Context, userID, hikeID uuid.UUID, maxDeviationM float64) ([]Hike, error)
 	// ListTiles returns the tiles of each hike a user owns or is tagged on, by hike.
 	ListTiles(ctx context.Context, userID uuid.UUID) (map[uuid.UUID][]Tile, error)
 }

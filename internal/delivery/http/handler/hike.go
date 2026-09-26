@@ -32,6 +32,7 @@ type HikeService interface {
 	Labels(ctx context.Context, userID uuid.UUID) ([]string, error)
 	Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error)
 	Tiles(ctx context.Context, viewer, owner uuid.UUID) (map[uuid.UUID][]domain.Tile, error)
+	Similar(ctx context.Context, viewer, id uuid.UUID) ([]domain.Hike, error)
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error)
 	GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []byte, error)
 	Export(ctx context.Context, userID uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error
@@ -289,6 +290,24 @@ func (h *HikeHandler) Labels(w http.ResponseWriter, r *http.Request) {
 		labels = []string{}
 	}
 	writeJSON(w, http.StatusOK, labels)
+}
+
+// Similar returns the signed-in user's other hikes along the same route.
+func (h *HikeHandler) Similar(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	hikes, err := h.svc.Similar(r.Context(), middleware.UserFrom(r.Context()).ID, id)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	out := make([]dto.Hike, len(hikes))
+	for i := range hikes {
+		out[i] = dto.NewHike(&hikes[i])
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // Tiles returns the zoom-14 tiles each of the signed-in user's hikes passes through.

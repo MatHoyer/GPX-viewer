@@ -284,6 +284,18 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID, fn func(h *domai
 	return nil
 }
 
+// SameRouteDeviationM is how far apart two tracks may stray and still be the same route.
+const SameRouteDeviationM = 200
+
+// Similar returns viewer's other hikes along the same route as hike id, which
+// viewer must be able to see.
+func (s *Service) Similar(ctx context.Context, viewer, id uuid.UUID) ([]domain.Hike, error) {
+	if _, err := s.Get(ctx, viewer, id); err != nil {
+		return nil, err
+	}
+	return s.hikes.ListSimilar(ctx, viewer, id, SameRouteDeviationM)
+}
+
 // Tiles returns the explored tiles of each hike owner owns or is tagged on,
 // if viewer may see owner's hikes.
 func (s *Service) Tiles(ctx context.Context, viewer, owner uuid.UUID) (map[uuid.UUID][]domain.Tile, error) {
