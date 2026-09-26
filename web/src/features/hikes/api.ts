@@ -5,8 +5,11 @@ import { api } from '@/lib/api'
 
 export type Bounds = [minLon: number, minLat: number, maxLon: number, maxLat: number]
 
-/** Mirrors the API limit on hike names. */
+/** Mirror the API limits. */
 export const MAX_NAME_LENGTH = 200
+export const MAX_NOTES_LENGTH = 10000
+export const MAX_LABEL_LENGTH = 32
+export const MAX_LABELS = 20
 
 export type Hike = {
   id: string
@@ -17,6 +20,9 @@ export type Hike = {
   elevationGainM: number
   startedAt: string | null
   durationS: number
+  notes: string
+  /** The owner's labels, lowercase and sorted. */
+  labels: string[]
   elevationLossM: number
   /** Null when the track has no elevation. */
   minEleM: number | null
@@ -55,8 +61,15 @@ export async function uploadHikes(files: File[]) {
   return res.results
 }
 
-export function renameHike({ id, name }: { id: string; name: string }) {
-  return api<Hike>(`/hikes/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) })
+export type HikeUpdate = { name?: string; notes?: string; labels?: string[] }
+
+export function updateHike({ id, ...patch }: { id: string } & HikeUpdate) {
+  return api<Hike>(`/hikes/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+}
+
+/** The labels on the signed-in user's hikes, most used first. */
+export function listLabels() {
+  return api<string[]>('/labels')
 }
 
 export function deleteHike(id: string) {

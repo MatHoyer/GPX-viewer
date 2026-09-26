@@ -37,6 +37,9 @@ type Hike struct {
 	ElevationGainM float64
 	StartedAt      *time.Time
 	DurationS      int64
+	Notes          string
+	// Labels are the owner's free-form labels, lowercase and sorted.
+	Labels []string
 	HikeDerived
 	// DerivedVersion is the version of the code that computed HikeDerived;
 	// hikes below the current version are recomputed in the background.
@@ -49,6 +52,13 @@ type Hike struct {
 	Owner *User
 	// Participants are the friends the owner tagged. Only loaded by single-hike reads.
 	Participants []User
+}
+
+// HikeUpdate is a partial update of a hike; nil fields are left unchanged.
+type HikeUpdate struct {
+	Name   *string
+	Notes  *string
+	Labels *[]string
 }
 
 // HikeTrack is a lightweight, possibly simplified geometry for map display.
@@ -67,7 +77,9 @@ type HikeRepository interface {
 	// Find returns a hike whoever owns it, without geometry or raw GPX.
 	Find(ctx context.Context, id uuid.UUID) (*Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
-	Rename(ctx context.Context, userID, id uuid.UUID, name string) error
+	Update(ctx context.Context, userID, id uuid.UUID, u HikeUpdate) error
+	// ListLabels returns the labels on a user's own hikes, most used first.
+	ListLabels(ctx context.Context, userID uuid.UUID) ([]string, error)
 	GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([]byte, error)
 	// ListTracks returns geometries of the hikes a user owns or is tagged on,
 	// simplified with the given tolerance (degrees).

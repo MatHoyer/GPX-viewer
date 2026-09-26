@@ -28,7 +28,8 @@ type HikeService interface {
 	List(ctx context.Context, viewer, owner uuid.UUID) ([]domain.Hike, error)
 	Get(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
-	Rename(ctx context.Context, userID, id uuid.UUID, name string) (*domain.Hike, error)
+	Update(ctx context.Context, userID, id uuid.UUID, u domain.HikeUpdate) (*domain.Hike, error)
+	Labels(ctx context.Context, userID uuid.UUID) ([]string, error)
 	Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error)
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error)
 	GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []byte, error)
@@ -156,11 +157,12 @@ func (h *HikeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if in.Name == nil {
+	if in.Name == nil && in.Notes == nil && in.Labels == nil {
 		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update"})
 		return
 	}
-	hike, err := h.svc.Rename(r.Context(), middleware.UserFrom(r.Context()).ID, id, *in.Name)
+	u := domain.HikeUpdate{Name: in.Name, Notes: in.Notes, Labels: in.Labels}
+	hike, err := h.svc.Update(r.Context(), middleware.UserFrom(r.Context()).ID, id, u)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -273,6 +275,19 @@ func (used exportNames) next(h *domain.Hike) string {
 	}
 	used[name] = true
 	return name
+}
+
+// Labels returns the labels the signed-in user has put on their hikes.
+func (h *HikeHandler) Labels(w http.ResponseWriter, r *http.Request) {
+	labels, err := h.svc.Labels(r.Context(), middleware.UserFrom(r.Context()).ID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if labels == nil {
+		labels = []string{}
+	}
+	writeJSON(w, http.StatusOK, labels)
 }
 
 // Tracks returns the signed-in user's simplified hike geometries.

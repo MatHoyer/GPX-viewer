@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -126,14 +127,33 @@ func TestHikeRepository(t *testing.T) {
 		t.Errorf("outdated(5) = %v, outdated(6) = %v", outdated(5), outdated(6))
 	}
 
-	if err := hikes.Rename(ctx, bob, h.ID, "Stolen"); !errors.Is(err, domain.ErrNotFound) {
-		t.Errorf("bob rename err = %v", err)
+	stolen := "Stolen"
+	if err := hikes.Update(ctx, bob, h.ID, domain.HikeUpdate{Name: &stolen}); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("bob update err = %v", err)
 	}
-	if err := hikes.Rename(ctx, alice, h.ID, "Renamed"); err != nil {
-		t.Errorf("alice rename err = %v", err)
+	name, notes, labels := "Renamed", "Windy", []string{"alps", "snow"}
+	if err := hikes.Update(ctx, alice, h.ID, domain.HikeUpdate{Name: &name, Notes: &notes, Labels: &labels}); err != nil {
+		t.Errorf("alice update err = %v", err)
 	}
-	if got, _ := hikes.GetByID(ctx, alice, h.ID); got == nil || got.Name != "Renamed" {
-		t.Errorf("after rename = %+v", got)
+	if got, _ := hikes.GetByID(ctx, alice, h.ID); got == nil || got.Name != "Renamed" || got.Notes != "Windy" || !slices.Equal(got.Labels, labels) {
+		t.Errorf("after update = %+v", got)
+	}
+	// Unchanged fields stay, and a new label set replaces the old one.
+	labels = []string{"snow", "with dog"}
+	if err := hikes.Update(ctx, alice, h.ID, domain.HikeUpdate{Labels: &labels}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := hikes.Find(ctx, h.ID); got == nil || got.Name != "Renamed" || !slices.Equal(got.Labels, labels) {
+		t.Errorf("after label update = %+v", got)
+	}
+	if list, _ := hikes.ListByUser(ctx, alice); len(list) != 1 || !slices.Equal(list[0].Labels, labels) {
+		t.Errorf("list labels = %+v", list)
+	}
+	if got, err := hikes.ListLabels(ctx, alice); err != nil || !slices.Equal(got, labels) {
+		t.Errorf("alice labels = %q, %v", got, err)
+	}
+	if got, _ := hikes.ListLabels(ctx, bob); len(got) != 0 {
+		t.Errorf("bob labels = %q", got)
 	}
 	if err := hikes.Delete(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob delete err = %v", err)

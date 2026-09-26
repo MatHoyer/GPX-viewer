@@ -58,7 +58,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 ### Data
 
-- `users` (with a `visibility`: `private`, `friends` or `public`, and `email_verified_at`), `sessions` (server-side, only the SHA-256 of the token is stored), `email_verifications` (one pending link per user, hashed like sessions, valid 24h), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike).
+- `users` (with a `visibility`: `private`, `friends` or `public`, and `email_verified_at`), `sessions` (server-side, only the SHA-256 of the token is stored), `email_verifications` (one pending link per user, hashed like sessions, valid 24h), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike), `hike_labels` (the owner's free-form labels; "labels" because tagging means adding a friend).
 - Avatars are [blobatars](https://github.com/Alain00/blobatar) generated from the user id; there is no picture upload.
 - A hike is visible to whoever may see its owner's hikes or those of a tagged participant; anything else answers 404.
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.
@@ -79,10 +79,11 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | POST | `/api/hikes` | multipart `files` (one or more GPX), per-file results |
 | GET | `/api/hikes/tracks` | GeoJSON of all tracks |
 | GET | `/api/hikes/export` | zip of the original GPX of every hike you own, named `YYYY-MM-DD name.gpx` |
+| GET | `/api/labels` | labels on your hikes, most used first |
 | GET | `/api/hikes/{id}` | one hike with `owner` and `participants`; readable signed out when shared publicly |
 | GET | `/api/hikes/{id}/gpx` | the original GPX file, for whoever can see the hike |
 | GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |
-| PATCH | `/api/hikes/{id}` | `{name}` to rename a hike |
+| PATCH | `/api/hikes/{id}` | any of `{name, notes, labels}`; labels are lowercased, deduplicated and sorted, `[]` clears them |
 | DELETE | `/api/hikes/{id}` | delete a hike |
 | PUT | `/api/hikes/{id}/participants/{userId}` | tag a friend on your hike |
 | DELETE | `/api/hikes/{id}/participants/{userId}` | untag (owner, or the participant themselves) |

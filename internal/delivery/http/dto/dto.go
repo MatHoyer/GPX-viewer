@@ -125,6 +125,8 @@ type Hike struct {
 	ElevationGainM float64    `json:"elevationGainM"`
 	StartedAt      *time.Time `json:"startedAt"`
 	DurationS      int64      `json:"durationS"`
+	Notes          string     `json:"notes"`
+	Labels         []string   `json:"labels"`
 	ElevationLossM float64    `json:"elevationLossM"`
 	MinEleM        *float64   `json:"minEleM"`
 	MaxEleM        *float64   `json:"maxEleM"`
@@ -144,6 +146,10 @@ func NewHike(h *domain.Hike) Hike {
 		o := NewPublicUser(h.Owner)
 		owner = &o
 	}
+	labels := h.Labels
+	if labels == nil {
+		labels = []string{}
+	}
 	return Hike{
 		Owner:          owner,
 		ID:             h.ID.String(),
@@ -153,6 +159,8 @@ func NewHike(h *domain.Hike) Hike {
 		ElevationGainM: h.ElevationGainM,
 		StartedAt:      h.StartedAt,
 		DurationS:      h.DurationS,
+		Notes:          h.Notes,
+		Labels:         labels,
 		ElevationLossM: h.ElevationLossM,
 		MinEleM:        h.MinEleM,
 		MaxEleM:        h.MaxEleM,
@@ -165,7 +173,9 @@ func NewHike(h *domain.Hike) Hike {
 
 // UpdateHike is a partial update; nil fields are left unchanged.
 type UpdateHike struct {
-	Name *string `json:"name"`
+	Name   *string   `json:"name"`
+	Notes  *string   `json:"notes"`
+	Labels *[]string `json:"labels"`
 }
 
 type UploadResult struct {

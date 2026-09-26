@@ -3,6 +3,7 @@ package hike
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -61,13 +62,31 @@ func (f *fakeRepo) Delete(_ context.Context, userID, id uuid.UUID) error {
 	return domain.ErrNotFound
 }
 
-func (f *fakeRepo) Rename(ctx context.Context, userID, id uuid.UUID, name string) error {
+func (f *fakeRepo) Update(ctx context.Context, userID, id uuid.UUID, u domain.HikeUpdate) error {
 	h, err := f.GetByID(ctx, userID, id)
 	if err != nil {
 		return err
 	}
-	h.Name = name
+	if u.Name != nil {
+		h.Name = *u.Name
+	}
+	if u.Notes != nil {
+		h.Notes = *u.Notes
+	}
+	if u.Labels != nil {
+		h.Labels = *u.Labels
+	}
 	return nil
+}
+
+func (f *fakeRepo) ListLabels(_ context.Context, userID uuid.UUID) ([]string, error) {
+	var out []string
+	for _, h := range f.hikes {
+		if h.UserID == userID {
+			out = append(out, h.Labels...)
+		}
+	}
+	return out, nil
 }
 
 func (f *fakeRepo) GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([]byte, error) {
@@ -244,7 +263,7 @@ func TestSharedHikesAreReadOnly(t *testing.T) {
 	if _, raw, err := svc.GPX(ctx, bob, h.ID); err != nil || string(raw) != "raw" {
 		t.Errorf("bob gpx = %q, %v", raw, err)
 	}
-	if _, err := svc.Rename(ctx, bob, h.ID, "Mine now"); !errors.Is(err, domain.ErrNotFound) {
+	if _, err := svc.Update(ctx, bob, h.ID, rename("Mine now")); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob rename err = %v", err)
 	}
 	if err := svc.Delete(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
@@ -274,6 +293,8 @@ func TestProfileScopedToOwner(t *testing.T) {
 	}
 }
 
+func rename(name string) domain.HikeUpdate { return domain.HikeUpdate{Name: &name} }
+
 func TestRename(t *testing.T) {
 	ctx := context.Background()
 	svc := NewService(&fakeRepo{}, fakeParser{res: &domain.ParsedTrack{Name: "Old", Segments: twoPoints}}, ownerOnly{})
@@ -283,22 +304,22 @@ func TestRename(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := svc.Rename(ctx, alice, h.ID, "  Lac Blanc  ")
+	got, err := svc.Update(ctx, alice, h.ID, rename("  Lac Blanc  "))
 	if err != nil || got.Name != "Lac Blanc" {
 		t.Fatalf("rename = %+v, %v", got, err)
 	}
 
 	var ve *domain.ValidationError
-	if _, err := svc.Rename(ctx, alice, h.ID, "   "); !errors.As(err, &ve) {
+	if _, err := svc.Update(ctx, alice, h.ID, rename("   ")); !errors.As(err, &ve) {
 		t.Errorf("empty name err = %v", err)
 	}
-	if _, err := svc.Rename(ctx, alice, h.ID, strings.Repeat("é", MaxNameLength+1)); !errors.As(err, &ve) {
+	if _, err := svc.Update(ctx, alice, h.ID, rename(strings.Repeat("é", MaxNameLength+1))); !errors.As(err, &ve) {
 		t.Errorf("long name err = %v", err)
 	}
-	if _, err := svc.Rename(ctx, alice, h.ID, strings.Repeat("é", MaxNameLength)); err != nil {
+	if _, err := svc.Update(ctx, alice, h.ID, rename(strings.Repeat("é", MaxNameLength))); err != nil {
 		t.Errorf("max length name err = %v", err)
 	}
-	if _, err := svc.Rename(ctx, bob, h.ID, "Mine now"); !errors.Is(err, domain.ErrNotFound) {
+	if _, err := svc.Update(ctx, bob, h.ID, rename("Mine now")); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob rename err = %v", err)
 	}
 }
@@ -341,7 +362,7 @@ func TestTagging(t *testing.T) {
 	if err != nil || len(got.Participants) != 1 || got.Participants[0].ID != bob {
 		t.Fatalf("get via participant = %+v, %v", got, err)
 	}
-	if _, err := svc.Rename(ctx, bob, h.ID, "Mine now"); !errors.Is(err, domain.ErrNotFound) {
+	if _, err := svc.Update(ctx, bob, h.ID, rename("Mine now")); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("participant rename err = %v", err)
 	}
 
@@ -382,5 +403,52 @@ func TestExportOwnedOnly(t *testing.T) {
 	})
 	if err != nil || len(got) != 1 || got[0] != mine.ID.String()+":mine" {
 		t.Errorf("export = %v, %v", got, err)
+	}
+}
+
+func TestUpdateNotesAndLabels(t *testing.T) {
+	ctx := context.Background()
+	svc := NewService(&fakeRepo{}, fakeParser{res: &domain.ParsedTrack{Name: "Old", Segments: twoPoints}}, ownerOnly{})
+	alice, bob := uuid.New(), uuid.New()
+	h, err := svc.Import(ctx, alice, "a.gpx", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	notes, labels := "  Windy at the top \n", []string{"Snow ", "with  dog", "snow", "  ", "Alps"}
+	got, err := svc.Update(ctx, alice, h.ID, domain.HikeUpdate{Notes: &notes, Labels: &labels})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name != "Old" || got.Notes != "Windy at the top" || !slices.Equal(got.Labels, []string{"alps", "snow", "with dog"}) {
+		t.Errorf("updated = name %q, notes %q, labels %q", got.Name, got.Notes, got.Labels)
+	}
+	if l, _ := svc.Labels(ctx, alice); len(l) != 3 {
+		t.Errorf("labels = %q", l)
+	}
+
+	none := []string{}
+	if got, err := svc.Update(ctx, alice, h.ID, domain.HikeUpdate{Labels: &none}); err != nil || len(got.Labels) != 0 || got.Notes == "" {
+		t.Errorf("clear labels = %+v, %v", got, err)
+	}
+
+	var ve *domain.ValidationError
+	long := strings.Repeat("a", MaxNotesLength+1)
+	if _, err := svc.Update(ctx, alice, h.ID, domain.HikeUpdate{Notes: &long}); !errors.As(err, &ve) || ve.Field != "notes" {
+		t.Errorf("long notes err = %v", err)
+	}
+	tooLong := []string{strings.Repeat("é", MaxLabelLength+1)}
+	if _, err := svc.Update(ctx, alice, h.ID, domain.HikeUpdate{Labels: &tooLong}); !errors.As(err, &ve) || ve.Field != "labels" {
+		t.Errorf("long label err = %v", err)
+	}
+	many := make([]string, MaxLabels+1)
+	for i := range many {
+		many[i] = fmt.Sprint("l", i)
+	}
+	if _, err := svc.Update(ctx, alice, h.ID, domain.HikeUpdate{Labels: &many}); !errors.As(err, &ve) {
+		t.Errorf("too many labels err = %v", err)
+	}
+	if _, err := svc.Update(ctx, bob, h.ID, domain.HikeUpdate{Labels: &labels}); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("bob label err = %v", err)
 	}
 }
