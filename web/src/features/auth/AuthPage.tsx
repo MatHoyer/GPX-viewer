@@ -109,6 +109,14 @@ export function AuthPage({ mode }: { mode: Mode }) {
                 aria-invalid={error?.field === 'password' || undefined}
                 description={mode === 'register' ? 'At least 8 characters.' : undefined}
               />
+              {mode === 'login' && (
+                <Link
+                  to={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'}
+                  className="text-muted-foreground hover:text-foreground block text-right text-sm underline-offset-4 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              )}
               {errorMessage && (
                 <p role="alert" className="text-destructive text-sm">
                   {errorMessage}

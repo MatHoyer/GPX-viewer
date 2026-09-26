@@ -1,7 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 
-import { fetchMe, login, logout, register, verifyEmail } from './api'
+import {
+  changePassword,
+  fetchMe,
+  login,
+  logout,
+  register,
+  requestPasswordReset,
+  resetPassword,
+  verifyEmail,
+} from './api'
 
 export const meQueryKey = ['auth', 'me'] as const
 
@@ -27,6 +36,22 @@ export function useVerifyEmail() {
     mutationFn: verifyEmail,
     onSuccess: () => qc.invalidateQueries({ queryKey: meQueryKey }),
   })
+}
+
+export function useRequestPasswordReset() {
+  return useMutation({ mutationFn: requestPasswordReset })
+}
+
+export function useResetPassword() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: resetPassword,
+    onSuccess: () => qc.invalidateQueries({ queryKey: meQueryKey }),
+  })
+}
+
+export function useChangePassword() {
+  return useMutation({ mutationFn: changePassword })
 }
 
 export function useLogout() {

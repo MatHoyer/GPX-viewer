@@ -19,5 +19,6 @@ type SessionRepository interface {
 	Create(ctx context.Context, s *Session) error
 	GetByTokenHash(ctx context.Context, tokenHash string) (*Session, error)
 	Delete(ctx context.Context, tokenHash string) error
+	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteExpired(ctx context.Context, now time.Time) error
 }

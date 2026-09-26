@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { FloatingInput } from '@/components/ui/floating-input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import type { User, Visibility } from '@/features/auth/api'
-import { useMe } from '@/features/auth/useAuth'
+import { useChangePassword, useMe, useRequestPasswordReset } from '@/features/auth/useAuth'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -32,6 +32,7 @@ export function SettingsPage() {
           <div className="mx-auto max-w-2xl space-y-4 p-4">
             {/* Keyed so the form resets if the saved name changes elsewhere. */}
             <DetailsCard key={me.data.name} user={me.data} />
+            <PasswordCard user={me.data} />
             <VisibilityCard user={me.data} />
             <AppearanceCard />
           </div>
@@ -85,6 +86,83 @@ function DetailsCard({ user }: { user: User }) {
         <CardFooter className="justify-end">
           <Button type="submit" disabled={!dirty || update.isPending}>
             {update.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  )
+}
+
+function PasswordCard({ user }: { user: User }) {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [password, setPassword] = useState('')
+  const change = useChangePassword()
+  const sendReset = useRequestPasswordReset()
+  const error = change.error instanceof ApiError ? change.error : null
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    change.mutate(
+      { currentPassword, password },
+      {
+        onSuccess: () => {
+          setCurrentPassword('')
+          setPassword('')
+          toast.success('Password changed', { description: 'Your other devices were signed out.' })
+        },
+      },
+    )
+  }
+
+  function onForgot() {
+    sendReset.mutate(user.email, {
+      onSuccess: () => toast.success(`We sent a reset link to ${user.email}`),
+      onError: (err) => toast.error(errorMessage(err, 'Could not send the reset link')),
+    })
+  }
+
+  return (
+    <Card>
+      <form onSubmit={onSubmit} className="contents">
+        <CardHeader>
+          <CardTitle>Password</CardTitle>
+          <CardDescription>Changing it signs you out on your other devices.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Lets password managers tie the new password to this account. */}
+          <input type="email" autoComplete="username" value={user.email} readOnly hidden />
+          <FloatingInput
+            label="Current password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            aria-invalid={error?.field === 'currentPassword' || undefined}
+          />
+          <FloatingInput
+            label="New password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={error?.field === 'password' || undefined}
+            description="At least 8 characters."
+          />
+          {change.error && (
+            <p role="alert" className="text-destructive text-sm">
+              {errorMessage(change.error, 'Could not change password')}
+            </p>
+          )}
+        </CardContent>
+        <CardFooter className="flex-wrap justify-between gap-2">
+          <Button type="button" variant="link" className="px-0" disabled={sendReset.isPending} onClick={onForgot}>
+            Forgot your current password?
+          </Button>
+          <Button type="submit" disabled={!currentPassword || !password || change.isPending}>
+            {change.isPending ? 'Changing…' : 'Change password'}
           </Button>
         </CardFooter>
       </form>

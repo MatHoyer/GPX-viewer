@@ -58,6 +58,7 @@ func run() error {
 		users,
 		postgres.NewSessionRepository(db),
 		postgres.NewEmailVerificationRepository(db),
+		postgres.NewPasswordResetRepository(db),
 		security.NewBcryptHasher(0),
 		mailer,
 		cfg.SessionTTL,

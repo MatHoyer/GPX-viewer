@@ -61,6 +61,17 @@ func (r *UserRepository) MarkEmailVerified(ctx context.Context, id uuid.UUID, at
 	return nil
 }
 
+func (r *UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error {
+	res := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ?", id).Update("password_hash", hash)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func (r *UserRepository) UpdateName(ctx context.Context, id uuid.UUID, name string) error {
 	res := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ?", id).Update("name", name)
 	if res.Error != nil {

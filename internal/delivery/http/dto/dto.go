@@ -15,6 +15,20 @@ type VerifyEmail struct {
 	Token string `json:"token"`
 }
 
+type ForgotPassword struct {
+	Email string `json:"email"`
+}
+
+type ResetPassword struct {
+	Token    string `json:"token"`
+	Password string `json:"password"`
+}
+
+type ChangePassword struct {
+	CurrentPassword string `json:"currentPassword"`
+	Password        string `json:"password"`
+}
+
 type User struct {
 	ID         string    `json:"id"`
 	Email      string    `json:"email"`

@@ -40,6 +40,7 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error
+	UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error
 }
 
 // UserDirectory looks users up on behalf of other users.

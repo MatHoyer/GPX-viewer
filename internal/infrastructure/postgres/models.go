@@ -84,6 +84,21 @@ func (m EmailVerificationModel) toDomain() *domain.EmailVerification {
 	return &domain.EmailVerification{TokenHash: m.TokenHash, UserID: m.UserID, ExpiresAt: m.ExpiresAt, CreatedAt: m.CreatedAt}
 }
 
+// PasswordResetModel is a pending password reset link, one per user.
+type PasswordResetModel struct {
+	UserID    uuid.UUID `gorm:"type:uuid;primaryKey"`
+	User      UserModel `gorm:"constraint:OnDelete:CASCADE"`
+	TokenHash string    `gorm:"not null;uniqueIndex"`
+	ExpiresAt time.Time `gorm:"not null;index"`
+	CreatedAt time.Time `gorm:"not null"`
+}
+
+func (PasswordResetModel) TableName() string { return "password_resets" }
+
+func (m PasswordResetModel) toDomain() *domain.PasswordReset {
+	return &domain.PasswordReset{TokenHash: m.TokenHash, UserID: m.UserID, ExpiresAt: m.ExpiresAt, CreatedAt: m.CreatedAt}
+}
+
 type HikeModel struct {
 	ID             uuid.UUID        `gorm:"type:uuid;primaryKey"`
 	UserID         uuid.UUID        `gorm:"type:uuid;not null;index"`

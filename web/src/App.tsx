@@ -7,6 +7,8 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SettingsPage } from '@/features/account/SettingsPage'
 import { AuthPage } from '@/features/auth/AuthPage'
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { useMe } from '@/features/auth/useAuth'
 import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
 import { CalendarPage } from '@/features/calendar/CalendarPage'
@@ -36,8 +38,10 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<GuestOnly><AuthPage mode="login" /></GuestOnly>} />
               <Route path="/register" element={<GuestOnly><AuthPage mode="register" /></GuestOnly>} />
-              {/* Not guest-only: the link may be opened while signed in as someone else. */}
+              {/* Not guest-only: emailed links may be opened while signed in as someone else. */}
               <Route path="/verify" element={<VerifyEmailPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route path="/" element={<MapPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />

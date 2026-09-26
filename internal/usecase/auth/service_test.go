@@ -41,6 +41,15 @@ func (f *fakeUsers) GetByEmail(_ context.Context, email string) (*domain.User, e
 	return nil, domain.ErrNotFound
 }
 
+func (f *fakeUsers) UpdatePassword(_ context.Context, id uuid.UUID, hash string) error {
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.PasswordHash = hash
+	return nil
+}
+
 func (f *fakeUsers) MarkEmailVerified(_ context.Context, id uuid.UUID, at time.Time) error {
 	u, ok := f.byID[id]
 	if !ok {
@@ -66,6 +75,15 @@ func (f *fakeSessions) GetByTokenHash(_ context.Context, h string) (*domain.Sess
 
 func (f *fakeSessions) Delete(_ context.Context, h string) error {
 	delete(f.byHash, h)
+	return nil
+}
+
+func (f *fakeSessions) DeleteByUserID(_ context.Context, id uuid.UUID) error {
+	for h, s := range f.byHash {
+		if s.UserID == id {
+			delete(f.byHash, h)
+		}
+	}
 	return nil
 }
 
@@ -118,6 +136,46 @@ func (f *fakeVerifications) DeleteExpired(_ context.Context, now time.Time) erro
 	return nil
 }
 
+type fakeResets struct {
+	byUser map[uuid.UUID]*domain.PasswordReset
+}
+
+func (f *fakeResets) Replace(_ context.Context, p *domain.PasswordReset) error {
+	f.byUser[p.UserID] = p
+	return nil
+}
+
+func (f *fakeResets) GetByUserID(_ context.Context, id uuid.UUID) (*domain.PasswordReset, error) {
+	if p, ok := f.byUser[id]; ok {
+		return p, nil
+	}
+	return nil, domain.ErrNotFound
+}
+
+func (f *fakeResets) DeleteByUserID(_ context.Context, id uuid.UUID) error {
+	delete(f.byUser, id)
+	return nil
+}
+
+func (f *fakeResets) Consume(_ context.Context, h string) (*domain.PasswordReset, error) {
+	for id, p := range f.byUser {
+		if p.TokenHash == h {
+			delete(f.byUser, id)
+			return p, nil
+		}
+	}
+	return nil, domain.ErrNotFound
+}
+
+func (f *fakeResets) DeleteExpired(_ context.Context, now time.Time) error {
+	for id, p := range f.byUser {
+		if !now.Before(p.ExpiresAt) {
+			delete(f.byUser, id)
+		}
+	}
+	return nil
+}
+
 type sentMail struct{ to, subject, body string }
 
 type fakeMailer struct {
@@ -133,9 +191,9 @@ func (f *fakeMailer) Send(_ context.Context, to, subject, body string) error {
 	return nil
 }
 
-var linkRe = regexp.MustCompile(`https://app\.test/verify\?token=(\S+)`)
+var linkRe = regexp.MustCompile(`https://app\.test/(?:verify|reset-password)\?token=(\S+)`)
 
-// lastToken extracts the token from the last verification email sent.
+// lastToken extracts the token from the link in the last email sent.
 func (f *fakeMailer) lastToken(t *testing.T) string {
 	t.Helper()
 	if len(f.sent) == 0 {
@@ -143,7 +201,7 @@ func (f *fakeMailer) lastToken(t *testing.T) string {
 	}
 	m := linkRe.FindStringSubmatch(f.sent[len(f.sent)-1].body)
 	if m == nil {
-		t.Fatalf("no verification link in %q", f.sent[len(f.sent)-1].body)
+		t.Fatalf("no link in %q", f.sent[len(f.sent)-1].body)
 	}
 	token, err := url.QueryUnescape(m[1])
 	if err != nil {
@@ -167,6 +225,7 @@ type testEnv struct {
 	svc           *Service
 	sessions      *fakeSessions
 	verifications *fakeVerifications
+	resets        *fakeResets
 	mailer        *fakeMailer
 }
 
@@ -175,9 +234,10 @@ func newTestEnv(t *testing.T) *testEnv {
 	e := &testEnv{
 		sessions:      &fakeSessions{byHash: map[string]*domain.Session{}},
 		verifications: &fakeVerifications{byUser: map[uuid.UUID]*domain.EmailVerification{}},
+		resets:        &fakeResets{byUser: map[uuid.UUID]*domain.PasswordReset{}},
 		mailer:        &fakeMailer{},
 	}
-	svc, err := NewService(&fakeUsers{byID: map[uuid.UUID]*domain.User{}}, e.sessions, e.verifications, plainHasher{}, e.mailer, time.Hour, "https://app.test/")
+	svc, err := NewService(&fakeUsers{byID: map[uuid.UUID]*domain.User{}}, e.sessions, e.verifications, e.resets, plainHasher{}, e.mailer, time.Hour, "https://app.test/")
 	if err != nil {
 		t.Fatal(err)
 	}

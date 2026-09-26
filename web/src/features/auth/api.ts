@@ -43,6 +43,21 @@ export function verifyEmail(token: string) {
   return api<void>('/auth/verify', { method: 'POST', body: JSON.stringify({ token }) })
 }
 
+/** Emails a reset link. Succeeds whether or not the email has an account. */
+export function requestPasswordReset(email: string) {
+  return api<void>('/auth/password/forgot', { method: 'POST', body: JSON.stringify({ email }) })
+}
+
+/** Consumes the token from the reset link, sets the password and starts a session. */
+export function resetPassword(input: { token: string; password: string }) {
+  return api<void>('/auth/password/reset', { method: 'POST', body: JSON.stringify(input) })
+}
+
+/** Signs out every other session; this one keeps going. */
+export function changePassword(input: { currentPassword: string; password: string }) {
+  return api<void>('/auth/password', { method: 'POST', body: JSON.stringify(input) })
+}
+
 export function logout() {
   return api<void>('/auth/logout', { method: 'POST' })
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -31,6 +32,10 @@ func (r *SessionRepository) GetByTokenHash(ctx context.Context, tokenHash string
 
 func (r *SessionRepository) Delete(ctx context.Context, tokenHash string) error {
 	return r.db.WithContext(ctx).Delete(&SessionModel{}, "token_hash = ?", tokenHash).Error
+}
+
+func (r *SessionRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&SessionModel{}, "user_id = ?", userID).Error
 }
 
 func (r *SessionRepository) DeleteExpired(ctx context.Context, now time.Time) error {
