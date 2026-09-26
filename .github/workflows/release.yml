@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and tags to diff against the previous release.
+          fetch-depth: 0
+
+      - name: Build release notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          prev=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname \
+            | grep -vx "$TAG" | head -n1 || true)
+          range=${prev:+$prev..}$TAG
+          {
+            echo "## Changes"
+            echo
+            git log --no-merges --format='- %s (%h)' "$range" \
+              | grep -v 'chore(release):' || true
+            if [ -n "$prev" ]; then
+              echo
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$prev...$TAG"
+            fi
+          } > notes.md
+          cat notes.md
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag

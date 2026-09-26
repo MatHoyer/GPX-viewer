@@ -1,7 +1,7 @@
 include $(wildcard .env)
 export
 
-.PHONY: dev-db dev-api dev-web web build test test-integration lint up down
+.PHONY: dev-db dev-api dev-web web build test test-integration lint up down release
 
 dev-db: ## Start PostGIS only
 	docker compose up -d db
@@ -33,3 +33,6 @@ up: ## Build and run app + db
 
 down:
 	docker compose down
+
+release: ## Bump, commit, tag and push a release (BUMP=patch|minor|major|X.Y.Z)
+	scripts/release.sh $(BUMP)
