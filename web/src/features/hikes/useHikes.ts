@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { hikeSummits, listSummits } from '@/features/stats/summits'
+
 import { deleteHike, getTiles, getTracks, listHikes, listLabels, updateHike, uploadHikes } from './api'
 
 const keys = {
@@ -8,6 +10,7 @@ const keys = {
   tracks: ['hikes', 'tracks'] as const,
   labels: ['hikes', 'labels'] as const,
   tiles: ['hikes', 'tiles'] as const,
+  summits: ['hikes', 'summits'] as const,
 }
 
 export function useHikes() {
@@ -21,6 +24,16 @@ export function useTracks() {
 /** The signed-in user's explored tiles by hike; fetched only when `enabled`. */
 export function useTiles(enabled = true) {
   return useQuery({ queryKey: keys.tiles, queryFn: getTiles, enabled })
+}
+
+/** Every peak the signed-in user reached, with the hikes that went over it. */
+export function useSummits() {
+  return useQuery({ queryKey: keys.summits, queryFn: listSummits })
+}
+
+/** The peaks one hike went over. */
+export function useHikeSummits(id: string) {
+  return useQuery({ queryKey: ['hikes', 'summits', id], queryFn: () => hikeSummits(id), staleTime: Infinity })
 }
 
 export function useLabels() {

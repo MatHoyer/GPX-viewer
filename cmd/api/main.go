@@ -14,6 +14,7 @@ import (
 	httpdelivery "github.com/MatHoyer/gpx-viewer/internal/delivery/http"
 	"github.com/MatHoyer/gpx-viewer/internal/delivery/http/handler"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/gpx"
+	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/overpass"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/postgres"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/security"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/smtp"
@@ -21,10 +22,15 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/auth"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/hike"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/social"
+	"github.com/MatHoyer/gpx-viewer/internal/usecase/summit"
 	"github.com/MatHoyer/gpx-viewer/web"
 )
 
 func main() {
+	run := run
+	if len(os.Args) > 1 && os.Args[1] == "import-peaks" {
+		run = func() error { return importPeaks(os.Args[2:]) }
+	}
 	if err := run(); err != nil {
 		slog.Error("fatal", "err", err)
 		os.Exit(1)
@@ -70,6 +76,7 @@ func run() error {
 	accountSvc := account.NewService(users)
 	socialSvc := social.NewService(users, postgres.NewFriendshipRepository(db))
 	hikeSvc := hike.NewService(postgres.NewHikeRepository(db), gpx.NewParser(), socialSvc)
+	summitSvc := summit.NewService(postgres.NewPeakRepository(db), overpass.NewClient(overpass.DefaultURL), hikeSvc)
 
 	go purgeExpired(ctx, authSvc)
 	go refreshDerived(ctx, hikeSvc)
@@ -79,6 +86,7 @@ func run() error {
 		Account:       handler.NewAccountHandler(accountSvc),
 		Hikes:         handler.NewHikeHandler(hikeSvc, cfg.MaxUploadMB<<20),
 		Social:        handler.NewSocialHandler(socialSvc),
+		Summits:       handler.NewSummitHandler(summitSvc),
 		Authenticator: authSvc,
 		Static:        web.Dist(),
 		AppURL:        cfg.AppURL,

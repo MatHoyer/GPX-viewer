@@ -17,6 +17,7 @@ type Deps struct {
 	Account       *handler.AccountHandler
 	Hikes         *handler.HikeHandler
 	Social        *handler.SocialHandler
+	Summits       *handler.SummitHandler
 	Authenticator middleware.Authenticator
 	// Static is the built frontend (index.html at its root). Optional.
 	Static fs.FS
@@ -64,6 +65,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/hikes/export", d.Hikes.Export)
 			r.Get("/labels", d.Hikes.Labels)
 			r.Get("/tiles", d.Hikes.Tiles)
+			r.Get("/summits", d.Summits.Mine)
 			r.Patch("/hikes/{id}", d.Hikes.Update)
 			r.Delete("/hikes/{id}", d.Hikes.Delete)
 			r.Get("/hikes/{id}/similar", d.Hikes.Similar)
@@ -82,6 +84,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/hikes/{id}", d.Hikes.Get)
 			r.Get("/hikes/{id}/profile", d.Hikes.Profile)
 			r.Get("/hikes/{id}/gpx", d.Hikes.GPX)
+			r.Get("/hikes/{id}/summits", d.Summits.OnHike)
 
 			r.Get("/users/{id}", d.Social.Profile)
 			r.Get("/users/{id}/hikes", d.Hikes.UserList)

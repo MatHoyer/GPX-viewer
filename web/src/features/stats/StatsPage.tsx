@@ -11,11 +11,12 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useMe } from '@/features/auth/useAuth'
 import { FilterBar } from '@/features/hikes/FilterBar'
 import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
-import { useHikes, useTiles } from '@/features/hikes/useHikes'
+import { useHikes, useSummits, useTiles } from '@/features/hikes/useHikes'
 import { exploredTiles, maxSquare } from '@/features/map/tiles'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 
 import { personalRecords } from './records'
+import { firstVisit, summitsOn } from './summits'
 
 import {
   change,
@@ -63,6 +64,11 @@ export function StatsPage() {
     const explored = exploredTiles(tiles.data, (year === null ? shown : inYear(shown, year)).map((h) => h.id))
     return { count: explored.size, square: maxSquare(explored)?.size ?? 0 }
   }, [tiles.data, shown, year])
+  const allSummits = useSummits()
+  const summits = useMemo(() => {
+    const ids = new Set((year === null ? shown : inYear(shown, year)).map((h) => h.id))
+    return allSummits.data ? summitsOn(allSummits.data, ids) : null
+  }, [allSummits.data, shown, year])
   const records = useMemo(() => personalRecords(year === null ? shown : inYear(shown, year)), [shown, year])
   const bars = useMemo(
     () =>
@@ -111,6 +117,7 @@ export function StatsPage() {
                 prevYear={year !== null ? year - 1 : null}
                 streak={streak}
                 exploration={tiles.data ? exploration : null}
+                summits={summits?.length ?? null}
               />
               <section className="bg-card space-y-3 rounded-xl border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -155,6 +162,28 @@ export function StatsPage() {
                   </div>
                 </section>
               )}
+              {summits && summits.length > 0 && (
+                <section className="space-y-2">
+                  <h2 className="text-sm font-medium">Summits</h2>
+                  <ul className="bg-card divide-y rounded-xl border">
+                    {summits.map((s) => {
+                      const first = firstVisit(s)
+                      return (
+                        <li key={s.peak.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                          <span className="min-w-0 flex-1 truncate font-medium">{s.peak.name}</span>
+                          <span className="text-muted-foreground w-16 text-right tabular-nums">
+                            {s.peak.eleM !== null ? formatElevation(s.peak.eleM) : '—'}
+                          </span>
+                          <span className="text-muted-foreground w-10 text-right text-xs tabular-nums">×{s.visits.length}</span>
+                          <Link to={`/hikes/${first.hikeId}`} className="text-muted-foreground w-28 text-right text-xs hover:underline">
+                            {first.startedAt ? `first ${formatDate(first.startedAt)}` : 'see hike'}
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              )}
             </>
           )}
         </div>
@@ -169,6 +198,7 @@ function Tiles({
   prevYear,
   streak,
   exploration,
+  summits,
 }: {
   current: Totals
   previous: Totals | null
@@ -176,6 +206,8 @@ function Tiles({
   streak: number
   /** Explored zoom-14 tiles and the side of the largest full square of them; null while loading. */
   exploration: { count: number; square: number } | null
+  /** Distinct peaks reached; null while loading. */
+  summits: number | null
 }) {
   const tiles = [
     { label: 'Hikes', value: String(current.count), metric: 'count' as const },
@@ -190,6 +222,7 @@ function Tiles({
           { label: 'Max square', value: exploration.square ? `${exploration.square}×${exploration.square}` : '—' },
         ]
       : []),
+    ...(summits !== null ? [{ label: 'Summits', value: String(summits) }] : []),
   ]
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

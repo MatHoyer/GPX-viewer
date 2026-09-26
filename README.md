@@ -64,6 +64,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.
 - Stats derived from the GPX (elevation loss, min/max elevation, moving time, and best efforts: the fastest 1, 5, 10, 21.1 and 42.2 km in `hike_best_efforts`, and the zoom-14 tiles crossed in `hike_tiles`) are computed on import and stamped with `derived_version`; on startup a background job recomputes hikes stored by an older version (bump `hike.DerivedVersion` when adding one).
 - `GET /api/hikes/tracks` returns a simplified GeoJSON `FeatureCollection` (`ST_SimplifyPreserveTopology`) for the map.
+- Peaks come from OpenStreetMap (`natural=peak` nodes with a name) and are loaded per region with `api import-peaks -bbox minLon,minLat,maxLon,maxLat` (same environment as the server; `-overpass` picks another Overpass instance). Summits are matched on demand, so new peaks apply to past hikes too.
 
 ### API
 
@@ -81,8 +82,10 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/hikes/export` | zip of the original GPX of every hike you own, named `YYYY-MM-DD name.gpx` |
 | GET | `/api/labels` | labels on your hikes, most used first |
 | GET | `/api/tiles` | `{zoom, hikes: {id: [[x, y], …]}}`: the zoom-14 map tiles each of your hikes passes through |
+| GET | `/api/summits` | every peak you reached (track within 50 m), with the hikes that went over it |
 | GET | `/api/hikes/{id}` | one hike with `owner` and `participants`; readable signed out when shared publicly |
 | GET | `/api/hikes/{id}/gpx` | the original GPX file, for whoever can see the hike |
+| GET | `/api/hikes/{id}/summits` | the named peaks the hike went over, highest first |
 | GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |
 | PATCH | `/api/hikes/{id}` | any of `{name, notes, labels}`; labels are lowercased, deduplicated and sorted, `[]` clears them |
 | DELETE | `/api/hikes/{id}` | delete a hike |
