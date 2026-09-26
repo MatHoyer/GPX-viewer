@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 
 import { MapControls, MapRoute } from '@/components/ui/map'
+import { useMapView } from '@/features/map/basemaps'
+import { HeatmapLayer } from '@/features/map/HeatmapLayer'
 import { LayeredMap } from '@/features/map/LayeredMap'
 
 import type { Hike, Tracks } from './api'
@@ -29,6 +31,11 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
     [colorFrom, hikes],
   )
   const popupHike = popup ? hikes.find((h) => h.id === popup.hikeId) : undefined
+  const heatmap = useMapView((s) => s.heatmap)
+  const lines = useMemo(
+    () => (tracks?.features ?? []).flatMap((f) => f.geometry.coordinates as [number, number][][]),
+    [tracks],
+  )
 
   const fitTarget = useMemo(() => {
     const selected = hikes.find((h) => h.id === selectedId)
@@ -36,9 +43,10 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
   }, [hikes, selectedId])
 
   return (
-    <LayeredMap center={[2.35, 46.6]} zoom={5} className="size-full">
+    <LayeredMap center={[2.35, 46.6]} zoom={5} className="size-full" heatmapToggle>
       <MapControls position="bottom-right" showZoom showCompass showLocate showFullscreen />
       <FitBounds bounds={fitTarget} />
+      {heatmap && <HeatmapLayer lines={lines} />}
       {tracks?.features.flatMap((feature) => {
         const id = feature.properties.id
         const highlighted = id === selectedId || id === hoveredId
@@ -50,7 +58,8 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
             coordinates={line as [number, number][]}
             color={colorById.get(id) ?? hikeColor(0)}
             width={3}
-            opacity={dimmed ? 0.35 : 0.85}
+            // Under the heatmap, routes stay faintly visible and clickable.
+            opacity={heatmap && !highlighted ? 0.2 : dimmed ? 0.35 : 0.85}
             active={highlighted}
             activeWidth={5}
             activeOpacity={1}

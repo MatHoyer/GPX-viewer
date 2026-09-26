@@ -1,4 +1,4 @@
-import { Box, Layers, Map as MapIcon, Mountain, Satellite } from 'lucide-react'
+import { Box, Flame, Layers, Map as MapIcon, Mountain, Satellite } from 'lucide-react'
 import { forwardRef, useEffect, useRef, type ComponentProps } from 'react'
 
 import {
@@ -17,17 +17,20 @@ import { basemapStyles, DEM_SOURCE_ID, demSource, useMapView, type Basemap } fro
 
 const TERRAIN_PITCH = 60
 
-type Props = Omit<ComponentProps<typeof Map>, 'styles'>
+type Props = Omit<ComponentProps<typeof Map>, 'styles'> & {
+  /** Offer the heatmap toggle; the caller draws the heatmap itself. */
+  heatmapToggle?: boolean
+}
 
 /** Map with a switchable background (streets, topo, satellite) and optional 3D terrain. */
-export const LayeredMap = forwardRef<MapRef, Props>(function LayeredMap({ children, ...props }, ref) {
+export const LayeredMap = forwardRef<MapRef, Props>(function LayeredMap({ children, heatmapToggle = false, ...props }, ref) {
   const basemap = useMapView((s) => s.basemap)
   const terrain = useMapView((s) => s.terrain)
 
   return (
     <Map ref={ref} styles={basemapStyles[basemap]} pitch={terrain ? TERRAIN_PITCH : 0} {...props}>
       <Terrain enabled={terrain} />
-      <LayersControl />
+      <LayersControl heatmapToggle={heatmapToggle} />
       {children}
     </Map>
   )
@@ -64,8 +67,8 @@ const basemaps: { value: Basemap; label: string; icon: typeof MapIcon }[] = [
   { value: 'satellite', label: 'Satellite', icon: Satellite },
 ]
 
-function LayersControl() {
-  const { basemap, terrain, setBasemap, setTerrain } = useMapView()
+function LayersControl({ heatmapToggle }: { heatmapToggle: boolean }) {
+  const { basemap, terrain, heatmap, setBasemap, setTerrain, setHeatmap } = useMapView()
 
   return (
     <div className="absolute top-2 right-2 z-10">
@@ -94,6 +97,12 @@ function LayersControl() {
             <Box />
             3D terrain
           </DropdownMenuCheckboxItem>
+          {heatmapToggle && (
+            <DropdownMenuCheckboxItem checked={heatmap} onCheckedChange={(c) => setHeatmap(c === true)}>
+              <Flame />
+              Heatmap
+            </DropdownMenuCheckboxItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
