@@ -29,7 +29,8 @@ make dev-web    # optional: Vite dev server with HMR on :5173, /api proxied to :
 Tests:
 
 ```bash
-make test               # unit tests
+make test               # Go unit tests
+cd web && pnpm test     # frontend unit tests (vitest)
 make test-integration   # repository tests against the dev database
 make lint
 ```
@@ -71,6 +72,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | POST | `/api/hikes` | multipart `files` (one or more GPX), per-file results |
 | GET | `/api/hikes/tracks` | GeoJSON of all tracks |
 | GET | `/api/hikes/{id}` | one hike |
+| GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |
 | DELETE | `/api/hikes/{id}` | delete a hike |
 
 ### Configuration

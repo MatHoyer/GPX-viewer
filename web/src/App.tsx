@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthPage } from '@/features/auth/AuthPage'
 import { useMe } from '@/features/auth/useAuth'
+import { HikePage } from '@/features/hike-detail/HikePage'
 import { HomePage } from '@/features/hikes/HomePage'
 import { ApiError } from '@/lib/api'
 
@@ -29,6 +30,7 @@ export default function App() {
               <Route path="/login" element={<GuestOnly><AuthPage mode="login" /></GuestOnly>} />
               <Route path="/register" element={<GuestOnly><AuthPage mode="register" /></GuestOnly>} />
               <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
+              <Route path="/hikes/:id" element={<RequireAuth><HikePage /></RequireAuth>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>

@@ -19,3 +19,19 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }
 export function formatDate(iso: string | null): string | null {
   return iso ? dateFormatter.format(new Date(iso)) : null
 }
+
+export function formatClock(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  const mm = String(m).padStart(2, '0')
+  const ss = String(sec).padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`
+}
+
+export function formatPace(minPerKm: number): string {
+  const m = Math.floor(minPerKm)
+  const s = Math.round((minPerKm - m) * 60)
+  return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, '0')}`
+}
