@@ -110,6 +110,13 @@ func TestBestEfforts(t *testing.T) {
 		t.Errorf("durations = %+v", got)
 	}
 
+	// Two fixes 5.56 km and 50 min apart: 1 km at that pace takes 9 min, not 50.
+	t1 := t0.Add(50 * time.Minute)
+	sparse := derive(&domain.ParsedTrack{}, []domain.Sample{{Lon: 6, Lat: 45, Time: &t0}, {Lon: 6, Lat: 45.05, Time: &t1}}).BestEfforts
+	if len(sparse) != 2 || abs(sparse[0].DurationS-540) > 5 || abs(sparse[1].DurationS-2698) > 10 {
+		t.Errorf("sparse efforts = %+v", sparse)
+	}
+
 	if e := derive(&domain.ParsedTrack{}, []domain.Sample{{Lon: 6, Lat: 45}, {Lon: 6, Lat: 45.1}}).BestEfforts; len(e) != 0 {
 		t.Errorf("untimed efforts = %+v", e)
 	}

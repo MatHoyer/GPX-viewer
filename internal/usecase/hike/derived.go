@@ -36,7 +36,9 @@ func derive(parsed *domain.ParsedTrack, samples []domain.Sample) domain.HikeDeri
 var EffortDistances = []int{1000, 5000, 10000, 21097, 42195}
 
 // bestEfforts finds, for each of EffortDistances the track covers, the
-// shortest time between two fixes that far apart along it.
+// shortest time to cover that distance along it. Each window ends on a fix and
+// starts exactly dist before it, interpolated between fixes at constant speed,
+// so sparse recordings don't stretch a 1 km effort to the gap between fixes.
 func bestEfforts(pts []domain.ProfilePoint) []domain.BestEffort {
 	var timed []domain.ProfilePoint
 	for _, p := range pts {
@@ -57,7 +59,12 @@ func bestEfforts(pts []domain.ProfilePoint) []domain.BestEffort {
 			if timed[j].DistM-timed[i].DistM < dist {
 				continue
 			}
-			if dt := *timed[j].ElapsedS - *timed[i].ElapsedS; dt > 0 && dt < best {
+			start := *timed[i].ElapsedS
+			if a, b := timed[i], timed[i+1]; b.DistM > a.DistM {
+				along := (timed[j].DistM - dist - a.DistM) / (b.DistM - a.DistM)
+				start += along * (*b.ElapsedS - *a.ElapsedS)
+			}
+			if dt := *timed[j].ElapsedS - start; dt > 0 && dt < best {
 				best = dt
 			}
 		}
