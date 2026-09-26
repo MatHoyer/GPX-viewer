@@ -77,6 +77,15 @@ func TestHikeRepository(t *testing.T) {
 	if _, err := hikes.GetRawGPX(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob raw err = %v", err)
 	}
+	if err := hikes.Rename(ctx, bob, h.ID, "Stolen"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("bob rename err = %v", err)
+	}
+	if err := hikes.Rename(ctx, alice, h.ID, "Renamed"); err != nil {
+		t.Errorf("alice rename err = %v", err)
+	}
+	if got, _ := hikes.GetByID(ctx, alice, h.ID); got == nil || got.Name != "Renamed" {
+		t.Errorf("after rename = %+v", got)
+	}
 	if err := hikes.Delete(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob delete err = %v", err)
 	}

@@ -41,6 +41,7 @@ import type { Hike } from './api'
 import { HikeList } from './HikeList'
 import type { PopupState } from './HikePopup'
 import { HikesMap } from './HikesMap'
+import { RenameDialog } from './RenameDialog'
 import { UploadDialog } from './UploadDialog'
 import { useDeleteHike, useHikes, useTracks } from './useHikes'
 
@@ -51,6 +52,7 @@ export function HomePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Hike | null>(null)
+  const [renaming, setRenaming] = useState<Hike | null>(null)
   const [popup, setPopup] = useState<PopupState | null>(null)
   const nonce = useRef(0)
 
@@ -120,6 +122,7 @@ export function HomePage() {
                 selectedId={selectedId}
                 onSelect={selectFromList}
                 onHover={setHoveredId}
+                onRename={setRenaming}
                 onDelete={setPendingDelete}
               />
             </SidebarGroupContent>
@@ -143,6 +146,8 @@ export function HomePage() {
           onPopupClose={closePopup}
         />
       </SidebarInset>
+
+      <RenameDialog hike={renaming} onClose={() => setRenaming(null)} />
 
       <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent>

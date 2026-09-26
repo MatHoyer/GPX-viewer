@@ -20,6 +20,7 @@ import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 
 import { useHike, useProfile } from './api'
+import { EditableTitle } from './EditableTitle'
 import { HikeStats } from './HikeStats'
 import { ProfileCharts } from './ProfileCharts'
 import { ReplayControls } from './ReplayControls'
@@ -70,7 +71,7 @@ export function HikePage() {
           <div className="min-w-0 flex-1">
             {hike.data ? (
               <>
-                <h1 className="truncate text-lg leading-tight font-semibold">{hike.data.name}</h1>
+                <EditableTitle hike={hike.data} />
                 {date && <p className="text-muted-foreground text-sm">{date}</p>}
               </>
             ) : (

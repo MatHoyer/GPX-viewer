@@ -4,6 +4,9 @@ import { api } from '@/lib/api'
 
 export type Bounds = [minLon: number, minLat: number, maxLon: number, maxLat: number]
 
+/** Mirrors the API limit on hike names. */
+export const MAX_NAME_LENGTH = 200
+
 export type Hike = {
   id: string
   name: string
@@ -37,6 +40,10 @@ export async function uploadHikes(files: File[]) {
   for (const f of files) body.append('files', f)
   const res = await api<{ results: UploadResult[] }>('/hikes', { method: 'POST', body })
   return res.results
+}
+
+export function renameHike({ id, name }: { id: string; name: string }) {
+  return api<Hike>(`/hikes/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) })
 }
 
 export function deleteHike(id: string) {

@@ -3,6 +3,7 @@ package hike
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -44,6 +45,15 @@ func (f *fakeRepo) Delete(_ context.Context, userID, id uuid.UUID) error {
 		}
 	}
 	return domain.ErrNotFound
+}
+
+func (f *fakeRepo) Rename(ctx context.Context, userID, id uuid.UUID, name string) error {
+	h, err := f.GetByID(ctx, userID, id)
+	if err != nil {
+		return err
+	}
+	h.Name = name
+	return nil
 }
 
 func (f *fakeRepo) GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([]byte, error) {
@@ -152,5 +162,34 @@ func TestProfileScopedToOwner(t *testing.T) {
 	}
 	if _, err := svc.Profile(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob profile err = %v", err)
+	}
+}
+
+func TestRename(t *testing.T) {
+	ctx := context.Background()
+	svc := NewService(&fakeRepo{}, fakeParser{res: &domain.ParsedTrack{Name: "Old", Segments: twoPoints}})
+	alice, bob := uuid.New(), uuid.New()
+	h, err := svc.Import(ctx, alice, "a.gpx", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := svc.Rename(ctx, alice, h.ID, "  Lac Blanc  ")
+	if err != nil || got.Name != "Lac Blanc" {
+		t.Fatalf("rename = %+v, %v", got, err)
+	}
+
+	var ve *domain.ValidationError
+	if _, err := svc.Rename(ctx, alice, h.ID, "   "); !errors.As(err, &ve) {
+		t.Errorf("empty name err = %v", err)
+	}
+	if _, err := svc.Rename(ctx, alice, h.ID, strings.Repeat("é", MaxNameLength+1)); !errors.As(err, &ve) {
+		t.Errorf("long name err = %v", err)
+	}
+	if _, err := svc.Rename(ctx, alice, h.ID, strings.Repeat("é", MaxNameLength)); err != nil {
+		t.Errorf("max length name err = %v", err)
+	}
+	if _, err := svc.Rename(ctx, bob, h.ID, "Mine now"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("bob rename err = %v", err)
 	}
 }

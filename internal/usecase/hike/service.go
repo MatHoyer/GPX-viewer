@@ -2,9 +2,11 @@ package hike
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -66,6 +68,24 @@ func (s *Service) List(ctx context.Context, userID uuid.UUID) ([]domain.Hike, er
 }
 
 func (s *Service) Get(ctx context.Context, userID, id uuid.UUID) (*domain.Hike, error) {
+	return s.hikes.GetByID(ctx, userID, id)
+}
+
+// MaxNameLength bounds hike names, in characters.
+const MaxNameLength = 200
+
+// Rename changes a hike's name and returns the updated hike.
+func (s *Service) Rename(ctx context.Context, userID, id uuid.UUID, name string) (*domain.Hike, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, &domain.ValidationError{Field: "name", Message: "must not be empty"}
+	}
+	if utf8.RuneCountInString(name) > MaxNameLength {
+		return nil, &domain.ValidationError{Field: "name", Message: fmt.Sprintf("must be at most %d characters", MaxNameLength)}
+	}
+	if err := s.hikes.Rename(ctx, userID, id, name); err != nil {
+		return nil, err
+	}
 	return s.hikes.GetByID(ctx, userID, id)
 }
 

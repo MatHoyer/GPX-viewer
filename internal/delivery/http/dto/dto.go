@@ -50,6 +50,11 @@ func NewHike(h *domain.Hike) Hike {
 	}
 }
 
+// UpdateHike is a partial update; nil fields are left unchanged.
+type UpdateHike struct {
+	Name *string `json:"name"`
+}
+
 type UploadResult struct {
 	Filename string `json:"filename"`
 	Hike     *Hike  `json:"hike,omitempty"`

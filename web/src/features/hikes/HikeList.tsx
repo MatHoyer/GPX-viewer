@@ -1,4 +1,12 @@
-import { Clock, MoveUpRight, Route, Trash2 } from 'lucide-react'
+import { Clock, MoreHorizontal, MoveUpRight, Pencil, Route, Trash2 } from 'lucide-react'
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 import {
   SidebarMenu,
@@ -18,10 +26,11 @@ type Props = {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onHover: (id: string | null) => void
+  onRename: (hike: Hike) => void
   onDelete: (hike: Hike) => void
 }
 
-export function HikeList({ hikes, isLoading, selectedId, onSelect, onHover, onDelete }: Props) {
+export function HikeList({ hikes, isLoading, selectedId, onSelect, onHover, onRename, onDelete }: Props) {
   if (isLoading) {
     return (
       <SidebarMenu>
@@ -76,9 +85,22 @@ export function HikeList({ hikes, isLoading, selectedId, onSelect, onHover, onDe
                 {date && <span className="text-muted-foreground text-xs">{date}</span>}
               </span>
             </SidebarMenuButton>
-            <SidebarMenuAction showOnHover onClick={() => onDelete(hike)} aria-label={`Delete ${hike.name}`}>
-              <Trash2 />
-            </SidebarMenuAction>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuAction showOnHover aria-label={`Actions for ${hike.name}`}>
+                  <MoreHorizontal />
+                </SidebarMenuAction>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="start">
+                <DropdownMenuItem onClick={() => onRename(hike)}>
+                  <Pencil /> Rename
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={() => onDelete(hike)}>
+                  <Trash2 /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         )
       })}

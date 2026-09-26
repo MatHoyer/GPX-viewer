@@ -22,6 +22,7 @@ type HikeService interface {
 	List(ctx context.Context, userID uuid.UUID) ([]domain.Hike, error)
 	Get(ctx context.Context, userID, id uuid.UUID) (*domain.Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
+	Rename(ctx context.Context, userID, id uuid.UUID, name string) (*domain.Hike, error)
 	Tracks(ctx context.Context, userID uuid.UUID) ([]domain.HikeTrack, error)
 	Profile(ctx context.Context, userID, id uuid.UUID) (*domain.Profile, error)
 }
@@ -118,6 +119,27 @@ func (h *HikeHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hike, err := h.svc.Get(r.Context(), middleware.UserFrom(r.Context()).ID, id)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dto.NewHike(hike))
+}
+
+func (h *HikeHandler) Update(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	var in dto.UpdateHike
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	if in.Name == nil {
+		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update"})
+		return
+	}
+	hike, err := h.svc.Rename(r.Context(), middleware.UserFrom(r.Context()).ID, id, *in.Name)
 	if err != nil {
 		writeError(w, r, err)
 		return

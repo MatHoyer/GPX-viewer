@@ -47,6 +47,7 @@ type HikeRepository interface {
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]Hike, error)
 	GetByID(ctx context.Context, userID, id uuid.UUID) (*Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
+	Rename(ctx context.Context, userID, id uuid.UUID, name string) error
 	GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([]byte, error)
 	// ListTracks returns geometries simplified with the given tolerance (degrees).
 	ListTracks(ctx context.Context, userID uuid.UUID, tolerance float64) ([]HikeTrack, error)

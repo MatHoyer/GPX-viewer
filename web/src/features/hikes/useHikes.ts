@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { deleteHike, getTracks, listHikes, uploadHikes } from './api'
+import { deleteHike, getTracks, listHikes, renameHike, uploadHikes } from './api'
 
 const keys = {
   all: ['hikes'] as const,
@@ -20,6 +20,14 @@ export function useUploadHikes() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: uploadHikes,
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
+  })
+}
+
+export function useRenameHike() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: renameHike,
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
   })
 }

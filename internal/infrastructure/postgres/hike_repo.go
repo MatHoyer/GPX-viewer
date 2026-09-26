@@ -85,6 +85,20 @@ func (r *HikeRepository) GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([
 	return m.GPXRaw, nil
 }
 
+func (r *HikeRepository) Rename(ctx context.Context, userID, id uuid.UUID, name string) error {
+	res := r.db.WithContext(ctx).
+		Model(&HikeModel{}).
+		Where("user_id = ? AND id = ?", userID, id).
+		Update("name", name)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func (r *HikeRepository) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	res := r.db.WithContext(ctx).Where("user_id = ? AND id = ?", userID, id).Delete(&HikeModel{})
 	if res.Error != nil {
