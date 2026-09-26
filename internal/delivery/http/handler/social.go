@@ -14,7 +14,6 @@ import (
 
 type SocialService interface {
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*social.Profile, error)
-	Search(ctx context.Context, viewer uuid.UUID, query string) ([]domain.User, error)
 	Connections(ctx context.Context, viewer uuid.UUID) ([]domain.Connection, error)
 	AddFriend(ctx context.Context, viewer, other uuid.UUID) (domain.Relation, error)
 	RemoveFriend(ctx context.Context, viewer, other uuid.UUID) error
@@ -44,15 +43,6 @@ func (h *SocialHandler) Profile(w http.ResponseWriter, r *http.Request) {
 		Relation:   string(p.Relation),
 		CanView:    p.CanView,
 	})
-}
-
-func (h *SocialHandler) Search(w http.ResponseWriter, r *http.Request) {
-	users, err := h.svc.Search(r.Context(), middleware.UserFrom(r.Context()).ID, r.URL.Query().Get("q"))
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, dto.NewPublicUsers(users))
 }
 
 func (h *SocialHandler) Friends(w http.ResponseWriter, r *http.Request) {

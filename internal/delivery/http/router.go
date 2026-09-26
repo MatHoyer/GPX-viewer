@@ -50,7 +50,6 @@ func NewRouter(d Deps) http.Handler {
 			r.Put("/hikes/{id}/participants/{userId}", d.Hikes.Tag)
 			r.Delete("/hikes/{id}/participants/{userId}", d.Hikes.Untag)
 
-			r.Get("/users/search", d.Social.Search)
 			r.Get("/friends", d.Social.Friends)
 			r.Put("/friends/{id}", d.Social.AddFriend)
 			r.Delete("/friends/{id}", d.Social.RemoveFriend)

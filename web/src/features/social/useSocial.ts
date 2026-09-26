@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   addFriend,
@@ -6,9 +6,7 @@ import {
   getUserProfile,
   getUserTracks,
   listUserHikes,
-  MIN_SEARCH_LENGTH,
   removeFriend,
-  searchUsers,
 } from './api'
 
 // Everything under one prefix: a friendship change can alter any of it.
@@ -17,7 +15,6 @@ const keys = {
   profile: (id: string) => ['social', 'profile', id] as const,
   hikes: (id: string) => ['social', 'hikes', id] as const,
   tracks: (id: string) => ['social', 'tracks', id] as const,
-  search: (q: string) => ['social', 'search', q] as const,
   friends: ['social', 'friends'] as const,
 }
 
@@ -31,15 +28,6 @@ export function useUserHikes(id: string, enabled: boolean) {
 
 export function useUserTracks(id: string, enabled: boolean) {
   return useQuery({ queryKey: keys.tracks(id), queryFn: () => getUserTracks(id), enabled })
-}
-
-export function useUserSearch(q: string) {
-  return useQuery({
-    queryKey: keys.search(q),
-    queryFn: () => searchUsers(q),
-    enabled: q.length >= MIN_SEARCH_LENGTH,
-    placeholderData: keepPreviousData,
-  })
 }
 
 export function useConnections() {

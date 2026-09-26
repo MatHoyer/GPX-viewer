@@ -90,20 +90,4 @@ func TestFriendshipRepository(t *testing.T) {
 	if _, err := friends.Get(ctx, alice, bob); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("after delete err = %v", err)
 	}
-
-	// Name search skips private users; the tag keeps other rows out.
-	found, err := users.Search(ctx, tag, alice, 10)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(found) != 1 || found[0].ID != carol {
-		t.Fatalf("search = %+v", found)
-	}
-	bobUser, _ := users.GetByID(ctx, bob)
-	if found, _ := users.Search(ctx, bobUser.Email, alice, 10); len(found) != 1 || found[0].ID != bob {
-		t.Fatalf("email search = %+v", found)
-	}
-	if found, _ := users.Search(ctx, "%", alice, 10); len(found) != 0 {
-		t.Fatalf("wildcard search matched %d users", len(found))
-	}
 }

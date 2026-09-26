@@ -22,9 +22,6 @@ export type Connections = {
   outgoing: PublicUser[]
 }
 
-/** Mirrors the API's minimum search length. */
-export const MIN_SEARCH_LENGTH = 2
-
 export function getUserProfile(id: string) {
   return api<UserProfile>(`/users/${id}`)
 }
@@ -35,10 +32,6 @@ export function listUserHikes(id: string) {
 
 export function getUserTracks(id: string) {
   return api<Tracks>(`/users/${id}/hikes/tracks`)
-}
-
-export function searchUsers(q: string) {
-  return api<PublicUser[]>(`/users/search?q=${encodeURIComponent(q)}`)
 }
 
 export function getConnections() {
