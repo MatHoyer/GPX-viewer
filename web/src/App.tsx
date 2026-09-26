@@ -55,8 +55,8 @@ export default function App() {
               {/* Shared with signed-out visitors when the owner's profile is public. */}
               <Route element={<AnyLayout />}>
                 <Route path="/u/:id" element={<UserProfilePage />} />
+                <Route path="/hikes/:id" element={<HikePage />} />
               </Route>
-              <Route path="/hikes/:id" element={<SessionResolved><HikePage /></SessionResolved>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
@@ -71,12 +71,6 @@ function RequireAuth({ children }: { children: ReactNode }) {
   const me = useMe()
   if (me.isPending) return null
   if (!me.data) return <Navigate to="/login" replace />
-  return children
-}
-
-function SessionResolved({ children }: { children: ReactNode }) {
-  const me = useMe()
-  if (me.isPending) return null
   return children
 }
 

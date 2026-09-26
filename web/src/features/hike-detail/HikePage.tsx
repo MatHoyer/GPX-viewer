@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
@@ -66,7 +67,7 @@ export function HikePage() {
   const notFound = [hike.error, profile.error].some((e) => e instanceof ApiError && e.status === 404)
   if (notFound) {
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center gap-4 p-4 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
         <p className="text-lg font-semibold">Hike not found</p>
         <Button asChild variant="outline">
           <Link to="/">
@@ -80,9 +81,12 @@ export function HikePage() {
   const date = formatDate(hike.data?.startedAt ?? null)
 
   return (
-    <div className="bg-muted/30 min-h-svh">
+    // The layout fixes the page height, so the page scrolls itself and the header sticks to its top.
+    <div className="bg-muted/30 h-full overflow-y-auto">
       <header className="bg-background/90 sticky top-0 z-20 border-b backdrop-blur">
         <div className="mx-auto flex max-w-screen-2xl items-center gap-3 px-4 py-3">
+          {/* Signed-out visitors get the page without the app sidebar. */}
+          {me.data && <SidebarTrigger />}
           {/* Return to whichever view (map or calendar) the hike was opened from. */}
           <Button
             variant="ghost"
