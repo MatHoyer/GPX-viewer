@@ -143,6 +143,16 @@ func (f *fakeRepo) SaveDerived(_ context.Context, id uuid.UUID, d domain.HikeDer
 	return nil
 }
 
+func (f *fakeRepo) ListTiles(_ context.Context, userID uuid.UUID) (map[uuid.UUID][]domain.Tile, error) {
+	out := map[uuid.UUID][]domain.Tile{}
+	for _, h := range f.hikes {
+		if h.UserID == userID {
+			out[h.ID] = h.Tiles
+		}
+	}
+	return out, nil
+}
+
 // ownerOnly lets users see their own hikes, plus those of anyone in shared.
 // Everyone in friends is friends with everyone else in it.
 type ownerOnly struct{ shared, friends map[uuid.UUID]bool }

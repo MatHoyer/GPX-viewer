@@ -2,6 +2,7 @@ package hike
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -123,3 +124,34 @@ func TestBestEfforts(t *testing.T) {
 }
 
 func abs(v int) int { return max(v, -v) }
+
+func TestTileAt(t *testing.T) {
+	for _, c := range []struct {
+		lon, lat float64
+		want     domain.Tile
+	}{
+		{6.8, 45.9, domain.Tile{X: 8501, Y: 5835}},
+		{0, 0, domain.Tile{X: 8192, Y: 8192}},
+		// Past the mercator limit and the antimeridian, clamped onto the grid.
+		{-180, 89, domain.Tile{X: 0, Y: 0}},
+		{180, -89, domain.Tile{X: 16383, Y: 16383}},
+	} {
+		if got := tileAt(c.lon, c.lat); got != c.want {
+			t.Errorf("tileAt(%v, %v) = %+v, want %+v", c.lon, c.lat, got, c.want)
+		}
+	}
+}
+
+func TestTilesFillGapsWithinSegments(t *testing.T) {
+	// Two fixes about 5.4 km apart, due east: every tile between them is crossed.
+	line := []domain.Sample{{Lon: 6.8, Lat: 45.9}, {Lon: 6.87, Lat: 45.9}}
+	want := []domain.Tile{{X: 8501, Y: 5835}, {X: 8502, Y: 5835}, {X: 8503, Y: 5835}, {X: 8504, Y: 5835}}
+	if got := tiles(line); !slices.Equal(got, want) {
+		t.Errorf("tiles = %+v", got)
+	}
+	// The same fixes in separate segments are a jump, not a walk.
+	line[1].Segment = 1
+	if got := tiles(line); len(got) != 2 {
+		t.Errorf("tiles across segments = %+v", got)
+	}
+}

@@ -3,6 +3,8 @@ package dto
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
 )
 
@@ -182,6 +184,24 @@ func NewBestEfforts(efforts []domain.BestEffort) []BestEffort {
 	out := make([]BestEffort, len(efforts))
 	for i, e := range efforts {
 		out[i] = BestEffort{DistanceM: e.DistanceM, DurationS: e.DurationS}
+	}
+	return out
+}
+
+// HikeTiles lists the zoom-14 tiles of each hike as [x, y] pairs.
+type HikeTiles struct {
+	Zoom  int                 `json:"zoom"`
+	Hikes map[string][][2]int `json:"hikes"`
+}
+
+func NewHikeTiles(tiles map[uuid.UUID][]domain.Tile) HikeTiles {
+	out := HikeTiles{Zoom: domain.TileZoom, Hikes: make(map[string][][2]int, len(tiles))}
+	for id, ts := range tiles {
+		xy := make([][2]int, len(ts))
+		for i, t := range ts {
+			xy[i] = [2]int{t.X, t.Y}
+		}
+		out.Hikes[id.String()] = xy
 	}
 	return out
 }

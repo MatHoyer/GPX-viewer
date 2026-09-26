@@ -4,13 +4,14 @@ import (
 	"context"
 	"log/slog"
 	"math"
+	"slices"
 
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
 )
 
 // DerivedVersion is bumped whenever derive computes something new, so stored
 // hikes get recomputed by RefreshDerived.
-const DerivedVersion = 2
+const DerivedVersion = 3
 
 const refreshBatchSize = 20
 
@@ -25,6 +26,7 @@ func derive(parsed *domain.ParsedTrack, samples []domain.Sample) domain.HikeDeri
 	s := p.Summary
 	d.MinEleM, d.MaxEleM = s.MinEle, s.MaxEle
 	d.BestEfforts = bestEfforts(p.Points)
+	d.Tiles = tiles(samples)
 	if s.MovingS != nil {
 		v := int64(math.Round(*s.MovingS))
 		d.MovingS = &v
@@ -75,6 +77,50 @@ func bestEfforts(pts []domain.ProfilePoint) []domain.BestEffort {
 		out = append(out, domain.BestEffort{DistanceM: d, DurationS: int(math.Round(best))})
 	}
 	return out
+}
+
+// tileStepM is how far apart points are checked along a track; well under a
+// tile's width so no crossed tile is missed.
+const tileStepM = 100
+
+// tiles returns the distinct TileZoom tiles a track passes through, sorted.
+func tiles(samples []domain.Sample) []domain.Tile {
+	seen := map[domain.Tile]bool{}
+	for i, s := range samples {
+		seen[tileAt(s.Lon, s.Lat)] = true
+		if i == 0 || samples[i-1].Segment != s.Segment {
+			continue
+		}
+		a := samples[i-1]
+		// Fill in long straight stretches between fixes.
+		n := int(haversine(a.Lat, a.Lon, s.Lat, s.Lon) / tileStepM)
+		for k := 1; k <= n; k++ {
+			t := float64(k) / float64(n+1)
+			seen[tileAt(a.Lon+(s.Lon-a.Lon)*t, a.Lat+(s.Lat-a.Lat)*t)] = true
+		}
+	}
+	out := make([]domain.Tile, 0, len(seen))
+	for t := range seen {
+		out = append(out, t)
+	}
+	slices.SortFunc(out, func(a, b domain.Tile) int {
+		if a.X != b.X {
+			return a.X - b.X
+		}
+		return a.Y - b.Y
+	})
+	return out
+}
+
+// tileAt is the web mercator tile containing a WGS84 position.
+func tileAt(lon, lat float64) domain.Tile {
+	n := math.Exp2(domain.TileZoom)
+	lat = max(-85.0511, min(85.0511, lat))
+	r := lat * math.Pi / 180
+	x := int(math.Floor((lon + 180) / 360 * n))
+	y := int(math.Floor((1 - math.Log(math.Tan(r)+1/math.Cos(r))/math.Pi) / 2 * n))
+	last := int(n) - 1
+	return domain.Tile{X: max(0, min(last, x)), Y: max(0, min(last, y))}
 }
 
 // deriveRaw parses a stored GPX file and derives its statistics.

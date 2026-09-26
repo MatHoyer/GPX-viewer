@@ -69,8 +69,22 @@ func (r *HikeRepository) Create(ctx context.Context, h *domain.Hike) error {
 		if err := tx.Omit(clause.Associations).Create(&m).Error; err != nil {
 			return err
 		}
-		return createBestEfforts(tx, h.ID, h.BestEfforts)
+		if err := createBestEfforts(tx, h.ID, h.BestEfforts); err != nil {
+			return err
+		}
+		return createTiles(tx, h.ID, h.Tiles)
 	})
+}
+
+func createTiles(tx *gorm.DB, id uuid.UUID, tiles []domain.Tile) error {
+	if len(tiles) == 0 {
+		return nil
+	}
+	ms := make([]HikeTileModel, len(tiles))
+	for i, t := range tiles {
+		ms[i] = HikeTileModel{HikeID: id, X: t.X, Y: t.Y}
+	}
+	return tx.CreateInBatches(&ms, 1000).Error
 }
 
 func createBestEfforts(tx *gorm.DB, id uuid.UUID, efforts []domain.BestEffort) error {
@@ -322,6 +336,28 @@ func (r *HikeRepository) SaveDerived(ctx context.Context, id uuid.UUID, d domain
 		if err := tx.Where("hike_id = ?", id).Delete(&HikeBestEffortModel{}).Error; err != nil {
 			return err
 		}
-		return createBestEfforts(tx, id, d.BestEfforts)
+		if err := createBestEfforts(tx, id, d.BestEfforts); err != nil {
+			return err
+		}
+		if err := tx.Where("hike_id = ?", id).Delete(&HikeTileModel{}).Error; err != nil {
+			return err
+		}
+		return createTiles(tx, id, d.Tiles)
 	})
+}
+
+func (r *HikeRepository) ListTiles(ctx context.Context, userID uuid.UUID) (map[uuid.UUID][]domain.Tile, error) {
+	var ms []HikeTileModel
+	err := r.db.WithContext(ctx).
+		Where("hike_id IN (SELECT id FROM hikes WHERE "+ownedOrTagged+")", userID, userID).
+		Order("hike_id, x, y").
+		Find(&ms).Error
+	if err != nil {
+		return nil, err
+	}
+	out := map[uuid.UUID][]domain.Tile{}
+	for _, m := range ms {
+		out[m.HikeID] = append(out[m.HikeID], domain.Tile{X: m.X, Y: m.Y})
+	}
+	return out, nil
 }

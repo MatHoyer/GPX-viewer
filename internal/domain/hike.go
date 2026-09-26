@@ -30,6 +30,16 @@ type HikeDerived struct {
 	// BestEfforts are the fastest times over standard distances the hike
 	// covers, shortest distance first. Empty without timestamps.
 	BestEfforts []BestEffort
+	// Tiles are the zoom-14 map tiles the track passes through.
+	Tiles []Tile
+}
+
+// TileZoom is the zoom level of explored tiles (about 2.4 km at the equator).
+const TileZoom = 14
+
+// Tile is a slippy map tile at TileZoom.
+type Tile struct {
+	X, Y int
 }
 
 // BestEffort is the shortest time a hike took to cover DistanceM.
@@ -101,4 +111,6 @@ type HikeRepository interface {
 	// version, with only their ID and raw GPX loaded.
 	ListOutdated(ctx context.Context, version, limit int) ([]Hike, error)
 	SaveDerived(ctx context.Context, id uuid.UUID, d HikeDerived, version int) error
+	// ListTiles returns the tiles of each hike a user owns or is tagged on, by hike.
+	ListTiles(ctx context.Context, userID uuid.UUID) (map[uuid.UUID][]Tile, error)
 }

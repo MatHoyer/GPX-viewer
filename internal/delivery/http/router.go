@@ -63,6 +63,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/hikes/tracks", d.Hikes.Tracks)
 			r.Get("/hikes/export", d.Hikes.Export)
 			r.Get("/labels", d.Hikes.Labels)
+			r.Get("/tiles", d.Hikes.Tiles)
 			r.Patch("/hikes/{id}", d.Hikes.Update)
 			r.Delete("/hikes/{id}", d.Hikes.Delete)
 			r.Put("/hikes/{id}/participants/{userId}", d.Hikes.Tag)

@@ -31,6 +31,7 @@ type HikeService interface {
 	Update(ctx context.Context, userID, id uuid.UUID, u domain.HikeUpdate) (*domain.Hike, error)
 	Labels(ctx context.Context, userID uuid.UUID) ([]string, error)
 	Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error)
+	Tiles(ctx context.Context, viewer, owner uuid.UUID) (map[uuid.UUID][]domain.Tile, error)
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error)
 	GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []byte, error)
 	Export(ctx context.Context, userID uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error
@@ -288,6 +289,17 @@ func (h *HikeHandler) Labels(w http.ResponseWriter, r *http.Request) {
 		labels = []string{}
 	}
 	writeJSON(w, http.StatusOK, labels)
+}
+
+// Tiles returns the zoom-14 tiles each of the signed-in user's hikes passes through.
+func (h *HikeHandler) Tiles(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r.Context()).ID
+	tiles, err := h.svc.Tiles(r.Context(), user, user)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dto.NewHikeTiles(tiles))
 }
 
 // Tracks returns the signed-in user's simplified hike geometries.

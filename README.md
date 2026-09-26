@@ -62,7 +62,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 - Avatars are [blobatars](https://github.com/Alain00/blobatar) generated from the user id; there is no picture upload.
 - A hike is visible to whoever may see its owner's hikes or those of a tagged participant; anything else answers 404.
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.
-- Stats derived from the GPX (elevation loss, min/max elevation, moving time, and best efforts: the fastest 1, 5, 10, 21.1 and 42.2 km in `hike_best_efforts`) are computed on import and stamped with `derived_version`; on startup a background job recomputes hikes stored by an older version (bump `hike.DerivedVersion` when adding one).
+- Stats derived from the GPX (elevation loss, min/max elevation, moving time, and best efforts: the fastest 1, 5, 10, 21.1 and 42.2 km in `hike_best_efforts`, and the zoom-14 tiles crossed in `hike_tiles`) are computed on import and stamped with `derived_version`; on startup a background job recomputes hikes stored by an older version (bump `hike.DerivedVersion` when adding one).
 - `GET /api/hikes/tracks` returns a simplified GeoJSON `FeatureCollection` (`ST_SimplifyPreserveTopology`) for the map.
 
 ### API
@@ -80,6 +80,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/hikes/tracks` | GeoJSON of all tracks |
 | GET | `/api/hikes/export` | zip of the original GPX of every hike you own, named `YYYY-MM-DD name.gpx` |
 | GET | `/api/labels` | labels on your hikes, most used first |
+| GET | `/api/tiles` | `{zoom, hikes: {id: [[x, y], …]}}`: the zoom-14 map tiles each of your hikes passes through |
 | GET | `/api/hikes/{id}` | one hike with `owner` and `participants`; readable signed out when shared publicly |
 | GET | `/api/hikes/{id}/gpx` | the original GPX file, for whoever can see the hike |
 | GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |

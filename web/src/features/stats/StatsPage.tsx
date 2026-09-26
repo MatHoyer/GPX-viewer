@@ -11,7 +11,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useMe } from '@/features/auth/useAuth'
 import { FilterBar } from '@/features/hikes/FilterBar'
 import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
-import { useHikes } from '@/features/hikes/useHikes'
+import { useHikes, useTiles } from '@/features/hikes/useHikes'
+import { exploredTiles, maxSquare } from '@/features/map/tiles'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 
 import { personalRecords } from './records'
@@ -57,6 +58,11 @@ export function StatsPage() {
   const current = useMemo(() => totals(year === null ? shown : inYear(shown, year)), [shown, year])
   const previous = useMemo(() => (year === null ? null : totals(inYear(shown, year - 1))), [shown, year])
   const streak = useMemo(() => longestWeekStreak(year === null ? shown : inYear(shown, year)), [shown, year])
+  const tiles = useTiles()
+  const exploration = useMemo(() => {
+    const explored = exploredTiles(tiles.data, (year === null ? shown : inYear(shown, year)).map((h) => h.id))
+    return { count: explored.size, square: maxSquare(explored)?.size ?? 0 }
+  }, [tiles.data, shown, year])
   const records = useMemo(() => personalRecords(year === null ? shown : inYear(shown, year)), [shown, year])
   const bars = useMemo(
     () =>
@@ -99,7 +105,13 @@ export function StatsPage() {
             <p className="text-muted-foreground py-12 text-center text-sm">Import some hikes to see your stats.</p>
           ) : (
             <>
-              <Tiles current={current} previous={previous} prevYear={year !== null ? year - 1 : null} streak={streak} />
+              <Tiles
+                current={current}
+                previous={previous}
+                prevYear={year !== null ? year - 1 : null}
+                streak={streak}
+                exploration={tiles.data ? exploration : null}
+              />
               <section className="bg-card space-y-3 rounded-xl border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-sm font-medium">{year === null ? 'By year' : `By month in ${year}`}</h2>
@@ -156,11 +168,14 @@ function Tiles({
   previous,
   prevYear,
   streak,
+  exploration,
 }: {
   current: Totals
   previous: Totals | null
   prevYear: number | null
   streak: number
+  /** Explored zoom-14 tiles and the side of the largest full square of them; null while loading. */
+  exploration: { count: number; square: number } | null
 }) {
   const tiles = [
     { label: 'Hikes', value: String(current.count), metric: 'count' as const },
@@ -169,9 +184,15 @@ function Tiles({
     { label: 'Time', value: formatDuration(current.timeS), metric: 'time' as const },
     { label: 'Active days', value: String(current.days) },
     { label: 'Longest streak', value: `${streak} ${streak === 1 ? 'week' : 'weeks'}` },
+    ...(exploration
+      ? [
+          { label: 'Explored tiles', value: exploration.count.toLocaleString() },
+          { label: 'Max square', value: exploration.square ? `${exploration.square}×${exploration.square}` : '—' },
+        ]
+      : []),
   ]
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {tiles.map((t) => {
         const delta =
           previous && t.metric ? change(metricValue(current, t.metric), metricValue(previous, t.metric)) : null
