@@ -99,7 +99,9 @@ func computeSpeeds(pts []domain.ProfilePoint) {
 		for hi+1 < len(timed) && *pts[timed[hi+1]].ElapsedS <= t+speedWindowS {
 			hi++
 		}
-		a, b := pts[timed[lo]], pts[timed[hi]]
+		// Sparse recordings (a fix every 15 s or more) leave the window empty,
+		// so always reach at least the adjacent points.
+		a, b := pts[timed[min(lo, max(0, k-1))]], pts[timed[max(hi, min(len(timed)-1, k+1))]]
 		dt := *b.ElapsedS - *a.ElapsedS
 		if dt <= 0 {
 			continue

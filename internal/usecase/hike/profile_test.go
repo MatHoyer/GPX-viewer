@@ -56,6 +56,15 @@ func TestBuildProfileDistanceAndTime(t *testing.T) {
 	}
 }
 
+func TestBuildProfileSparseRecordingHasSpeed(t *testing.T) {
+	p := BuildProfile(line(5, 30), 0) // one fix every 30 s, wider than the window
+	for i, pt := range p.Points {
+		if pt.SpeedMS == nil || !near(*pt.SpeedMS, 11.12/30, 0.01) {
+			t.Errorf("speed[%d] = %v", i, pt.SpeedMS)
+		}
+	}
+}
+
 func TestBuildProfileSegmentGapIsNotDistance(t *testing.T) {
 	s := line(4, 10)
 	s[2].Segment, s[3].Segment = 1, 1
