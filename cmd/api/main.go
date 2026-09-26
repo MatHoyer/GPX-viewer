@@ -16,6 +16,7 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/gpx"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/postgres"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/security"
+	"github.com/MatHoyer/gpx-viewer/internal/usecase/account"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/auth"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/hike"
 	"github.com/MatHoyer/gpx-viewer/web"
@@ -45,8 +46,9 @@ func run() error {
 		return err
 	}
 
+	users := postgres.NewUserRepository(db)
 	authSvc, err := auth.NewService(
-		postgres.NewUserRepository(db),
+		users,
 		postgres.NewSessionRepository(db),
 		security.NewBcryptHasher(0),
 		cfg.SessionTTL,
@@ -54,12 +56,14 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	accountSvc := account.NewService(users)
 	hikeSvc := hike.NewService(postgres.NewHikeRepository(db), gpx.NewParser())
 
 	go purgeSessions(ctx, authSvc)
 
 	router := httpdelivery.NewRouter(httpdelivery.Deps{
 		Auth:          handler.NewAuthHandler(authSvc, cfg.CookieSecure),
+		Account:       handler.NewAccountHandler(accountSvc, account.MaxAvatarBytes),
 		Hikes:         handler.NewHikeHandler(hikeSvc, cfg.MaxUploadMB<<20),
 		Authenticator: authSvc,
 		Static:        web.Dist(),

@@ -1,17 +1,7 @@
-import { CalendarDays, LogOut, Map as MapIcon, Monitor, Moon, MountainSnow, Sun } from 'lucide-react'
-import { useTheme } from 'next-themes'
+import { CalendarDays, Map as MapIcon, MountainSnow } from 'lucide-react'
 import { useMemo } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Sidebar,
   SidebarContent,
@@ -27,7 +17,7 @@ import {
   SidebarProvider,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { useLogout, useMe } from '@/features/auth/useAuth'
+import { NavUser } from '@/features/account/NavUser'
 import { UploadDialog } from '@/features/hikes/UploadDialog'
 import { useHikes } from '@/features/hikes/useHikes'
 import { formatDistance, formatElevation } from '@/lib/format'
@@ -63,7 +53,7 @@ export function AppLayout() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <AccountMenu />
+          <NavUser />
         </SidebarFooter>
       </Sidebar>
 
@@ -124,37 +114,5 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dt className="text-muted-foreground text-[10px] tracking-wide uppercase">{label}</dt>
       <dd className="text-sm font-medium tabular-nums">{value}</dd>
     </div>
-  )
-}
-
-function AccountMenu() {
-  const me = useMe()
-  const logout = useLogout()
-  const { setTheme } = useTheme()
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start truncate">
-          {me.data?.email}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="start" className="w-56">
-        <DropdownMenuLabel>Theme</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => setTheme('light')}>
-          <Sun /> Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('dark')}>
-          <Moon /> Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('system')}>
-          <Monitor /> System
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => logout.mutate()}>
-          <LogOut /> Sign out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }

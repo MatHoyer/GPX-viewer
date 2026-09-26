@@ -46,5 +46,5 @@ func Migrate(db *gorm.DB) error {
 	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS postgis").Error; err != nil {
 		return fmt.Errorf("enable postgis: %w", err)
 	}
-	return db.AutoMigrate(&UserModel{}, &SessionModel{}, &HikeModel{})
+	return db.AutoMigrate(&UserModel{}, &UserAvatarModel{}, &SessionModel{}, &HikeModel{})
 }

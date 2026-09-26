@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ProfilePage } from '@/features/account/ProfilePage'
 import { AuthPage } from '@/features/auth/AuthPage'
 import { useMe } from '@/features/auth/useAuth'
 import { CalendarPage } from '@/features/calendar/CalendarPage'
@@ -34,6 +35,7 @@ export default function App() {
               <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route path="/" element={<MapPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
               </Route>
               <Route path="/hikes/:id" element={<RequireAuth><HikePage /></RequireAuth>} />
               <Route path="*" element={<Navigate to="/" replace />} />

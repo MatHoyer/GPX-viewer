@@ -56,7 +56,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 ### Data
 
-- `users`, `sessions` (server-side, only the SHA-256 of the token is stored), `hikes`.
+- `users`, `user_avatars` (uploaded profile pictures, kept apart so auth lookups never load image bytes), `sessions` (server-side, only the SHA-256 of the token is stored), `hikes`.
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.
 - `GET /api/hikes/tracks` returns a simplified GeoJSON `FeatureCollection` (`ST_SimplifyPreserveTopology`) for the map.
 
@@ -67,7 +67,11 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | POST | `/api/auth/register` | `{email, password}`, starts a session |
 | POST | `/api/auth/login` | `{email, password}`, sets the `session` cookie |
 | POST | `/api/auth/logout` | |
-| GET | `/api/auth/me` | current user |
+| GET | `/api/auth/me` | current user (`name`, `avatarUrl` or null, `createdAt`) |
+| PATCH | `/api/me` | `{name}` to set the display name (empty clears it) |
+| GET | `/api/me/avatar` | uploaded profile picture |
+| PUT | `/api/me/avatar` | multipart `avatar` (PNG, JPEG, WebP or GIF, max 2 MB) |
+| DELETE | `/api/me/avatar` | remove the picture; the app falls back to a [blobatar](https://github.com/Alain00/blobatar) |
 | GET | `/api/hikes` | hikes with stats and bounds |
 | POST | `/api/hikes` | multipart `files` (one or more GPX), per-file results |
 | GET | `/api/hikes/tracks` | GeoJSON of all tracks |

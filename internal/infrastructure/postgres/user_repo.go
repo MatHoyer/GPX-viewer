@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
 )
@@ -17,7 +18,7 @@ type UserRepository struct {
 func NewUserRepository(db *gorm.DB) *UserRepository { return &UserRepository{db: db} }
 
 func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
-	m := UserModel{ID: u.ID, Email: u.Email, PasswordHash: u.PasswordHash, CreatedAt: u.CreatedAt}
+	m := UserModel{ID: u.ID, Email: u.Email, Name: u.Name, PasswordHash: u.PasswordHash, CreatedAt: u.CreatedAt}
 	err := r.db.WithContext(ctx).Create(&m).Error
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
 		return domain.ErrEmailTaken
@@ -39,6 +40,48 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 		return nil, mapErr(err)
 	}
 	return m.toDomain(), nil
+}
+
+func (r *UserRepository) UpdateName(ctx context.Context, id uuid.UUID, name string) error {
+	res := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ?", id).Update("name", name)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) SetAvatar(ctx context.Context, id uuid.UUID, a *domain.Avatar) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&UserModel{}).Where("id = ?", id).Update("avatar_updated_at", a.UpdatedAt)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return domain.ErrNotFound
+		}
+		m := UserAvatarModel{UserID: id, ContentType: a.ContentType, Data: a.Data, UpdatedAt: a.UpdatedAt}
+		return tx.Clauses(clause.OnConflict{UpdateAll: true}).Create(&m).Error
+	})
+}
+
+func (r *UserRepository) DeleteAvatar(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&UserAvatarModel{}, "user_id = ?", id).Error; err != nil {
+			return err
+		}
+		return tx.Model(&UserModel{}).Where("id = ?", id).Update("avatar_updated_at", nil).Error
+	})
+}
+
+func (r *UserRepository) GetAvatar(ctx context.Context, id uuid.UUID) (*domain.Avatar, error) {
+	var m UserAvatarModel
+	if err := r.db.WithContext(ctx).First(&m, "user_id = ?", id).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	return &domain.Avatar{ContentType: m.ContentType, Data: m.Data, UpdatedAt: m.UpdatedAt}, nil
 }
 
 func mapErr(err error) error {

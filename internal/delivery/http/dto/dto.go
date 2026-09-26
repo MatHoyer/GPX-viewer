@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
@@ -14,10 +15,25 @@ type Credentials struct {
 type User struct {
 	ID    string `json:"id"`
 	Email string `json:"email"`
+	Name  string `json:"name"`
+	// AvatarURL is null when the user has not uploaded an avatar.
+	AvatarURL *string   `json:"avatarUrl"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 func NewUser(u *domain.User) User {
-	return User{ID: u.ID.String(), Email: u.Email}
+	out := User{ID: u.ID.String(), Email: u.Email, Name: u.Name, CreatedAt: u.CreatedAt}
+	if u.AvatarUpdatedAt != nil {
+		// Versioned so the image can be cached forever and still refresh on change.
+		url := "/api/me/avatar?v=" + strconv.FormatInt(u.AvatarUpdatedAt.UnixMilli(), 10)
+		out.AvatarURL = &url
+	}
+	return out
+}
+
+// UpdateAccount is a partial update; nil fields are left unchanged.
+type UpdateAccount struct {
+	Name *string `json:"name"`
 }
 
 type Error struct {

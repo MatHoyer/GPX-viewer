@@ -3,6 +3,11 @@ import { api, ApiError } from '@/lib/api'
 export type User = {
   id: string
   email: string
+  /** Empty when the user has not set a display name. */
+  name: string
+  /** Null when the user has not uploaded a picture. */
+  avatarUrl: string | null
+  createdAt: string
 }
 
 export type Credentials = {
