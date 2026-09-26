@@ -42,35 +42,14 @@ func TestUserRepositoryAccount(t *testing.T) {
 		t.Fatalf("unknown user: got %v", err)
 	}
 
-	if _, err := users.GetAvatar(ctx, u.ID); !errors.Is(err, domain.ErrNotFound) {
-		t.Fatalf("no avatar yet: got %v", err)
-	}
-	// Setting twice exercises the upsert.
-	for _, data := range [][]byte{[]byte("first"), []byte("second")} {
-		a := &domain.Avatar{ContentType: "image/png", Data: data, UpdatedAt: time.Now().Truncate(time.Microsecond)}
-		if err := users.SetAvatar(ctx, u.ID, a); err != nil {
-			t.Fatal(err)
-		}
-	}
-	a, err := users.GetAvatar(ctx, u.ID)
-	if err != nil || string(a.Data) != "second" {
-		t.Fatalf("avatar = %+v, %v", a, err)
+	if err := users.UpdateVisibility(ctx, u.ID, domain.VisibilityFriends); err != nil {
+		t.Fatal(err)
 	}
 	got, err := users.GetByID(ctx, u.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Name != "Alain" || got.AvatarUpdatedAt == nil || !got.AvatarUpdatedAt.Equal(a.UpdatedAt) {
+	if got.Name != "Alain" || got.Visibility != domain.VisibilityFriends {
 		t.Fatalf("user = %+v", got)
-	}
-
-	if err := users.DeleteAvatar(ctx, u.ID); err != nil {
-		t.Fatal(err)
-	}
-	if got, _ = users.GetByID(ctx, u.ID); got.AvatarUpdatedAt != nil {
-		t.Fatal("AvatarUpdatedAt not cleared")
-	}
-	if _, err := users.GetAvatar(ctx, u.ID); !errors.Is(err, domain.ErrNotFound) {
-		t.Fatalf("avatar after delete: got %v", err)
 	}
 }

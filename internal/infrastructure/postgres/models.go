@@ -9,40 +9,26 @@ import (
 )
 
 type UserModel struct {
-	ID              uuid.UUID `gorm:"type:uuid;primaryKey"`
-	Email           string    `gorm:"not null;uniqueIndex"`
-	Name            string    `gorm:"not null;default:''"`
-	PasswordHash    string    `gorm:"not null"`
-	Visibility      string    `gorm:"not null;default:private"`
-	AvatarUpdatedAt *time.Time
-	CreatedAt       time.Time `gorm:"not null"`
+	ID           uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Email        string    `gorm:"not null;uniqueIndex"`
+	Name         string    `gorm:"not null;default:''"`
+	PasswordHash string    `gorm:"not null"`
+	Visibility   string    `gorm:"not null;default:private"`
+	CreatedAt    time.Time `gorm:"not null"`
 }
 
 func (UserModel) TableName() string { return "users" }
 
 func (m UserModel) toDomain() *domain.User {
 	return &domain.User{
-		ID:              m.ID,
-		Email:           m.Email,
-		Name:            m.Name,
-		PasswordHash:    m.PasswordHash,
-		Visibility:      domain.Visibility(m.Visibility),
-		AvatarUpdatedAt: m.AvatarUpdatedAt,
-		CreatedAt:       m.CreatedAt,
+		ID:           m.ID,
+		Email:        m.Email,
+		Name:         m.Name,
+		PasswordHash: m.PasswordHash,
+		Visibility:   domain.Visibility(m.Visibility),
+		CreatedAt:    m.CreatedAt,
 	}
 }
-
-// UserAvatarModel lives in its own table so user lookups (one per authenticated
-// request) never load image bytes.
-type UserAvatarModel struct {
-	UserID      uuid.UUID `gorm:"type:uuid;primaryKey"`
-	User        UserModel `gorm:"constraint:OnDelete:CASCADE"`
-	ContentType string    `gorm:"not null"`
-	Data        []byte    `gorm:"type:bytea;not null"`
-	UpdatedAt   time.Time `gorm:"not null;autoUpdateTime:false"`
-}
-
-func (UserAvatarModel) TableName() string { return "user_avatars" }
 
 // FriendshipModel is a friend request; AcceptedAt is set once accepted. A
 // unique index on the unordered pair (see Migrate) allows one row per pair.

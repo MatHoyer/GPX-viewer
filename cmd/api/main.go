@@ -65,7 +65,7 @@ func run() error {
 
 	router := httpdelivery.NewRouter(httpdelivery.Deps{
 		Auth:          handler.NewAuthHandler(authSvc, cfg.CookieSecure),
-		Account:       handler.NewAccountHandler(accountSvc, account.MaxAvatarBytes),
+		Account:       handler.NewAccountHandler(accountSvc),
 		Hikes:         handler.NewHikeHandler(hikeSvc, cfg.MaxUploadMB<<20),
 		Social:        handler.NewSocialHandler(socialSvc),
 		Authenticator: authSvc,

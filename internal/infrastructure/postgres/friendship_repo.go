@@ -67,7 +67,7 @@ func (r *FriendshipRepository) ListConnections(ctx context.Context, userID uuid.
 	}
 	err := r.db.WithContext(ctx).
 		Table("friendships f").
-		Select("u.id, u.email, u.name, u.visibility, u.avatar_updated_at, u.created_at, "+
+		Select("u.id, u.email, u.name, u.visibility, u.created_at, "+
 			"f.requester_id, f.accepted_at, COALESCE(f.accepted_at, f.created_at) AS since").
 		Joins("JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END", userID).
 		Where("f.requester_id = ? OR f.addressee_id = ?", userID, userID).

@@ -46,10 +46,17 @@ func Migrate(db *gorm.DB) error {
 	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS postgis").Error; err != nil {
 		return fmt.Errorf("enable postgis: %w", err)
 	}
-	if err := db.AutoMigrate(&UserModel{}, &UserAvatarModel{}, &SessionModel{}, &HikeModel{}, &FriendshipModel{}, &HikeParticipantModel{}); err != nil {
+	if err := db.AutoMigrate(&UserModel{}, &SessionModel{}, &HikeModel{}, &FriendshipModel{}, &HikeParticipantModel{}); err != nil {
 		return err
 	}
 	// One friendship per pair, whichever side sent the request.
-	return db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_pair
-		ON friendships (LEAST(requester_id, addressee_id), GREATEST(requester_id, addressee_id))`).Error
+	if err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_pair
+		ON friendships (LEAST(requester_id, addressee_id), GREATEST(requester_id, addressee_id))`).Error; err != nil {
+		return err
+	}
+	// Leftovers from uploaded profile pictures, replaced by generated blobatars.
+	if err := db.Exec("DROP TABLE IF EXISTS user_avatars").Error; err != nil {
+		return err
+	}
+	return db.Exec("ALTER TABLE users DROP COLUMN IF EXISTS avatar_updated_at").Error
 }

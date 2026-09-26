@@ -24,7 +24,7 @@ const hikeOrder = "started_at DESC NULLS LAST, created_at DESC"
 // withOwner loads each hike's owner, minus their credentials.
 func withOwner(db *gorm.DB) *gorm.DB {
 	return db.Preload("User", func(db *gorm.DB) *gorm.DB {
-		return db.Select("id, email, name, visibility, avatar_updated_at, created_at")
+		return db.Select("id, email, name, visibility, created_at")
 	})
 }
 
@@ -161,7 +161,7 @@ func (r *HikeRepository) ListTracks(ctx context.Context, userID uuid.UUID, toler
 func (r *HikeRepository) ListParticipants(ctx context.Context, hikeID uuid.UUID) ([]domain.User, error) {
 	var ms []UserModel
 	err := r.db.WithContext(ctx).
-		Select("users.id, users.email, users.name, users.visibility, users.avatar_updated_at, users.created_at").
+		Select("users.id, users.email, users.name, users.visibility, users.created_at").
 		Joins("JOIN hike_participants p ON p.user_id = users.id").
 		Where("p.hike_id = ?", hikeID).
 		Order("p.created_at").
