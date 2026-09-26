@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { deleteHike, getTracks, listHikes, listLabels, updateHike, uploadHikes } from './api'
+import { deleteHike, getTiles, getTracks, listHikes, listLabels, updateHike, uploadHikes } from './api'
 
 const keys = {
   all: ['hikes'] as const,
   list: ['hikes', 'list'] as const,
   tracks: ['hikes', 'tracks'] as const,
   labels: ['hikes', 'labels'] as const,
+  tiles: ['hikes', 'tiles'] as const,
 }
 
 export function useHikes() {
@@ -15,6 +16,11 @@ export function useHikes() {
 
 export function useTracks() {
   return useQuery({ queryKey: keys.tracks, queryFn: getTracks })
+}
+
+/** The signed-in user's explored tiles by hike; fetched only when `enabled`. */
+export function useTiles(enabled = true) {
+  return useQuery({ queryKey: keys.tiles, queryFn: getTiles, enabled })
 }
 
 export function useLabels() {

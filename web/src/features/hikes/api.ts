@@ -1,6 +1,7 @@
 import type * as GeoJSON from 'geojson'
 
 import type { Person } from '@/features/account/displayName'
+import type { HikeTiles } from '@/features/map/tiles'
 import { api } from '@/lib/api'
 
 export type Bounds = [minLon: number, minLat: number, maxLon: number, maxLat: number]
@@ -52,6 +53,10 @@ export type UploadResult = {
 
 export function listHikes() {
   return api<Hike[]>('/hikes')
+}
+
+export function getTiles() {
+  return api<HikeTiles>('/tiles')
 }
 
 export function getTracks() {

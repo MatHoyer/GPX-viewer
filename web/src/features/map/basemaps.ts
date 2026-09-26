@@ -50,9 +50,12 @@ type MapViewState = {
   terrain: boolean
   /** Density view on maps of many hikes. */
   heatmap: boolean
+  /** Explored tiles on the user's own map. */
+  tiles: boolean
   setBasemap: (basemap: Basemap) => void
   setTerrain: (terrain: boolean) => void
   setHeatmap: (heatmap: boolean) => void
+  setTiles: (tiles: boolean) => void
 }
 
 // localStorage can throw (private mode, blocked storage); fall back to in-memory.
@@ -78,14 +81,16 @@ export const useMapView = create<MapViewState>()(
       basemap: 'streets',
       terrain: false,
       heatmap: false,
+      tiles: false,
       setBasemap: (basemap) => set({ basemap }),
       setTerrain: (terrain) => set({ terrain }),
       setHeatmap: (heatmap) => set({ heatmap }),
+      setTiles: (tiles) => set({ tiles }),
     }),
     {
       name: 'map-view',
       storage: safeStorage,
-      partialize: ({ basemap, terrain, heatmap }) => ({ basemap, terrain, heatmap }),
+      partialize: ({ basemap, terrain, heatmap, tiles }) => ({ basemap, terrain, heatmap, tiles }),
     },
   ),
 )

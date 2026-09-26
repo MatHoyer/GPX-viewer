@@ -51,15 +51,24 @@ func TestHikeRepository(t *testing.T) {
 			{{Lon: 6.8, Lat: 45.9, Ele: 1000}, {Lon: 6.81, Lat: 45.91, Ele: 1100}},
 			{{Lon: 6.82, Lat: 45.92, Ele: 1200}, {Lon: 6.83, Lat: 45.93, Ele: 1300}},
 		},
-		HikeDerived: domain.HikeDerived{BestEfforts: []domain.BestEffort{{DistanceM: 1000, DurationS: 600}}},
-		RawGPX:      []byte("<gpx/>"),
-		CreatedAt:   time.Now(),
+		HikeDerived: domain.HikeDerived{
+			BestEfforts: []domain.BestEffort{{DistanceM: 1000, DurationS: 600}},
+			Tiles:       []domain.Tile{{X: 8501, Y: 5835}, {X: 8502, Y: 5835}},
+		},
+		RawGPX:    []byte("<gpx/>"),
+		CreatedAt: time.Now(),
 	}
 	if err := hikes.Create(ctx, h); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := hikes.Find(ctx, h.ID); got == nil || !slices.Equal(got.BestEfforts, h.BestEfforts) {
 		t.Errorf("created best efforts = %+v", got)
+	}
+	if got, err := hikes.ListTiles(ctx, alice); err != nil || len(got) != 1 || !slices.Equal(got[h.ID], h.Tiles) {
+		t.Errorf("alice tiles = %+v, %v", got, err)
+	}
+	if got, _ := hikes.ListTiles(ctx, bob); len(got) != 0 {
+		t.Errorf("bob tiles before tag = %+v", got)
 	}
 
 	tracks, err := hikes.ListTracks(ctx, alice, 0)
@@ -94,6 +103,9 @@ func TestHikeRepository(t *testing.T) {
 	}
 	if tracks, _ := hikes.ListTracks(ctx, bob, 0); len(tracks) != 1 {
 		t.Errorf("bob's tracks have %d hikes after tag", len(tracks))
+	}
+	if got, _ := hikes.ListTiles(ctx, bob); len(got[h.ID]) != 2 {
+		t.Errorf("bob tiles after tag = %+v", got)
 	}
 	if err := hikes.RemoveParticipant(ctx, h.ID, bob); err != nil {
 		t.Fatal(err)

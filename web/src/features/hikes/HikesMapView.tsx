@@ -13,7 +13,7 @@ type Props = {
   tracks: Tracks | undefined
   /** Whose hikes these are, so hikes they were tagged on can say so. */
   userId: string | undefined
-  /** Show a list of the hikes in view next to the map. */
+  /** The signed-in user's own map: show a list of the hikes in view and offer explored tiles. */
   list?: boolean
 }
 
@@ -59,6 +59,7 @@ export function HikesMapView({ hikes, colorFrom, tracks, userId, list = false }:
         onHover={setHoveredId}
         onPopupClose={closePopup}
         onViewChange={list ? onViewChange : undefined}
+        explorable={list}
       />
       {list && hikes.length > 0 && (
         <HikeList

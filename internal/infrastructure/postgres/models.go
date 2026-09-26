@@ -111,6 +111,7 @@ type HikeModel struct {
 	Notes          string                `gorm:"not null;default:''"`
 	Labels         []HikeLabelModel      `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
 	BestEfforts    []HikeBestEffortModel `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
+	Tiles          []HikeTileModel       `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
 	ElevationLossM float64               `gorm:"type:double precision;not null;default:0"`
 	MinEleM        *float64              `gorm:"type:double precision"`
 	MaxEleM        *float64              `gorm:"type:double precision"`
@@ -154,6 +155,15 @@ type HikeBestEffortModel struct {
 }
 
 func (HikeBestEffortModel) TableName() string { return "hike_best_efforts" }
+
+// HikeTileModel is a zoom-14 map tile a hike's track passes through.
+type HikeTileModel struct {
+	HikeID uuid.UUID `gorm:"type:uuid;primaryKey"`
+	X      int       `gorm:"primaryKey;autoIncrement:false"`
+	Y      int       `gorm:"primaryKey;autoIncrement:false"`
+}
+
+func (HikeTileModel) TableName() string { return "hike_tiles" }
 
 func bestEffortsToDomain(ms []HikeBestEffortModel) []domain.BestEffort {
 	out := make([]domain.BestEffort, len(ms))

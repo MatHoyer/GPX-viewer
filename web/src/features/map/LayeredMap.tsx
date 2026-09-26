@@ -1,4 +1,4 @@
-import { Box, Flame, Layers, Map as MapIcon, Mountain, Satellite } from 'lucide-react'
+import { Box, Flame, Grid3x3, Layers, Map as MapIcon, Mountain, Satellite } from 'lucide-react'
 import { forwardRef, useEffect, useRef, type ComponentProps } from 'react'
 
 import {
@@ -20,17 +20,19 @@ const TERRAIN_PITCH = 60
 type Props = Omit<ComponentProps<typeof Map>, 'styles'> & {
   /** Offer the heatmap toggle; the caller draws the heatmap itself. */
   heatmapToggle?: boolean
+  /** Offer the explored tiles toggle; the caller draws the tiles itself. */
+  tilesToggle?: boolean
 }
 
 /** Map with a switchable background (streets, topo, satellite) and optional 3D terrain. */
-export const LayeredMap = forwardRef<MapRef, Props>(function LayeredMap({ children, heatmapToggle = false, ...props }, ref) {
+export const LayeredMap = forwardRef<MapRef, Props>(function LayeredMap({ children, heatmapToggle = false, tilesToggle = false, ...props }, ref) {
   const basemap = useMapView((s) => s.basemap)
   const terrain = useMapView((s) => s.terrain)
 
   return (
     <Map ref={ref} styles={basemapStyles[basemap]} pitch={terrain ? TERRAIN_PITCH : 0} {...props}>
       <Terrain enabled={terrain} />
-      <LayersControl heatmapToggle={heatmapToggle} />
+      <LayersControl heatmapToggle={heatmapToggle} tilesToggle={tilesToggle} />
       {children}
     </Map>
   )
@@ -67,8 +69,8 @@ const basemaps: { value: Basemap; label: string; icon: typeof MapIcon }[] = [
   { value: 'satellite', label: 'Satellite', icon: Satellite },
 ]
 
-function LayersControl({ heatmapToggle }: { heatmapToggle: boolean }) {
-  const { basemap, terrain, heatmap, setBasemap, setTerrain, setHeatmap } = useMapView()
+function LayersControl({ heatmapToggle, tilesToggle }: { heatmapToggle: boolean; tilesToggle: boolean }) {
+  const { basemap, terrain, heatmap, tiles, setBasemap, setTerrain, setHeatmap, setTiles } = useMapView()
 
   return (
     <div className="absolute top-2 right-2 z-10">
@@ -101,6 +103,12 @@ function LayersControl({ heatmapToggle }: { heatmapToggle: boolean }) {
             <DropdownMenuCheckboxItem checked={heatmap} onCheckedChange={(c) => setHeatmap(c === true)}>
               <Flame />
               Heatmap
+            </DropdownMenuCheckboxItem>
+          )}
+          {tilesToggle && (
+            <DropdownMenuCheckboxItem checked={tiles} onCheckedChange={(c) => setTiles(c === true)}>
+              <Grid3x3 />
+              Explored tiles
             </DropdownMenuCheckboxItem>
           )}
         </DropdownMenuContent>

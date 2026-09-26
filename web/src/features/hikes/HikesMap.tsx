@@ -3,12 +3,15 @@ import { useEffect, useMemo } from 'react'
 import { MapControls, MapRoute, useMap } from '@/components/ui/map'
 import { useMapView } from '@/features/map/basemaps'
 import { HeatmapLayer } from '@/features/map/HeatmapLayer'
+import { exploredTiles, maxSquare } from '@/features/map/tiles'
+import { TilesLayer } from '@/features/map/TilesLayer'
 import { LayeredMap } from '@/features/map/LayeredMap'
 
 import type { Bounds, Hike, Tracks } from './api'
 import { hikeColor, useHikeColors } from './colors'
 import { unionBounds } from './bounds'
 import { FitBounds } from './FitBounds'
+import { useTiles } from './useHikes'
 import { HikePopup, type PopupState } from './HikePopup'
 
 type Props = {
@@ -25,12 +28,18 @@ type Props = {
   onPopupClose: (nonce: number) => void
   /** Called with the visible [minLon, minLat, maxLon, maxLat] whenever the map stops moving. */
   onViewChange?: (bounds: Bounds) => void
+  /** These are the signed-in user's own hikes, so their explored tiles can be shown. */
+  explorable?: boolean
 }
 
-export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose, onViewChange }: Props) {
+export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose, onViewChange, explorable = false }: Props) {
   const colorById = useHikeColors(hikes, colorFrom)
   const popupHike = popup ? hikes.find((h) => h.id === popup.hikeId) : undefined
   const heatmap = useMapView((s) => s.heatmap)
+  const showTiles = useMapView((s) => s.tiles) && explorable
+  const tiles = useTiles(showTiles)
+  const explored = useMemo(() => exploredTiles(tiles.data, hikes.map((h) => h.id)), [tiles.data, hikes])
+  const square = useMemo(() => maxSquare(explored), [explored])
   const lines = useMemo(
     () => (tracks?.features ?? []).flatMap((f) => f.geometry.coordinates as [number, number][][]),
     [tracks],
@@ -42,11 +51,12 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
   }, [hikes, selectedId])
 
   return (
-    <LayeredMap center={[2.35, 46.6]} zoom={5} className="size-full" heatmapToggle>
+    <LayeredMap center={[2.35, 46.6]} zoom={5} className="size-full" heatmapToggle tilesToggle={explorable}>
       <MapControls position="bottom-right" showZoom showCompass showLocate showFullscreen />
       <FitBounds bounds={fitTarget} />
       {onViewChange && <ViewWatcher onChange={onViewChange} />}
       {heatmap && <HeatmapLayer lines={lines} />}
+      {showTiles && tiles.data && <TilesLayer zoom={tiles.data.zoom} explored={explored} square={square} />}
       {tracks?.features.flatMap((feature) => {
         const id = feature.properties.id
         const highlighted = id === selectedId || id === hoveredId

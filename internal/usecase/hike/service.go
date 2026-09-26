@@ -284,6 +284,15 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID, fn func(h *domai
 	return nil
 }
 
+// Tiles returns the explored tiles of each hike owner owns or is tagged on,
+// if viewer may see owner's hikes.
+func (s *Service) Tiles(ctx context.Context, viewer, owner uuid.UUID) (map[uuid.UUID][]domain.Tile, error) {
+	if err := s.authorize(ctx, viewer, owner); err != nil {
+		return nil, err
+	}
+	return s.hikes.ListTiles(ctx, owner)
+}
+
 func (s *Service) Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error) {
 	if err := s.authorize(ctx, viewer, owner); err != nil {
 		return nil, err
