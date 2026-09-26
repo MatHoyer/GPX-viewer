@@ -355,3 +355,32 @@ func TestTagging(t *testing.T) {
 		t.Errorf("untagged hike still in bob's list")
 	}
 }
+
+func TestExportOwnedOnly(t *testing.T) {
+	ctx := context.Background()
+	repo := &fakeRepo{}
+	alice, bob := uuid.New(), uuid.New()
+	svc := NewService(repo, fakeParser{res: &domain.ParsedTrack{Segments: twoPoints}},
+		ownerOnly{friends: map[uuid.UUID]bool{alice: true, bob: true}})
+
+	mine, err := svc.Import(ctx, alice, "mine.gpx", []byte("mine"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	theirs, err := svc.Import(ctx, bob, "theirs.gpx", []byte("theirs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Tag(ctx, bob, theirs.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+
+	var got []string
+	err = svc.Export(ctx, alice, func(h *domain.Hike, raw []byte) error {
+		got = append(got, h.ID.String()+":"+string(raw))
+		return nil
+	})
+	if err != nil || len(got) != 1 || got[0] != mine.ID.String()+":mine" {
+		t.Errorf("export = %v, %v", got, err)
+	}
+}

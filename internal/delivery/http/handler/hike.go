@@ -1,13 +1,16 @@
 package handler
 
 import (
+	"archive/zip"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/go-chi/chi/v5"
@@ -29,6 +32,7 @@ type HikeService interface {
 	Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error)
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error)
 	GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []byte, error)
+	Export(ctx context.Context, userID uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error
 	Tag(ctx context.Context, owner, id, friend uuid.UUID) error
 	Untag(ctx context.Context, viewer, id, participant uuid.UUID) error
 }
@@ -218,6 +222,57 @@ func gpxFilename(name string) string {
 		clean = "hike"
 	}
 	return clean + ".gpx"
+}
+
+// Export downloads a zip of the original GPX files of every hike the
+// signed-in user owns. Hikes are read one at a time and streamed, so an
+// error after the first file can only abort the download.
+func (h *HikeHandler) Export(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r.Context())
+	name := "hikes-" + time.Now().UTC().Format(time.DateOnly) + ".zip"
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+
+	zw := zip.NewWriter(w)
+	names := exportNames{}
+	err := h.svc.Export(r.Context(), user.ID, func(hike *domain.Hike, raw []byte) error {
+		modified := hike.CreatedAt
+		if hike.StartedAt != nil {
+			modified = *hike.StartedAt
+		}
+		f, err := zw.CreateHeader(&zip.FileHeader{Name: names.next(hike), Method: zip.Deflate, Modified: modified})
+		if err != nil {
+			return err
+		}
+		_, err = f.Write(raw)
+		return err
+	})
+	if err == nil {
+		err = zw.Close()
+	}
+	if err != nil && r.Context().Err() == nil {
+		slog.Error("export hikes", "user", user.ID, "err", err)
+		// Headers are sent; dropping the connection keeps a truncated zip
+		// from looking like a complete download.
+		panic(http.ErrAbortHandler)
+	}
+}
+
+// exportNames names files in an export after the hike's date and name,
+// numbering repeats so no file overwrites another.
+type exportNames map[string]bool
+
+func (used exportNames) next(h *domain.Hike) string {
+	base := strings.TrimSuffix(gpxFilename(h.Name), ".gpx")
+	if h.StartedAt != nil {
+		base = h.StartedAt.Format(time.DateOnly) + " " + base
+	}
+	name := base + ".gpx"
+	for i := 2; used[name]; i++ {
+		name = fmt.Sprintf("%s (%d).gpx", base, i)
+	}
+	used[name] = true
+	return name
 }
 
 // Tracks returns the signed-in user's simplified hike geometries.
