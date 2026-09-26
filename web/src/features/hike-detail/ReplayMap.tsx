@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react'
 
-import { Map, MapControls, MapMarker, MapRoute, MarkerContent, useMap } from '@/components/ui/map'
+import { MapControls, MapMarker, MapRoute, MarkerContent, useMap } from '@/components/ui/map'
 import { FitBounds } from '@/features/hikes/FitBounds'
+import { LayeredMap } from '@/features/map/LayeredMap'
 
 import { boundsBetween, linesBetween, positionAt, type Profile } from './profile'
 import { useReplay } from './store'
@@ -13,7 +14,7 @@ export function ReplayMap({ profile }: { profile: Profile }) {
   const fullLines = useMemo(() => linesBetween(profile, 0, profile.lon.length - 1), [profile])
 
   return (
-    <Map className="size-full" center={positionAt(profile, 0)} zoom={12}>
+    <LayeredMap className="size-full" center={positionAt(profile, 0)} zoom={12}>
       <MapControls position="bottom-right" showZoom showCompass showFullscreen />
       <ZoomToRange profile={profile} />
       {fullLines.map((line, i) => (
@@ -25,7 +26,7 @@ export function ReplayMap({ profile }: { profile: Profile }) {
       <HoverMarker profile={profile} />
       <HeadMarker profile={profile} />
       <FollowCamera profile={profile} />
-    </Map>
+    </LayeredMap>
   )
 }
 

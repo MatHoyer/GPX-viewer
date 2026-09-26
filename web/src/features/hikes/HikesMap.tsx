@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
-import { Map, MapControls, MapRoute } from '@/components/ui/map'
+import { MapControls, MapRoute } from '@/components/ui/map'
+import { LayeredMap } from '@/features/map/LayeredMap'
 
 import type { Hike, Tracks } from './api'
 import { hikeColor } from './colors'
@@ -30,7 +31,7 @@ export function HikesMap({ hikes, userId, tracks, selectedId, hoveredId, popup, 
   }, [hikes, selectedId])
 
   return (
-    <Map center={[2.35, 46.6]} zoom={5} className="size-full">
+    <LayeredMap center={[2.35, 46.6]} zoom={5} className="size-full">
       <MapControls position="bottom-right" showZoom showCompass showLocate showFullscreen />
       <FitBounds bounds={fitTarget} />
       {tracks?.features.flatMap((feature) => {
@@ -64,6 +65,6 @@ export function HikesMap({ hikes, userId, tracks, selectedId, hoveredId, popup, 
           onClose={onPopupClose}
         />
       )}
-    </Map>
+    </LayeredMap>
   )
 }
