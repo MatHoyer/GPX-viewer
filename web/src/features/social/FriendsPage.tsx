@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { FloatingInput } from '@/components/ui/floating-input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
@@ -123,12 +123,11 @@ function AddByIdCard() {
         <CardDescription>Paste the friend ID they shared with you.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Input
+        <FloatingInput
+          label="Friend ID"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          aria-label="Friend ID"
-          className="font-mono"
+          placeholder="Paste an ID or profile link"
           spellCheck={false}
           autoComplete="off"
         />

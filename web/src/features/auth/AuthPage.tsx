@@ -4,8 +4,7 @@ import { Link, useNavigate } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FloatingInput } from '@/components/ui/floating-input'
 import { ApiError } from '@/lib/api'
 
 import { useLogin, useRegister } from './useAuth'
@@ -62,32 +61,28 @@ export function AuthPage({ mode }: { mode: Mode }) {
           </CardHeader>
           <form onSubmit={onSubmit}>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  aria-invalid={error?.field === 'email' || undefined}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  required
-                  minLength={mode === 'register' ? 8 : undefined}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  aria-invalid={error?.field === 'password' || undefined}
-                />
-                {mode === 'register' && <p className="text-muted-foreground text-xs">At least 8 characters.</p>}
-              </div>
+              <FloatingInput
+                id="email"
+                label="Email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                aria-invalid={error?.field === 'email' || undefined}
+              />
+              <FloatingInput
+                id="password"
+                label="Password"
+                type="password"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                required
+                minLength={mode === 'register' ? 8 : undefined}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                aria-invalid={error?.field === 'password' || undefined}
+                description={mode === 'register' ? 'At least 8 characters.' : undefined}
+              />
               {errorMessage && (
                 <p role="alert" className="text-destructive text-sm">
                   {errorMessage}
@@ -95,7 +90,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
               )}
             </CardContent>
             <CardFooter className="mt-6 flex-col gap-3">
-              <Button type="submit" className="w-full" disabled={mutation.isPending}>
+              <Button type="submit" size="lg" className="h-11 w-full rounded-xl" disabled={mutation.isPending}>
                 {t.submit}
               </Button>
               <p className="text-muted-foreground text-sm">

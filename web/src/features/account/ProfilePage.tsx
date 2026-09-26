@@ -5,8 +5,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FloatingInput } from '@/components/ui/floating-input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import type { User, Visibility } from '@/features/auth/api'
 import { useMe } from '@/features/auth/useAuth'
@@ -70,20 +69,15 @@ function DetailsCard({ user }: { user: User }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <UserAvatar user={user} className="size-16" />
-          <div className="space-y-2">
-            <Label htmlFor="profile-name">Display name</Label>
-            <Input
-              id="profile-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={user.email.split('@')[0]}
-              maxLength={MAX_NAME_LENGTH}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="profile-email">Email</Label>
-            <Input id="profile-email" value={user.email} disabled />
-          </div>
+          <FloatingInput
+            label="Display name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={user.email.split('@')[0]}
+            maxLength={MAX_NAME_LENGTH}
+            description={`Leave empty to go by ${user.email.split('@')[0]}.`}
+          />
+          <FloatingInput label="Email" value={user.email} disabled />
           <p className="text-muted-foreground text-sm">Member since {formatDate(user.createdAt)}</p>
         </CardContent>
         <CardFooter className="justify-end">
