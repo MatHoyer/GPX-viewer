@@ -12,6 +12,9 @@ import { CalendarPage } from '@/features/calendar/CalendarPage'
 import { HikePage } from '@/features/hike-detail/HikePage'
 import { MapPage } from '@/features/hikes/MapPage'
 import { AppLayout } from '@/features/layout/AppLayout'
+import { GuestLayout } from '@/features/layout/GuestLayout'
+import { FriendsPage } from '@/features/social/FriendsPage'
+import { UserProfilePage } from '@/features/social/UserProfilePage'
 import { ApiError } from '@/lib/api'
 
 const queryClient = new QueryClient({
@@ -36,8 +39,13 @@ export default function App() {
                 <Route path="/" element={<MapPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/friends" element={<FriendsPage />} />
               </Route>
-              <Route path="/hikes/:id" element={<RequireAuth><HikePage /></RequireAuth>} />
+              {/* Shared with signed-out visitors when the owner's profile is public. */}
+              <Route element={<AnyLayout />}>
+                <Route path="/u/:id" element={<UserProfilePage />} />
+              </Route>
+              <Route path="/hikes/:id" element={<SessionResolved><HikePage /></SessionResolved>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
@@ -53,6 +61,18 @@ function RequireAuth({ children }: { children: ReactNode }) {
   if (me.isPending) return null
   if (!me.data) return <Navigate to="/login" replace />
   return children
+}
+
+function SessionResolved({ children }: { children: ReactNode }) {
+  const me = useMe()
+  if (me.isPending) return null
+  return children
+}
+
+function AnyLayout() {
+  const me = useMe()
+  if (me.isPending) return null
+  return me.data ? <AppLayout /> : <GuestLayout />
 }
 
 function GuestOnly({ children }: { children: ReactNode }) {

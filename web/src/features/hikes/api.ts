@@ -1,5 +1,6 @@
 import type * as GeoJSON from 'geojson'
 
+import type { Person } from '@/features/account/displayName'
 import { api } from '@/lib/api'
 
 export type Bounds = [minLon: number, minLat: number, maxLon: number, maxLat: number]
@@ -9,6 +10,8 @@ export const MAX_NAME_LENGTH = 200
 
 export type Hike = {
   id: string
+  /** The owner's id. */
+  userId: string
   name: string
   distanceM: number
   elevationGainM: number
@@ -16,6 +19,10 @@ export type Hike = {
   durationS: number
   bounds: Bounds
   createdAt: string
+  /** Omitted on hikes just returned by an upload. */
+  owner?: Person
+  /** Friends the owner tagged. Only set when fetching a single hike. */
+  participants?: Person[]
 }
 
 export type TrackProperties = { id: string; name: string }

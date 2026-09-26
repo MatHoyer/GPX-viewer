@@ -7,6 +7,8 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Hike } from '@/features/hikes/api'
 import { hikeColor } from '@/features/hikes/colors'
+import { useMe } from '@/features/auth/useAuth'
+import { taggedBy } from '@/features/hikes/owner'
 import { useHikes } from '@/features/hikes/useHikes'
 import { formatDistance, formatDuration, formatElevation } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -127,13 +129,14 @@ export function CalendarPage() {
 }
 
 function HikeChip({ hike, color, muted }: DatedHike & { muted: boolean }) {
+  const owner = taggedBy(hike, useMe().data?.id)
   const details = [formatDistance(hike.distanceM), `${formatElevation(hike.elevationGainM)} D+`]
   if (hike.durationS > 0) details.push(formatDuration(hike.durationS))
 
   return (
     <Link
       to={`/hikes/${hike.id}`}
-      title={`${hike.name} — ${details.join(' · ')}`}
+      title={`${hike.name}${owner ? ` (tagged by ${owner})` : ''} — ${details.join(' · ')}`}
       className={cn(
         'hover:bg-accent flex min-w-0 items-center gap-1.5 rounded-sm px-1 py-0.5 text-xs transition-colors',
         muted && 'opacity-60',

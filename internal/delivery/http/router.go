@@ -15,6 +15,7 @@ type Deps struct {
 	Auth          *handler.AuthHandler
 	Account       *handler.AccountHandler
 	Hikes         *handler.HikeHandler
+	Social        *handler.SocialHandler
 	Authenticator middleware.Authenticator
 	// Static is the built frontend (index.html at its root). Optional.
 	Static fs.FS
@@ -47,10 +48,28 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/hikes", d.Hikes.List)
 			r.Post("/hikes", d.Hikes.Upload)
 			r.Get("/hikes/tracks", d.Hikes.Tracks)
-			r.Get("/hikes/{id}", d.Hikes.Get)
-			r.Get("/hikes/{id}/profile", d.Hikes.Profile)
 			r.Patch("/hikes/{id}", d.Hikes.Update)
 			r.Delete("/hikes/{id}", d.Hikes.Delete)
+			r.Put("/hikes/{id}/participants/{userId}", d.Hikes.Tag)
+			r.Delete("/hikes/{id}/participants/{userId}", d.Hikes.Untag)
+
+			r.Get("/users/search", d.Social.Search)
+			r.Get("/friends", d.Social.Friends)
+			r.Put("/friends/{id}", d.Social.AddFriend)
+			r.Delete("/friends/{id}", d.Social.RemoveFriend)
+		})
+
+		// Readable by anyone the owner's visibility allows, signed in or not.
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.OptionalAuth(d.Authenticator))
+
+			r.Get("/hikes/{id}", d.Hikes.Get)
+			r.Get("/hikes/{id}/profile", d.Hikes.Profile)
+
+			r.Get("/users/{id}", d.Social.Profile)
+			r.Get("/users/{id}/avatar", d.Social.Avatar)
+			r.Get("/users/{id}/hikes", d.Hikes.UserList)
+			r.Get("/users/{id}/hikes/tracks", d.Hikes.UserTracks)
 		})
 
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {

@@ -47,6 +47,17 @@ func (s *Service) UpdateName(ctx context.Context, userID uuid.UUID, name string)
 	return s.users.GetByID(ctx, userID)
 }
 
+// UpdateVisibility sets who can see the user's profile and hikes.
+func (s *Service) UpdateVisibility(ctx context.Context, userID uuid.UUID, v domain.Visibility) (*domain.User, error) {
+	if !v.Valid() {
+		return nil, &domain.ValidationError{Field: "visibility", Message: "must be private, friends or public"}
+	}
+	if err := s.users.UpdateVisibility(ctx, userID, v); err != nil {
+		return nil, err
+	}
+	return s.users.GetByID(ctx, userID)
+}
+
 // SetAvatar stores an uploaded image, sniffing its type from the content.
 func (s *Service) SetAvatar(ctx context.Context, userID uuid.UUID, data []byte) (*domain.User, error) {
 	if len(data) == 0 {

@@ -1,5 +1,6 @@
-import { ImageUp, Trash2 } from 'lucide-react'
+import { ExternalLink, Globe, ImageUp, Lock, Trash2, UsersRound } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -7,10 +8,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import type { User } from '@/features/auth/api'
+import type { User, Visibility } from '@/features/auth/api'
 import { useMe } from '@/features/auth/useAuth'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 import { AVATAR_TYPES, MAX_AVATAR_BYTES, MAX_NAME_LENGTH } from './api'
 import { useDeleteAvatar, useUpdateAccount, useUploadAvatar } from './useAccount'
@@ -31,6 +33,7 @@ export function ProfilePage() {
             <AvatarCard user={me.data} />
             {/* Keyed so the form resets if the saved name changes elsewhere. */}
             <DetailsCard key={me.data.name} user={me.data} />
+            <VisibilityCard user={me.data} />
           </div>
         )}
       </main>
@@ -152,6 +155,71 @@ function DetailsCard({ user }: { user: User }) {
           </Button>
         </CardFooter>
       </form>
+    </Card>
+  )
+}
+
+const visibilityOptions: { value: Visibility; label: string; description: string; icon: typeof Lock }[] = [
+  { value: 'private', label: 'Private', description: 'Only you can see your hikes.', icon: Lock },
+  { value: 'friends', label: 'Friends', description: 'Your friends can see your profile and hikes.', icon: UsersRound },
+  { value: 'public', label: 'Public', description: 'Anyone with the link can, even without an account.', icon: Globe },
+]
+
+function VisibilityCard({ user }: { user: User }) {
+  const update = useUpdateAccount()
+
+  function select(visibility: Visibility) {
+    if (visibility === user.visibility || update.isPending) return
+    update.mutate(
+      { visibility },
+      {
+        onSuccess: () => toast.success('Visibility updated'),
+        onError: (err) => toast.error(errorMessage(err, 'Could not update visibility')),
+      },
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Who can see my hikes</CardTitle>
+        <CardDescription>Others can always find your name and picture to send you a friend request.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div role="radiogroup" aria-label="Profile visibility" className="grid gap-2 sm:grid-cols-3">
+          {visibilityOptions.map(({ value, label, description, icon: Icon }) => {
+            const checked = user.visibility === value
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={checked}
+                disabled={update.isPending}
+                onClick={() => select(value)}
+                className={cn(
+                  'hover:bg-muted/50 focus-visible:ring-ring/50 flex flex-col gap-1 rounded-lg border p-3 text-left outline-none focus-visible:ring-3 disabled:opacity-60',
+                  checked && 'border-primary bg-primary/5 ring-primary ring-1',
+                )}
+              >
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Icon className="size-4" />
+                  {label}
+                </span>
+                <span className="text-muted-foreground text-xs">{description}</span>
+              </button>
+            )
+          })}
+        </div>
+      </CardContent>
+      <CardFooter className="justify-end">
+        <Button asChild variant="outline">
+          <Link to={`/u/${user.id}`}>
+            <ExternalLink />
+            View my profile
+          </Link>
+        </Button>
+      </CardFooter>
     </Card>
   )
 }

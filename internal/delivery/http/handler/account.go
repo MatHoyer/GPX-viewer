@@ -17,6 +17,7 @@ import (
 
 type AccountService interface {
 	UpdateName(ctx context.Context, userID uuid.UUID, name string) (*domain.User, error)
+	UpdateVisibility(ctx context.Context, userID uuid.UUID, v domain.Visibility) (*domain.User, error)
 	SetAvatar(ctx context.Context, userID uuid.UUID, data []byte) (*domain.User, error)
 	DeleteAvatar(ctx context.Context, userID uuid.UUID) (*domain.User, error)
 	Avatar(ctx context.Context, userID uuid.UUID) (*domain.Avatar, error)
@@ -36,14 +37,24 @@ func (h *AccountHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if in.Name == nil {
+	if in.Name == nil && in.Visibility == nil {
 		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update"})
 		return
 	}
-	u, err := h.svc.UpdateName(r.Context(), middleware.UserFrom(r.Context()).ID, *in.Name)
-	if err != nil {
-		writeError(w, r, err)
-		return
+	id := middleware.UserFrom(r.Context()).ID
+	var u *domain.User
+	var err error
+	if in.Name != nil {
+		if u, err = h.svc.UpdateName(r.Context(), id, *in.Name); err != nil {
+			writeError(w, r, err)
+			return
+		}
+	}
+	if in.Visibility != nil {
+		if u, err = h.svc.UpdateVisibility(r.Context(), id, domain.Visibility(*in.Visibility)); err != nil {
+			writeError(w, r, err)
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, dto.NewUser(u))
 }
@@ -91,6 +102,10 @@ func (h *AccountHandler) Avatar(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
+	writeAvatar(w, a)
+}
+
+func writeAvatar(w http.ResponseWriter, a *domain.Avatar) {
 	w.Header().Set("Content-Type", a.ContentType)
 	w.Header().Set("Content-Length", strconv.Itoa(len(a.Data)))
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")

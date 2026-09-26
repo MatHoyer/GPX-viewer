@@ -41,6 +41,15 @@ func (f *fakeUsers) UpdateName(_ context.Context, id uuid.UUID, name string) err
 	return nil
 }
 
+func (f *fakeUsers) UpdateVisibility(_ context.Context, id uuid.UUID, v domain.Visibility) error {
+	u, ok := f.users[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.Visibility = v
+	return nil
+}
+
 func (f *fakeUsers) SetAvatar(_ context.Context, id uuid.UUID, a *domain.Avatar) error {
 	u, ok := f.users[id]
 	if !ok {
@@ -139,5 +148,20 @@ func TestSetAvatarRejectsInvalid(t *testing.T) {
 		if _, err := svc.SetAvatar(ctx, id, data); !errors.As(err, &ve) || ve.Field != "avatar" {
 			t.Errorf("%s: got %v, want avatar validation error", name, err)
 		}
+	}
+}
+
+func TestUpdateVisibility(t *testing.T) {
+	id := uuid.New()
+	svc := NewService(newFake(id))
+	ctx := context.Background()
+
+	u, err := svc.UpdateVisibility(ctx, id, domain.VisibilityFriends)
+	if err != nil || u.Visibility != domain.VisibilityFriends {
+		t.Fatalf("user = %+v, %v", u, err)
+	}
+	var ve *domain.ValidationError
+	if _, err := svc.UpdateVisibility(ctx, id, "everyone"); !errors.As(err, &ve) || ve.Field != "visibility" {
+		t.Errorf("invalid visibility err = %v", err)
 	}
 }

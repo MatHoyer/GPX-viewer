@@ -10,6 +10,7 @@ import { HikePopup, type PopupState } from './HikePopup'
 
 type Props = {
   hikes: Hike[]
+  userId: string | undefined
   tracks: Tracks | undefined
   selectedId: string | null
   hoveredId: string | null
@@ -19,7 +20,7 @@ type Props = {
   onPopupClose: (nonce: number) => void
 }
 
-export function HikesMap({ hikes, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose }: Props) {
+export function HikesMap({ hikes, userId, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose }: Props) {
   const colorById = useMemo(() => new globalThis.Map(hikes.map((h, i) => [h.id, hikeColor(i)])), [hikes])
   const popupHike = popup ? hikes.find((h) => h.id === popup.hikeId) : undefined
 
@@ -57,6 +58,7 @@ export function HikesMap({ hikes, tracks, selectedId, hoveredId, popup, onRouteC
         <HikePopup
           key={popup.nonce}
           hike={popupHike}
+          userId={userId}
           popup={popup}
           color={colorById.get(popupHike.id) ?? hikeColor(0)}
           onClose={onPopupClose}

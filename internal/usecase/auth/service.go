@@ -61,7 +61,7 @@ func (s *Service) Register(ctx context.Context, email, password string) (*domain
 	if err != nil {
 		return nil, err
 	}
-	u := &domain.User{ID: uuid.New(), Email: email, PasswordHash: hash, CreatedAt: s.now()}
+	u := &domain.User{ID: uuid.New(), Email: email, PasswordHash: hash, Visibility: domain.VisibilityPrivate, CreatedAt: s.now()}
 	if err := s.users.Create(ctx, u); err != nil {
 		return nil, err
 	}

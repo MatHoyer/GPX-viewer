@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { displayName } from '@/features/account/displayName'
+import { UserAvatar } from '@/features/account/UserAvatar'
+import { useMe } from '@/features/auth/useAuth'
 import { useDeleteHike } from '@/features/hikes/useHikes'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
@@ -22,6 +25,7 @@ import { formatDate } from '@/lib/format'
 import { useHike, useProfile } from './api'
 import { EditableTitle } from './EditableTitle'
 import { HikeStats } from './HikeStats'
+import { Participants } from './Participants'
 import { ProfileCharts } from './ProfileCharts'
 import { ReplayControls } from './ReplayControls'
 import { ReplayMap } from './ReplayMap'
@@ -32,10 +36,14 @@ export function HikePage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const me = useMe()
   const hike = useHike(id)
   const profile = useProfile(id)
   const deleteHike = useDeleteHike()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // Someone else's hike, shared with the viewer: read-only, credited to its owner.
+  const ownerId = hike.data?.userId
+  const isOwner = !!ownerId && ownerId === me.data?.id
 
   useEffect(() => {
     if (profile.data) useReplay.getState().reset(profile.data.lon.length, 'dist')
@@ -69,23 +77,45 @@ export function HikePage() {
             variant="ghost"
             size="icon"
             aria-label="Back"
-            onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
+            onClick={() => {
+              if (location.key !== 'default') navigate(-1)
+              else navigate(ownerId && !isOwner ? `/u/${ownerId}` : '/')
+            }}
           >
             <ArrowLeft />
           </Button>
           <div className="min-w-0 flex-1">
             {hike.data ? (
               <>
-                <EditableTitle hike={hike.data} />
-                {date && <p className="text-muted-foreground text-sm">{date}</p>}
+                {isOwner ? (
+                  <EditableTitle hike={hike.data} />
+                ) : (
+                  <h1 className="truncate text-lg leading-tight font-semibold">{hike.data.name}</h1>
+                )}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {date && <p className="text-muted-foreground text-sm">{date}</p>}
+                  {!isOwner && hike.data.owner && (
+                    <Link
+                      to={`/u/${hike.data.userId}`}
+                      className="text-muted-foreground flex items-center gap-1.5 text-sm hover:underline"
+                    >
+                      by
+                      <UserAvatar user={hike.data.owner} className="size-5" />
+                      <span className="text-foreground font-medium">{displayName(hike.data.owner)}</span>
+                    </Link>
+                  )}
+                  <Participants hike={hike.data} isOwner={isOwner} viewerId={me.data?.id} />
+                </div>
               </>
             ) : (
               <Skeleton className="h-6 w-48" />
             )}
           </div>
-          <Button variant="destructive" size="icon" onClick={() => setConfirmDelete(true)} aria-label="Delete hike" disabled={!hike.data}>
-            <Trash2 />
-          </Button>
+          {isOwner && (
+            <Button variant="destructive" size="icon" onClick={() => setConfirmDelete(true)} aria-label="Delete hike">
+              <Trash2 />
+            </Button>
+          )}
         </div>
       </header>
 

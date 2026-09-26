@@ -19,6 +19,7 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/account"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/auth"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/hike"
+	"github.com/MatHoyer/gpx-viewer/internal/usecase/social"
 	"github.com/MatHoyer/gpx-viewer/web"
 )
 
@@ -57,7 +58,8 @@ func run() error {
 		return err
 	}
 	accountSvc := account.NewService(users)
-	hikeSvc := hike.NewService(postgres.NewHikeRepository(db), gpx.NewParser())
+	socialSvc := social.NewService(users, postgres.NewFriendshipRepository(db))
+	hikeSvc := hike.NewService(postgres.NewHikeRepository(db), gpx.NewParser(), socialSvc)
 
 	go purgeSessions(ctx, authSvc)
 
@@ -65,6 +67,7 @@ func run() error {
 		Auth:          handler.NewAuthHandler(authSvc, cfg.CookieSecure),
 		Account:       handler.NewAccountHandler(accountSvc, account.MaxAvatarBytes),
 		Hikes:         handler.NewHikeHandler(hikeSvc, cfg.MaxUploadMB<<20),
+		Social:        handler.NewSocialHandler(socialSvc),
 		Authenticator: authSvc,
 		Static:        web.Dist(),
 	})

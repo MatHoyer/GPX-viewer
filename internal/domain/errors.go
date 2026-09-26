@@ -8,6 +8,7 @@ var (
 	ErrEmailTaken         = errors.New("email already registered")
 	ErrInvalidGPX         = errors.New("invalid gpx file")
 	ErrUnauthorized       = errors.New("unauthorized")
+	ErrConflict           = errors.New("conflict")
 )
 
 // ValidationError reports invalid user input.

@@ -13,6 +13,7 @@ type UserModel struct {
 	Email           string    `gorm:"not null;uniqueIndex"`
 	Name            string    `gorm:"not null;default:''"`
 	PasswordHash    string    `gorm:"not null"`
+	Visibility      string    `gorm:"not null;default:private"`
 	AvatarUpdatedAt *time.Time
 	CreatedAt       time.Time `gorm:"not null"`
 }
@@ -25,6 +26,7 @@ func (m UserModel) toDomain() *domain.User {
 		Email:           m.Email,
 		Name:            m.Name,
 		PasswordHash:    m.PasswordHash,
+		Visibility:      domain.Visibility(m.Visibility),
 		AvatarUpdatedAt: m.AvatarUpdatedAt,
 		CreatedAt:       m.CreatedAt,
 	}
@@ -41,6 +43,28 @@ type UserAvatarModel struct {
 }
 
 func (UserAvatarModel) TableName() string { return "user_avatars" }
+
+// FriendshipModel is a friend request; AcceptedAt is set once accepted. A
+// unique index on the unordered pair (see Migrate) allows one row per pair.
+type FriendshipModel struct {
+	RequesterID uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Requester   UserModel `gorm:"foreignKey:RequesterID;constraint:OnDelete:CASCADE"`
+	AddresseeID uuid.UUID `gorm:"type:uuid;primaryKey;index"`
+	Addressee   UserModel `gorm:"foreignKey:AddresseeID;constraint:OnDelete:CASCADE"`
+	CreatedAt   time.Time `gorm:"not null"`
+	AcceptedAt  *time.Time
+}
+
+func (FriendshipModel) TableName() string { return "friendships" }
+
+func (m FriendshipModel) toDomain() *domain.Friendship {
+	return &domain.Friendship{
+		RequesterID: m.RequesterID,
+		AddresseeID: m.AddresseeID,
+		Accepted:    m.AcceptedAt != nil,
+		CreatedAt:   m.CreatedAt,
+	}
+}
 
 type SessionModel struct {
 	TokenHash string    `gorm:"primaryKey"`
@@ -76,8 +100,24 @@ type HikeModel struct {
 
 func (HikeModel) TableName() string { return "hikes" }
 
+// HikeParticipantModel tags a user on someone else's hike.
+type HikeParticipantModel struct {
+	HikeID    uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Hike      HikeModel `gorm:"constraint:OnDelete:CASCADE"`
+	UserID    uuid.UUID `gorm:"type:uuid;primaryKey;index"`
+	User      UserModel `gorm:"constraint:OnDelete:CASCADE"`
+	CreatedAt time.Time `gorm:"not null"`
+}
+
+func (HikeParticipantModel) TableName() string { return "hike_participants" }
+
 func (m HikeModel) toDomain() domain.Hike {
+	var owner *domain.User
+	if m.User.ID != uuid.Nil {
+		owner = m.User.toDomain()
+	}
 	return domain.Hike{
+		Owner:          owner,
 		ID:             m.ID,
 		UserID:         m.UserID,
 		Name:           m.Name,

@@ -2,13 +2,12 @@ import { Blobatar } from '@blobatar/react'
 import 'blobatar/motion.css'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import type { User } from '@/features/auth/api'
 import { cn } from '@/lib/utils'
 
-import { displayName } from './displayName'
+import { displayName, type Person } from './displayName'
 
 type Props = {
-  user: User
+  user: Person
 } & React.ComponentProps<typeof Avatar>
 
 /** The user's uploaded picture, or a blobatar generated from their id. */

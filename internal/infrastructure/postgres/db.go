@@ -46,5 +46,10 @@ func Migrate(db *gorm.DB) error {
 	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS postgis").Error; err != nil {
 		return fmt.Errorf("enable postgis: %w", err)
 	}
-	return db.AutoMigrate(&UserModel{}, &UserAvatarModel{}, &SessionModel{}, &HikeModel{})
+	if err := db.AutoMigrate(&UserModel{}, &UserAvatarModel{}, &SessionModel{}, &HikeModel{}, &FriendshipModel{}, &HikeParticipantModel{}); err != nil {
+		return err
+	}
+	// One friendship per pair, whichever side sent the request.
+	return db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_pair
+		ON friendships (LEAST(requester_id, addressee_id), GREATEST(requester_id, addressee_id))`).Error
 }
