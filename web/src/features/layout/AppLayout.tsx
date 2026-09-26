@@ -1,4 +1,4 @@
-import { CalendarDays, Map as MapIcon, MountainSnow, UsersRound } from 'lucide-react'
+import { CalendarDays, ChartColumn, Map as MapIcon, MountainSnow, UsersRound } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
 import {
@@ -24,6 +24,7 @@ import { useConnections } from '@/features/social/useSocial'
 const views = [
   { to: '/', label: 'Map', icon: MapIcon },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
+  { to: '/stats', label: 'Stats', icon: ChartColumn },
   { to: '/friends', label: 'Friends', icon: UsersRound },
 ]
 

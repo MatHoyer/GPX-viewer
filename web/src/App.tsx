@@ -18,6 +18,7 @@ import { AppLayout } from '@/features/layout/AppLayout'
 import { GuestLayout } from '@/features/layout/GuestLayout'
 import { FriendsPage } from '@/features/social/FriendsPage'
 import { UserProfilePage } from '@/features/social/UserProfilePage'
+import { StatsPage } from '@/features/stats/StatsPage'
 import { ApiError } from '@/lib/api'
 
 const queryClient = new QueryClient({
@@ -45,6 +46,7 @@ export default function App() {
               <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route path="/" element={<MapPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/stats" element={<StatsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/friends" element={<FriendsPage />} />
               </Route>
