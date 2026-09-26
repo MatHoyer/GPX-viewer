@@ -127,6 +127,11 @@
   html {
     @apply font-sans;
     }
+  /* Tailwind v4 no longer gives buttons a pointer cursor. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+    }
   /* The inset's overflow-hidden (and clip-path) don't clip the GPU-composited map
      canvas to its rounded corners in every browser; rounding the canvas itself does. */
   [data-slot="sidebar-inset"] .maplibregl-canvas {
