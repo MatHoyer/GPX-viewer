@@ -1,4 +1,4 @@
-import { ChevronsUpDown, LogOut, SunMoon, UserRound } from 'lucide-react'
+import { ChevronsUpDown, IdCard, LogOut, SunMoon, UserRound } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Link } from 'react-router'
 
@@ -64,6 +64,12 @@ export function NavUser() {
                 <Link to="/profile" onClick={() => setOpenMobile(false)}>
                   <UserRound />
                   Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to={`/u/${user.id}`} onClick={() => setOpenMobile(false)}>
+                  <IdCard />
+                  My public page
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSub>

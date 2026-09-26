@@ -31,6 +31,8 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusUnauthorized, dto.Error{Error: "unauthorized"})
 	case errors.Is(err, domain.ErrEmailTaken):
 		writeJSON(w, http.StatusConflict, dto.Error{Error: "email already registered", Field: "email"})
+	case errors.Is(err, domain.ErrConflict):
+		writeJSON(w, http.StatusConflict, dto.Error{Error: "conflict"})
 	case errors.Is(err, domain.ErrInvalidGPX):
 		writeJSON(w, http.StatusBadRequest, dto.Error{Error: err.Error()})
 	default:

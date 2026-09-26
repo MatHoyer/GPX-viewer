@@ -13,27 +13,100 @@ type Credentials struct {
 }
 
 type User struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Name  string `json:"name"`
+	ID         string `json:"id"`
+	Email      string `json:"email"`
+	Name       string `json:"name"`
+	Visibility string `json:"visibility"`
 	// AvatarURL is null when the user has not uploaded an avatar.
 	AvatarURL *string   `json:"avatarUrl"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
 func NewUser(u *domain.User) User {
-	out := User{ID: u.ID.String(), Email: u.Email, Name: u.Name, CreatedAt: u.CreatedAt}
-	if u.AvatarUpdatedAt != nil {
-		// Versioned so the image can be cached forever and still refresh on change.
-		url := "/api/me/avatar?v=" + strconv.FormatInt(u.AvatarUpdatedAt.UnixMilli(), 10)
-		out.AvatarURL = &url
+	return User{
+		ID:         u.ID.String(),
+		Email:      u.Email,
+		Name:       u.Name,
+		Visibility: string(u.Visibility),
+		AvatarURL:  avatarURL("/api/me/avatar", u),
+		CreatedAt:  u.CreatedAt,
+	}
+}
+
+// PublicUser is what other users get to see of someone: never their email.
+type PublicUser struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	AvatarURL *string   `json:"avatarUrl"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+func NewPublicUser(u *domain.User) PublicUser {
+	return PublicUser{
+		ID:        u.ID.String(),
+		Name:      u.Name,
+		AvatarURL: avatarURL("/api/users/"+u.ID.String()+"/avatar", u),
+		CreatedAt: u.CreatedAt,
+	}
+}
+
+func NewPublicUsers(us []domain.User) []PublicUser {
+	out := make([]PublicUser, len(us))
+	for i := range us {
+		out[i] = NewPublicUser(&us[i])
 	}
 	return out
 }
 
+// avatarURL is versioned so the image can be cached forever and still refresh on change.
+func avatarURL(path string, u *domain.User) *string {
+	if u.AvatarUpdatedAt == nil {
+		return nil
+	}
+	url := path + "?v=" + strconv.FormatInt(u.AvatarUpdatedAt.UnixMilli(), 10)
+	return &url
+}
+
+// UserProfile is a user as seen by the viewer. CanView is false when their
+// hikes are hidden from the viewer.
+type UserProfile struct {
+	User       PublicUser `json:"user"`
+	Visibility string     `json:"visibility"`
+	Relation   string     `json:"relation"`
+	CanView    bool       `json:"canView"`
+}
+
+// Connections groups the viewer's friends and pending requests.
+type Connections struct {
+	Friends  []PublicUser `json:"friends"`
+	Incoming []PublicUser `json:"incoming"`
+	Outgoing []PublicUser `json:"outgoing"`
+}
+
+func NewConnections(cs []domain.Connection) Connections {
+	out := Connections{Friends: []PublicUser{}, Incoming: []PublicUser{}, Outgoing: []PublicUser{}}
+	for i := range cs {
+		u := NewPublicUser(&cs[i].User)
+		switch cs[i].Relation {
+		case domain.RelationFriends:
+			out.Friends = append(out.Friends, u)
+		case domain.RelationIncoming:
+			out.Incoming = append(out.Incoming, u)
+		case domain.RelationOutgoing:
+			out.Outgoing = append(out.Outgoing, u)
+		}
+	}
+	return out
+}
+
+type Relation struct {
+	Relation string `json:"relation"`
+}
+
 // UpdateAccount is a partial update; nil fields are left unchanged.
 type UpdateAccount struct {
-	Name *string `json:"name"`
+	Name       *string `json:"name"`
+	Visibility *string `json:"visibility"`
 }
 
 type Error struct {
@@ -43,6 +116,7 @@ type Error struct {
 
 type Hike struct {
 	ID             string     `json:"id"`
+	UserID         string     `json:"userId"`
 	Name           string     `json:"name"`
 	DistanceM      float64    `json:"distanceM"`
 	ElevationGainM float64    `json:"elevationGainM"`
@@ -51,11 +125,22 @@ type Hike struct {
 	// Bounds is [minLon, minLat, maxLon, maxLat].
 	Bounds    [4]float64 `json:"bounds"`
 	CreatedAt time.Time  `json:"createdAt"`
+	// Owner is omitted on hikes just created by an upload.
+	Owner *PublicUser `json:"owner,omitempty"`
+	// Participants is only set on single-hike reads.
+	Participants []PublicUser `json:"participants,omitempty"`
 }
 
 func NewHike(h *domain.Hike) Hike {
+	var owner *PublicUser
+	if h.Owner != nil {
+		o := NewPublicUser(h.Owner)
+		owner = &o
+	}
 	return Hike{
+		Owner:          owner,
 		ID:             h.ID.String(),
+		UserID:         h.UserID.String(),
 		Name:           h.Name,
 		DistanceM:      h.DistanceM,
 		ElevationGainM: h.ElevationGainM,
@@ -63,6 +148,7 @@ func NewHike(h *domain.Hike) Hike {
 		DurationS:      h.DurationS,
 		Bounds:         [4]float64{h.Bounds.MinLon, h.Bounds.MinLat, h.Bounds.MaxLon, h.Bounds.MaxLat},
 		CreatedAt:      h.CreatedAt,
+		Participants:   NewPublicUsers(h.Participants),
 	}
 }
 

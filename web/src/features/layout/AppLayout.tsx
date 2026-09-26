@@ -1,4 +1,4 @@
-import { CalendarDays, Map as MapIcon, MountainSnow } from 'lucide-react'
+import { CalendarDays, Map as MapIcon, MountainSnow, UsersRound } from 'lucide-react'
 import { useMemo } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
@@ -12,6 +12,7 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -20,11 +21,13 @@ import {
 import { NavUser } from '@/features/account/NavUser'
 import { UploadDialog } from '@/features/hikes/UploadDialog'
 import { useHikes } from '@/features/hikes/useHikes'
+import { useConnections } from '@/features/social/useSocial'
 import { formatDistance, formatElevation } from '@/lib/format'
 
 const views = [
   { to: '/', label: 'Map', icon: MapIcon },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
+  { to: '/friends', label: 'Friends', icon: UsersRound },
 ]
 
 export function AppLayout() {
@@ -68,6 +71,7 @@ export function AppLayout() {
 function ViewNav() {
   const { pathname } = useLocation()
   const { setOpenMobile } = useSidebar()
+  const requests = useConnections().data?.incoming.length ?? 0
 
   return (
     <SidebarMenu>
@@ -79,6 +83,9 @@ function ViewNav() {
               {label}
             </NavLink>
           </SidebarMenuButton>
+          {to === '/friends' && requests > 0 && (
+            <SidebarMenuBadge aria-label={`${requests} friend requests`}>{requests}</SidebarMenuBadge>
+          )}
         </SidebarMenuItem>
       ))}
     </SidebarMenu>

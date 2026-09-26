@@ -6,6 +6,7 @@ import { MapPopup } from '@/components/ui/map'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 
 import type { Hike } from './api'
+import { TaggedBy } from './TaggedBy'
 
 export type PopupState = {
   hikeId: string
@@ -17,12 +18,13 @@ export type PopupState = {
 
 type Props = {
   hike: Hike
+  userId: string | undefined
   popup: PopupState
   color: string
   onClose: (nonce: number) => void
 }
 
-export function HikePopup({ hike, popup, color, onClose }: Props) {
+export function HikePopup({ hike, userId, popup, color, onClose }: Props) {
   const date = formatDate(hike.startedAt)
   return (
     <MapPopup
@@ -39,6 +41,7 @@ export function HikePopup({ hike, popup, color, onClose }: Props) {
             <h3 className="truncate leading-tight font-semibold">{hike.name}</h3>
           </div>
           {date && <p className="text-muted-foreground text-xs">{date}</p>}
+          <TaggedBy hike={hike} userId={userId} />
         </div>
         <dl className="grid grid-cols-3 gap-2 text-center">
           <Stat icon={<Route className="size-3.5" />} label="Distance" value={formatDistance(hike.distanceM)} />

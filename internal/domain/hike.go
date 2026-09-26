@@ -32,6 +32,10 @@ type Hike struct {
 	Bounds         Bounds
 	RawGPX         []byte
 	CreatedAt      time.Time
+	// Owner is loaded by list and single-hike reads.
+	Owner *User
+	// Participants are the friends the owner tagged. Only loaded by single-hike reads.
+	Participants []User
 }
 
 // HikeTrack is a lightweight, possibly simplified geometry for map display.
@@ -43,12 +47,20 @@ type HikeTrack struct {
 
 type HikeRepository interface {
 	Create(ctx context.Context, h *Hike) error
-	// ListByUser returns hikes without geometry or raw GPX, newest first.
+	// ListByUser returns the hikes a user owns or is tagged on, without
+	// geometry or raw GPX, newest first.
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]Hike, error)
 	GetByID(ctx context.Context, userID, id uuid.UUID) (*Hike, error)
+	// Find returns a hike whoever owns it, without geometry or raw GPX.
+	Find(ctx context.Context, id uuid.UUID) (*Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Rename(ctx context.Context, userID, id uuid.UUID, name string) error
 	GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([]byte, error)
-	// ListTracks returns geometries simplified with the given tolerance (degrees).
+	// ListTracks returns geometries of the hikes a user owns or is tagged on,
+	// simplified with the given tolerance (degrees).
 	ListTracks(ctx context.Context, userID uuid.UUID, tolerance float64) ([]HikeTrack, error)
+	ListParticipants(ctx context.Context, hikeID uuid.UUID) ([]User, error)
+	// AddParticipant is a no-op when the user is already tagged.
+	AddParticipant(ctx context.Context, hikeID, userID uuid.UUID, at time.Time) error
+	RemoveParticipant(ctx context.Context, hikeID, userID uuid.UUID) error
 }

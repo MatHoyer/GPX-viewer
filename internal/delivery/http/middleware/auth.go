@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
 )
 
@@ -42,10 +44,44 @@ func RequireAuth(auth Authenticator) func(http.Handler) http.Handler {
 	}
 }
 
-// UserFrom returns the authenticated user. Only valid behind RequireAuth.
+// OptionalAuth resolves the session cookie when there is one, and lets
+// anonymous requests through (an invalid session counts as anonymous).
+func OptionalAuth(auth Authenticator) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c, err := r.Cookie(SessionCookie)
+			if err != nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			u, err := auth.Authenticate(r.Context(), c.Value)
+			if err != nil {
+				if !errors.Is(err, domain.ErrUnauthorized) {
+					slog.Error("authenticate", "err", err)
+					http.Error(w, "internal server error", http.StatusInternalServerError)
+					return
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, u)))
+		})
+	}
+}
+
+// UserFrom returns the authenticated user. Only non-nil behind RequireAuth,
+// or behind OptionalAuth for signed-in users.
 func UserFrom(ctx context.Context) *domain.User {
 	u, _ := ctx.Value(ctxKey{}).(*domain.User)
 	return u
+}
+
+// ViewerID returns the authenticated user's id, or uuid.Nil when anonymous.
+func ViewerID(ctx context.Context) uuid.UUID {
+	if u := UserFrom(ctx); u != nil {
+		return u.ID
+	}
+	return uuid.Nil
 }
 
 // RejectCrossSite blocks state-changing requests coming from other sites.

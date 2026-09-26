@@ -68,6 +68,31 @@ func TestHikeRepository(t *testing.T) {
 	if list, _ := hikes.ListByUser(ctx, bob); len(list) != 0 {
 		t.Errorf("bob sees %d hikes", len(list))
 	}
+
+	// Tagging twice is a no-op; tagged hikes join the user's lists.
+	for range 2 {
+		if err := hikes.AddParticipant(ctx, h.ID, bob, time.Now()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := hikes.AddParticipant(ctx, h.ID, uuid.New(), time.Now()); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("tag unknown user err = %v", err)
+	}
+	if ps, err := hikes.ListParticipants(ctx, h.ID); err != nil || len(ps) != 1 || ps[0].ID != bob || ps[0].PasswordHash != "" {
+		t.Errorf("participants = %+v, %v", ps, err)
+	}
+	if list, _ := hikes.ListByUser(ctx, bob); len(list) != 1 || list[0].Owner == nil || list[0].Owner.ID != alice || list[0].Owner.PasswordHash != "" {
+		t.Errorf("bob's list after tag = %+v", list)
+	}
+	if tracks, _ := hikes.ListTracks(ctx, bob, 0); len(tracks) != 1 {
+		t.Errorf("bob's tracks have %d hikes after tag", len(tracks))
+	}
+	if err := hikes.RemoveParticipant(ctx, h.ID, bob); err != nil {
+		t.Fatal(err)
+	}
+	if list, _ := hikes.ListByUser(ctx, bob); len(list) != 0 {
+		t.Errorf("bob sees %d hikes after untag", len(list))
+	}
 	if _, err := hikes.GetByID(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob get err = %v", err)
 	}

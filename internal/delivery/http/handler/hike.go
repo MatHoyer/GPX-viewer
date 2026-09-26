@@ -19,12 +19,14 @@ const maxFilesPerUpload = 50
 
 type HikeService interface {
 	Import(ctx context.Context, userID uuid.UUID, filename string, data []byte) (*domain.Hike, error)
-	List(ctx context.Context, userID uuid.UUID) ([]domain.Hike, error)
-	Get(ctx context.Context, userID, id uuid.UUID) (*domain.Hike, error)
+	List(ctx context.Context, viewer, owner uuid.UUID) ([]domain.Hike, error)
+	Get(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Rename(ctx context.Context, userID, id uuid.UUID, name string) (*domain.Hike, error)
-	Tracks(ctx context.Context, userID uuid.UUID) ([]domain.HikeTrack, error)
-	Profile(ctx context.Context, userID, id uuid.UUID) (*domain.Profile, error)
+	Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error)
+	Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error)
+	Tag(ctx context.Context, owner, id, friend uuid.UUID) error
+	Untag(ctx context.Context, viewer, id, participant uuid.UUID) error
 }
 
 type HikeHandler struct {
@@ -99,9 +101,20 @@ func (h *HikeHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"results": results})
 }
 
+// List returns the signed-in user's hikes.
 func (h *HikeHandler) List(w http.ResponseWriter, r *http.Request) {
-	user := middleware.UserFrom(r.Context())
-	hikes, err := h.svc.List(r.Context(), user.ID)
+	h.list(w, r, middleware.UserFrom(r.Context()).ID)
+}
+
+// UserList returns the hikes of the user in the URL, if the viewer may see them.
+func (h *HikeHandler) UserList(w http.ResponseWriter, r *http.Request) {
+	if owner, ok := parseID(w, r); ok {
+		h.list(w, r, owner)
+	}
+}
+
+func (h *HikeHandler) list(w http.ResponseWriter, r *http.Request, owner uuid.UUID) {
+	hikes, err := h.svc.List(r.Context(), middleware.ViewerID(r.Context()), owner)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -118,7 +131,7 @@ func (h *HikeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	hike, err := h.svc.Get(r.Context(), middleware.UserFrom(r.Context()).ID, id)
+	hike, err := h.svc.Get(r.Context(), middleware.ViewerID(r.Context()), id)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -164,7 +177,7 @@ func (h *HikeHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	p, err := h.svc.Profile(r.Context(), middleware.UserFrom(r.Context()).ID, id)
+	p, err := h.svc.Profile(r.Context(), middleware.ViewerID(r.Context()), id)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -172,8 +185,20 @@ func (h *HikeHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dto.NewProfile(p))
 }
 
+// Tracks returns the signed-in user's simplified hike geometries.
 func (h *HikeHandler) Tracks(w http.ResponseWriter, r *http.Request) {
-	tracks, err := h.svc.Tracks(r.Context(), middleware.UserFrom(r.Context()).ID)
+	h.tracks(w, r, middleware.UserFrom(r.Context()).ID)
+}
+
+// UserTracks returns the tracks of the user in the URL, if the viewer may see them.
+func (h *HikeHandler) UserTracks(w http.ResponseWriter, r *http.Request) {
+	if owner, ok := parseID(w, r); ok {
+		h.tracks(w, r, owner)
+	}
+}
+
+func (h *HikeHandler) tracks(w http.ResponseWriter, r *http.Request, owner uuid.UUID) {
+	tracks, err := h.svc.Tracks(r.Context(), middleware.ViewerID(r.Context()), owner)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -181,8 +206,38 @@ func (h *HikeHandler) Tracks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dto.NewFeatureCollection(tracks))
 }
 
+// Tag adds the friend in the URL to the hike.
+func (h *HikeHandler) Tag(w http.ResponseWriter, r *http.Request) {
+	h.participant(w, r, h.svc.Tag)
+}
+
+// Untag removes the participant in the URL from the hike.
+func (h *HikeHandler) Untag(w http.ResponseWriter, r *http.Request) {
+	h.participant(w, r, h.svc.Untag)
+}
+
+func (h *HikeHandler) participant(w http.ResponseWriter, r *http.Request, action func(ctx context.Context, viewer, id, user uuid.UUID) error) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	user, ok := parseParam(w, r, "userId")
+	if !ok {
+		return
+	}
+	if err := action(r.Context(), middleware.UserFrom(r.Context()).ID, id, user); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func parseID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	return parseParam(w, r, "id")
+}
+
+func parseParam(w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(chi.URLParam(r, name))
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, dto.Error{Error: "not found"})
 		return uuid.Nil, false
