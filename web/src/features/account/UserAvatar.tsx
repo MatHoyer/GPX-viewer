@@ -1,29 +1,29 @@
-import { blobatarUri } from 'blobatar/uri'
-import { useMemo } from 'react'
+import { Blobatar } from '@blobatar/react'
+import 'blobatar/motion.css'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import type { User } from '@/features/auth/api'
+import { cn } from '@/lib/utils'
 
-/** The name to show for a user: their display name, else the local part of their email. */
-export function displayName(user: Pick<User, 'name' | 'email'>): string {
-  return user.name || user.email.split('@')[0]
-}
+import { displayName } from './displayName'
 
 type Props = {
   user: User
 } & React.ComponentProps<typeof Avatar>
 
 /** The user's uploaded picture, or a blobatar generated from their id. */
-export function UserAvatar({ user, ...props }: Props) {
-  // Seeded by id so the default picture survives name and email changes.
-  const generated = useMemo(() => blobatarUri(user.id), [user.id])
+export function UserAvatar({ user, className, ...props }: Props) {
   const alt = displayName(user)
 
   return (
-    <Avatar {...props}>
-      <AvatarImage src={user.avatarUrl ?? generated} alt={alt} />
-      <AvatarFallback className="rounded-[inherit]">
-        <img src={generated} alt={alt} className="size-full" />
+    // The ring overlay would otherwise swallow the hover that animates the blobatar.
+    <Avatar className={cn('after:pointer-events-none', className)} {...props}>
+      {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={alt} />}
+      <AvatarFallback className="rounded-[inherit] bg-transparent">
+        {/* Seeded by id so it survives name and email changes. Animating
+            renders inline SVG, which is what lets hover reach the shapes.
+            Important so icon sizing from containers (e.g. sidebar buttons) can't shrink it. */}
+        <Blobatar name={user.id} animate="hover" title={alt} className="size-full!" />
       </AvatarFallback>
     </Avatar>
   )

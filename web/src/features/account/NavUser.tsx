@@ -20,7 +20,8 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/c
 import type { User } from '@/features/auth/api'
 import { useLogout, useMe } from '@/features/auth/useAuth'
 
-import { displayName, UserAvatar } from './UserAvatar'
+import { displayName } from './displayName'
+import { UserAvatar } from './UserAvatar'
 
 export function NavUser() {
   const me = useMe()
