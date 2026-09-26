@@ -294,6 +294,19 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID, fn func(h *domai
 	return nil
 }
 
+// Card returns a hike and its simplified track for a preview image, if viewer may see it.
+func (s *Service) Card(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []domain.Segment, error) {
+	h, err := s.Get(ctx, viewer, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	segs, err := s.hikes.GetTrack(ctx, id, TrackTolerance)
+	if err != nil {
+		return nil, nil, err
+	}
+	return h, segs, nil
+}
+
 // FeedPageSize is how many hikes a page of the activity feed holds.
 const FeedPageSize = 20
 

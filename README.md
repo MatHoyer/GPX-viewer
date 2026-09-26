@@ -5,6 +5,7 @@ Import your GPX files and see all your hikes on one map.
 - **Backend**: Go, chi, GORM (AutoMigrate), PostgreSQL + PostGIS
 - **Frontend**: React, Vite, TypeScript, shadcn/ui, [mapcn](https://mapcn.dev) (MapLibre)
 - The Go binary embeds the built frontend and serves it alongside the API.
+- `/hikes/{id}` pages of hikes anyone may see get their title and Open Graph tags filled in server-side, pointing at the hike's `card.png`, so shared links unfurl with a preview.
 - The home page (`web/home.html`, `web/src/home/`) is prerendered to static HTML at build time and served at `/` to signed-out visitors; signed-in users get the app there. `robots.txt` and `sitemap.xml` are generated from `APP_URL`.
 
 ## Quick start
@@ -87,6 +88,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/feed` | `{hikes, next}`: 20 recent done hikes from friends who share theirs and hikes you were tagged on; pass `?after=<next>` for the following page |
 | GET | `/api/hikes/{id}` | one hike with `owner`, `participants` and `interactions` (`{kudos, comments, kudoed}`); readable signed out when shared publicly |
 | GET | `/api/hikes/{id}/gpx` | the original GPX file, for whoever can see the hike |
+| GET | `/api/hikes/{id}/card.png` | 1200×630 link preview of the hike (track and stats), for whoever can see it |
 | GET | `/api/hikes/{id}/summits` | the named peaks the hike went over, highest first |
 | GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |
 | PATCH | `/api/hikes/{id}` | any of `{name, notes, labels, planned}`; labels are lowercased, deduplicated and sorted, `[]` clears them |

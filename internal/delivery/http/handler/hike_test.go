@@ -42,7 +42,7 @@ func TestExport(t *testing.T) {
 		{Name: "Lac Blanc (2)", StartedAt: &day},
 		{Name: "a/b", CreatedAt: day},
 	}}
-	h := middleware.RequireAuth(fakeAuth{&domain.User{ID: uuid.New()}})(http.HandlerFunc(NewHikeHandler(svc, nil, 1).Export))
+	h := middleware.RequireAuth(fakeAuth{&domain.User{ID: uuid.New()}})(http.HandlerFunc(NewHikeHandler(svc, nil, nil, 1).Export))
 
 	req := httptest.NewRequest(http.MethodGet, "/api/hikes/export", nil)
 	req.AddCookie(&http.Cookie{Name: middleware.SessionCookie, Value: "x"})

@@ -35,6 +35,7 @@ type HikeService interface {
 	Tiles(ctx context.Context, viewer, owner uuid.UUID) (map[uuid.UUID][]domain.Tile, error)
 	Similar(ctx context.Context, viewer, id uuid.UUID) ([]domain.Hike, error)
 	Feed(ctx context.Context, userID uuid.UUID, after *domain.FeedCursor) ([]domain.Hike, *domain.FeedCursor, error)
+	Card(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []domain.Segment, error)
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error)
 	GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []byte, error)
 	Export(ctx context.Context, userID uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error
@@ -47,16 +48,21 @@ type InteractionCounts interface {
 	Counts(ctx context.Context, viewer uuid.UUID, hikeIDs []uuid.UUID) (map[uuid.UUID]domain.HikeInteractions, error)
 }
 
+// CardRenderer draws a hike's link preview image as PNG.
+type CardRenderer func(h *domain.Hike, track []domain.Segment) ([]byte, error)
+
 type HikeHandler struct {
 	svc          HikeService
 	interactions InteractionCounts
+	renderCard   CardRenderer
 	maxFileSize  int64
 }
 
 // NewHikeHandler builds the hike endpoints. interactions may be nil, leaving
-// kudos and comment counts out of responses.
-func NewHikeHandler(svc HikeService, interactions InteractionCounts, maxFileSize int64) *HikeHandler {
-	return &HikeHandler{svc: svc, interactions: interactions, maxFileSize: maxFileSize}
+// kudos and comment counts out of responses; renderCard may be nil when
+// preview images are not served.
+func NewHikeHandler(svc HikeService, interactions InteractionCounts, renderCard CardRenderer, maxFileSize int64) *HikeHandler {
+	return &HikeHandler{svc: svc, interactions: interactions, renderCard: renderCard, maxFileSize: maxFileSize}
 }
 
 // withInteractions adds kudos and comment counts to hikes in a response.
@@ -356,6 +362,32 @@ func (h *HikeHandler) Feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, feed)
+}
+
+// Card serves the hike's link preview image, for whoever may see the hike.
+func (h *HikeHandler) Card(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	if h.renderCard == nil {
+		writeJSON(w, http.StatusNotFound, dto.Error{Error: "not found"})
+		return
+	}
+	hike, track, err := h.svc.Card(r.Context(), middleware.ViewerID(r.Context()), id)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	png, err := h.renderCard(hike, track)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	// Previews are fetched by link unfurlers; an hour keeps renames showing up soon.
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	_, _ = w.Write(png)
 }
 
 // Similar returns the signed-in user's other hikes along the same route.
