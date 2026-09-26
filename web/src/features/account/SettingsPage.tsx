@@ -15,16 +15,17 @@ import { cn } from '@/lib/utils'
 
 import { MAX_NAME_LENGTH } from './api'
 import { useUpdateAccount } from './useAccount'
+import { ThemeSwitcher } from './ThemeSwitcher'
 import { UserAvatar } from './UserAvatar'
 
-export function ProfilePage() {
+export function SettingsPage() {
   const me = useMe()
 
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
         <SidebarTrigger />
-        <h1 className="text-lg font-semibold">Profile</h1>
+        <h1 className="text-lg font-semibold">Settings</h1>
       </header>
       <main className="flex-1 overflow-y-auto">
         {me.data && (
@@ -32,6 +33,7 @@ export function ProfilePage() {
             {/* Keyed so the form resets if the saved name changes elsewhere. */}
             <DetailsCard key={me.data.name} user={me.data} />
             <VisibilityCard user={me.data} />
+            <AppearanceCard />
           </div>
         )}
       </main>
@@ -65,10 +67,10 @@ function DetailsCard({ user }: { user: User }) {
     <Card>
       <form onSubmit={onSubmit} className="contents">
         <CardHeader>
-          <CardTitle>Details</CardTitle>
+          <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <UserAvatar user={user} className="size-16" />
+          <UserAvatar user={user} className="mx-auto size-28" />
           <FloatingInput
             label="Display name"
             value={name}
@@ -151,6 +153,20 @@ function VisibilityCard({ user }: { user: User }) {
           </Link>
         </Button>
       </CardFooter>
+    </Card>
+  )
+}
+
+function AppearanceCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Appearance</CardTitle>
+        <CardDescription>System follows your device setting.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ThemeSwitcher />
+      </CardContent>
     </Card>
   )
 }

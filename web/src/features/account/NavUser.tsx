@@ -1,5 +1,4 @@
-import { ChevronsUpDown, IdCard, LogOut, SunMoon, UserRound } from 'lucide-react'
-import { useTheme } from 'next-themes'
+import { ChevronsUpDown, LogOut, Settings, SunMoon, UserRound } from 'lucide-react'
 import { Link } from 'react-router'
 
 import {
@@ -8,12 +7,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
@@ -21,12 +15,14 @@ import type { User } from '@/features/auth/api'
 import { useLogout, useMe } from '@/features/auth/useAuth'
 
 import { displayName } from './displayName'
+import { ThemeSwitcher } from './ThemeSwitcher'
 import { UserAvatar } from './UserAvatar'
+
+const itemClass = 'gap-2 px-2 py-2'
 
 export function NavUser() {
   const me = useMe()
   const logout = useLogout()
-  const { theme, setTheme } = useTheme()
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!me.data) return null
@@ -60,34 +56,26 @@ export function NavUser() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link to="/profile" onClick={() => setOpenMobile(false)}>
+              <DropdownMenuItem asChild className={itemClass}>
+                <Link to={`/u/${user.id}`} onClick={() => setOpenMobile(false)}>
                   <UserRound />
                   Profile
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to={`/u/${user.id}`} onClick={() => setOpenMobile(false)}>
-                  <IdCard />
-                  My public page
+              <DropdownMenuItem asChild className={itemClass}>
+                <Link to="/settings" onClick={() => setOpenMobile(false)}>
+                  <Settings />
+                  Settings
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <SunMoon />
-                  Theme
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-                    <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+              <div className="flex items-center gap-2 px-2 py-1 text-sm">
+                <SunMoon className="text-muted-foreground size-4" />
+                Theme
+                <ThemeSwitcher className="ml-auto" />
+              </div>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => logout.mutate()}>
+            <DropdownMenuItem variant="destructive" className={itemClass} onClick={() => logout.mutate()}>
               <LogOut />
               Log out
             </DropdownMenuItem>

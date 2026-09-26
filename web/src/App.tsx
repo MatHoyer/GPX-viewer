@@ -5,7 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { ProfilePage } from '@/features/account/ProfilePage'
+import { SettingsPage } from '@/features/account/SettingsPage'
 import { AuthPage } from '@/features/auth/AuthPage'
 import { useMe } from '@/features/auth/useAuth'
 import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
@@ -41,7 +41,7 @@ export default function App() {
               <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route path="/" element={<MapPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/friends" element={<FriendsPage />} />
               </Route>
               {/* Shared with signed-out visitors when the owner's profile is public. */}
