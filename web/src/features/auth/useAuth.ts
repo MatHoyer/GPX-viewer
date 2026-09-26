@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router'
 
 import { fetchMe, login, logout, register, verifyEmail } from './api'
 
@@ -30,9 +31,13 @@ export function useVerifyEmail() {
 
 export function useLogout() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   return useMutation({
     mutationFn: logout,
     onSuccess: () => {
+      // Leave first: clearing the cache puts the session back in a pending
+      // state, and the guards render nothing while it is pending.
+      navigate('/login', { replace: true })
       qc.clear()
       qc.setQueryData(meQueryKey, null)
     },
