@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"strings"
+	"unicode"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -25,6 +28,7 @@ type HikeService interface {
 	Rename(ctx context.Context, userID, id uuid.UUID, name string) (*domain.Hike, error)
 	Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error)
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error)
+	GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []byte, error)
 	Tag(ctx context.Context, owner, id, friend uuid.UUID) error
 	Untag(ctx context.Context, viewer, id, participant uuid.UUID) error
 }
@@ -183,6 +187,37 @@ func (h *HikeHandler) Profile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, dto.NewProfile(p))
+}
+
+// GPX downloads the hike's original GPX file.
+func (h *HikeHandler) GPX(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	hike, raw, err := h.svc.GPX(r.Context(), middleware.ViewerID(r.Context()), id)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/gpx+xml")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": gpxFilename(hike.Name)}))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = w.Write(raw)
+}
+
+// gpxFilename turns a hike name into a safe download filename.
+func gpxFilename(name string) string {
+	clean := strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || strings.ContainsRune(`/\:*?"<>|`, r) {
+			return '_'
+		}
+		return r
+	}, strings.TrimSpace(name))
+	if clean == "" {
+		clean = "hike"
+	}
+	return clean + ".gpx"
 }
 
 // Tracks returns the signed-in user's simplified hike geometries.

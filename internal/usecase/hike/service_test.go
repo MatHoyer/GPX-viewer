@@ -222,6 +222,9 @@ func TestSharedHikesAreReadOnly(t *testing.T) {
 	if p, err := svc.Profile(ctx, uuid.Nil, h.ID); err != nil || len(p.Points) != 2 {
 		t.Errorf("anonymous profile = %+v, %v", p, err)
 	}
+	if _, raw, err := svc.GPX(ctx, bob, h.ID); err != nil || string(raw) != "raw" {
+		t.Errorf("bob gpx = %q, %v", raw, err)
+	}
 	if _, err := svc.Rename(ctx, bob, h.ID, "Mine now"); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob rename err = %v", err)
 	}
@@ -246,6 +249,9 @@ func TestProfileScopedToOwner(t *testing.T) {
 	}
 	if _, err := svc.Profile(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob profile err = %v", err)
+	}
+	if _, _, err := svc.GPX(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("bob gpx err = %v", err)
 	}
 }
 
