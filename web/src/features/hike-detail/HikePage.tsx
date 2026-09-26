@@ -1,6 +1,6 @@
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
 import {
@@ -31,6 +31,7 @@ import { useReplayClock } from './useReplayClock'
 export function HikePage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const hike = useHike(id)
   const profile = useProfile(id)
   const deleteHike = useDeleteHike()
@@ -63,10 +64,14 @@ export function HikePage() {
     <div className="bg-muted/30 min-h-svh">
       <header className="bg-background/90 sticky top-0 z-20 border-b backdrop-blur">
         <div className="mx-auto flex max-w-screen-2xl items-center gap-3 px-4 py-3">
-          <Button asChild variant="ghost" size="icon" aria-label="Back to map">
-            <Link to="/">
-              <ArrowLeft />
-            </Link>
+          {/* Return to whichever view (map or calendar) the hike was opened from. */}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Back"
+            onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
+          >
+            <ArrowLeft />
           </Button>
           <div className="min-w-0 flex-1">
             {hike.data ? (
