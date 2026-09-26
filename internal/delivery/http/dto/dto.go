@@ -142,6 +142,8 @@ type Hike struct {
 	Owner *PublicUser `json:"owner,omitempty"`
 	// Participants is omitted on hikes just created by an upload.
 	Participants []PublicUser `json:"participants,omitempty"`
+	// Interactions is set on single-hike reads and the activity feed.
+	Interactions *HikeInteractions `json:"interactions,omitempty"`
 }
 
 func NewHike(h *domain.Hike) Hike {

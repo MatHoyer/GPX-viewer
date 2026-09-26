@@ -227,3 +227,35 @@ type PeakModel struct {
 }
 
 func (PeakModel) TableName() string { return "peaks" }
+
+// HikeKudosModel is one user's kudos on a hike.
+type HikeKudosModel struct {
+	HikeID    uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Hike      HikeModel `gorm:"constraint:OnDelete:CASCADE"`
+	UserID    uuid.UUID `gorm:"type:uuid;primaryKey;index"`
+	User      UserModel `gorm:"constraint:OnDelete:CASCADE"`
+	CreatedAt time.Time `gorm:"not null"`
+}
+
+func (HikeKudosModel) TableName() string { return "hike_kudos" }
+
+// HikeCommentModel is a comment on a hike.
+type HikeCommentModel struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey"`
+	HikeID    uuid.UUID `gorm:"type:uuid;not null;index"`
+	Hike      HikeModel `gorm:"constraint:OnDelete:CASCADE"`
+	UserID    uuid.UUID `gorm:"type:uuid;not null;index"`
+	User      UserModel `gorm:"constraint:OnDelete:CASCADE"`
+	Body      string    `gorm:"not null"`
+	CreatedAt time.Time `gorm:"not null"`
+}
+
+func (HikeCommentModel) TableName() string { return "hike_comments" }
+
+func (m HikeCommentModel) toDomain() domain.Comment {
+	c := domain.Comment{ID: m.ID, HikeID: m.HikeID, UserID: m.UserID, Body: m.Body, CreatedAt: m.CreatedAt}
+	if m.User.ID != uuid.Nil {
+		c.Author = m.User.toDomain()
+	}
+	return c
+}

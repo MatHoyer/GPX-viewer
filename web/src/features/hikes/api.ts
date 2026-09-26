@@ -38,8 +38,10 @@ export type Hike = {
   createdAt: string
   /** Omitted on hikes just returned by an upload. */
   owner?: Person
-  /** Friends the owner tagged. Only set when fetching a single hike. */
+  /** Friends the owner tagged. */
   participants?: Person[]
+  /** Kudos and comments, on single-hike reads and the activity feed. */
+  interactions?: { kudos: number; comments: number; kudoed: boolean }
 }
 
 export type BestEffort = { distanceM: number; durationS: number }
