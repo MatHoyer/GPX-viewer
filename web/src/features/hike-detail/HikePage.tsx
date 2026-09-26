@@ -29,6 +29,7 @@ import { HikeStats } from './HikeStats'
 import { Participants } from './Participants'
 import { ProfileCharts } from './ProfileCharts'
 import { RecordBadge } from './RecordBadge'
+import { SameRoute } from './SameRoute'
 import { ReplayControls } from './ReplayControls'
 import { ReplayMap } from './ReplayMap'
 import { useReplay } from './store'
@@ -132,6 +133,7 @@ export function HikePage() {
       <main className="mx-auto max-w-screen-2xl space-y-4 p-4">
         {profile.data ? <HikeStats summary={profile.data.summary} /> : <Skeleton className="h-20 w-full" />}
         {hike.data && <HikeNotes hike={hike.data} isOwner={isOwner} />}
+        {hike.data && me.data && <SameRoute hike={hike.data} />}
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <section className="bg-card space-y-3 rounded-xl border p-3 lg:sticky lg:top-20 lg:self-start">

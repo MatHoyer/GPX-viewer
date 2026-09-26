@@ -17,6 +17,11 @@ export function useProfile(id: string) {
   })
 }
 
+/** The signed-in user's other hikes along the same route. */
+export function useSimilarHikes(id: string) {
+  return useQuery({ queryKey: ['hikes', 'similar', id], queryFn: () => api<Hike[]>(`/hikes/${id}/similar`) })
+}
+
 type Participant = { hikeId: string; userId: string }
 
 // Tags change which hikes show up on whose map and profile, so refresh both.

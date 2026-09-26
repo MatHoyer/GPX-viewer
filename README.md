@@ -86,6 +86,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/hikes/{id}/profile` | columnar series (distance, time, speed, elevation, HR, cadence, temperature) + summary, from the stored GPX |
 | PATCH | `/api/hikes/{id}` | any of `{name, notes, labels}`; labels are lowercased, deduplicated and sorted, `[]` clears them |
 | DELETE | `/api/hikes/{id}` | delete a hike |
+| GET | `/api/hikes/{id}/similar` | your other hikes along the same route (tracks within 200 m of each other, either direction) |
 | PUT | `/api/hikes/{id}/participants/{userId}` | tag a friend on your hike |
 | DELETE | `/api/hikes/{id}/participants/{userId}` | untag (owner, or the participant themselves) |
 | GET | `/api/users/{id}` | public profile: `user`, `visibility`, `relation`, `canView`; signed out only when public |
