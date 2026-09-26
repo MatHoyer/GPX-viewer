@@ -159,6 +159,8 @@
 /* Hike profile series colors */
 :root {
     --chart-ele: oklch(0.6 0.12 160);
+    /* Single-series bars; the dark step stays in the chart lightness band. */
+    --chart-bar: oklch(0.6 0.12 160);
     --chart-speed: oklch(0.58 0.16 250);
     --chart-hr: oklch(0.6 0.21 25);
     --chart-cad: oklch(0.58 0.18 300);
@@ -168,6 +170,7 @@
 
 .dark {
     --chart-ele: oklch(0.72 0.13 160);
+    --chart-bar: oklch(0.66 0.13 160);
     --chart-speed: oklch(0.7 0.15 250);
     --chart-hr: oklch(0.7 0.19 25);
     --chart-cad: oklch(0.7 0.16 300);
