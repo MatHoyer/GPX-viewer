@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GPX Viewer: all your hikes on one map</title>
+    <meta name="description" content="Import GPX files from your watch or phone and see every hike on one map. Elevation, speed, heart rate and cadence charts, route replay, a hiking calendar and sharing with friends." />
+    <link rel="canonical" href="{{APP_URL}}/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#eef1ea" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111a15" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GPX Viewer" />
+    <meta property="og:title" content="GPX Viewer: all your hikes on one map" />
+    <meta property="og:description" content="Import GPX files from your watch or phone and see every hike on one map, with elevation and heart rate charts, route replay and a hiking calendar." />
+    <meta property="og:url" content="{{APP_URL}}/" />
+    <meta property="og:image" content="{{APP_URL}}/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "GPX Viewer",
+        "url": "{{APP_URL}}/",
+        "applicationCategory": "SportsApplication",
+        "operatingSystem": "Web",
+        "description": "Import GPX files and see every hike on one map, with elevation, speed and heart rate charts, route replay, a hiking calendar and sharing with friends."
+      }
+    </script>
+    <script>
+      // Same preference key as the app (next-themes), applied before first paint.
+      try {
+        var t = localStorage.getItem('theme')
+        if (t === 'dark' || ((!t || t === 'system') && matchMedia('(prefers-color-scheme: dark)').matches))
+          document.documentElement.classList.add('dark')
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="home"><!--home--></div>
+    <script type="module" src="/src/home/main.ts"></script>
+  </body>
+</html>

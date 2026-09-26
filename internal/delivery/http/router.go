@@ -20,6 +20,8 @@ type Deps struct {
 	Authenticator middleware.Authenticator
 	// Static is the built frontend (index.html at its root). Optional.
 	Static fs.FS
+	// AppURL is the public base URL, used for canonical links and the sitemap.
+	AppURL string
 }
 
 func NewRouter(d Deps) http.Handler {
@@ -88,7 +90,11 @@ func NewRouter(d Deps) http.Handler {
 		})
 	})
 
+	r.Get("/robots.txt", robotsHandler(d.AppURL))
+	r.Get("/sitemap.xml", sitemapHandler(d.AppURL))
+
 	if d.Static != nil {
+		r.With(middleware.OptionalAuth(d.Authenticator)).Handle("/", rootHandler(d.Static, d.AppURL))
 		r.Handle("/*", spaHandler(d.Static))
 	}
 	return r

@@ -1,0 +1,87 @@
+/* Standalone stylesheet for the prerendered home page: it only scans the
+   home sources so it doesn't ship the app's utilities. */
+@import "tailwindcss" source(none);
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/bricolage-grotesque";
+@source "./";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Geist Variable', sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', sans-serif;
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-trail: var(--trail);
+}
+
+/* Map paper, spruce ink and survey-brown contours; the trail red is the
+   app's first track color and only marks tracks and the main action. */
+:root {
+  color-scheme: light;
+  --paper: #eef1ea;
+  --paper-2: #e2e8dd;
+  --ink: #1a2b22;
+  --ink-soft: #4d5e54;
+  --line: #cdd5c8;
+  --contour: #a9794c;
+  --trail: #d9461c;
+  --ele: #2f7d5b;
+  --hr: #c8374a;
+  --speed: #2e6fae;
+  --cad: #8a55c7;
+  --temp: #c98a1a;
+}
+
+.dark {
+  color-scheme: dark;
+  --paper: #111a15;
+  --paper-2: #19251f;
+  --ink: #e5ece3;
+  --ink-soft: #9fb0a5;
+  --line: #2a3a31;
+  --contour: #8a6a48;
+  --trail: #f06a42;
+  --ele: #5fc496;
+  --hr: #f06478;
+  --speed: #6aa7e6;
+  --cad: #b58ae8;
+  --temp: #e7b04a;
+}
+
+@layer base {
+  body {
+    background: var(--paper);
+  }
+  :focus-visible {
+    outline: 2px solid var(--trail);
+    outline-offset: 2px;
+  }
+}
+
+/* The one moment of motion: the featured hike draws itself, then its labels appear. */
+.draw-track {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 2.6s cubic-bezier(0.55, 0.1, 0.3, 1) 0.3s forwards;
+}
+.summit-label {
+  opacity: 0;
+  animation: appear 0.5s ease-out 2.6s forwards;
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes appear {
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .draw-track, .summit-label {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}

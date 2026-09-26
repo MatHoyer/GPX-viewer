@@ -6,13 +6,14 @@
   "scripts": {
     "copy-maplibre-worker": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/",
     "dev": "pnpm copy-maplibre-worker && vite",
-    "build": "pnpm copy-maplibre-worker && tsc -b && vite build && touch dist/.gitkeep",
+    "build": "pnpm copy-maplibre-worker && tsc -b && vite build && vite build --ssr src/home/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && touch dist/.gitkeep",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run"
   },
   "dependencies": {
     "@blobatar/react": "^2.7.0",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.104.0",

@@ -16,6 +16,17 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  build: {
+    // Every supported browser has modulepreload; skips a script on the static home page.
+    modulePreload: { polyfill: false },
+    rollupOptions: {
+      // home.html is prerendered by scripts/prerender.mjs after the build.
+      input: {
+        app: path.resolve(import.meta.dirname, 'index.html'),
+        home: path.resolve(import.meta.dirname, 'home.html'),
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': 'http://localhost:8080',
