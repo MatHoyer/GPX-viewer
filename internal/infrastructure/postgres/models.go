@@ -100,19 +100,20 @@ func (m PasswordResetModel) toDomain() *domain.PasswordReset {
 }
 
 type HikeModel struct {
-	ID             uuid.UUID        `gorm:"type:uuid;primaryKey"`
-	UserID         uuid.UUID        `gorm:"type:uuid;not null;index"`
-	User           UserModel        `gorm:"constraint:OnDelete:CASCADE"`
-	Name           string           `gorm:"not null"`
-	DistanceM      float64          `gorm:"type:double precision;not null"`
-	ElevationGainM float64          `gorm:"type:double precision;not null"`
-	StartedAt      *time.Time       `gorm:"index"`
-	DurationS      int64            `gorm:"not null"`
-	Notes          string           `gorm:"not null;default:''"`
-	Labels         []HikeLabelModel `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
-	ElevationLossM float64          `gorm:"type:double precision;not null;default:0"`
-	MinEleM        *float64         `gorm:"type:double precision"`
-	MaxEleM        *float64         `gorm:"type:double precision"`
+	ID             uuid.UUID             `gorm:"type:uuid;primaryKey"`
+	UserID         uuid.UUID             `gorm:"type:uuid;not null;index"`
+	User           UserModel             `gorm:"constraint:OnDelete:CASCADE"`
+	Name           string                `gorm:"not null"`
+	DistanceM      float64               `gorm:"type:double precision;not null"`
+	ElevationGainM float64               `gorm:"type:double precision;not null"`
+	StartedAt      *time.Time            `gorm:"index"`
+	DurationS      int64                 `gorm:"not null"`
+	Notes          string                `gorm:"not null;default:''"`
+	Labels         []HikeLabelModel      `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
+	BestEfforts    []HikeBestEffortModel `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
+	ElevationLossM float64               `gorm:"type:double precision;not null;default:0"`
+	MinEleM        *float64              `gorm:"type:double precision"`
+	MaxEleM        *float64              `gorm:"type:double precision"`
 	MovingS        *int64
 	DerivedVersion int              `gorm:"not null;default:0;index"`
 	MinLon         float64          `gorm:"type:double precision;not null"`
@@ -145,6 +146,31 @@ type HikeLabelModel struct {
 
 func (HikeLabelModel) TableName() string { return "hike_labels" }
 
+// HikeBestEffortModel is a hike's fastest time over a standard distance.
+type HikeBestEffortModel struct {
+	HikeID    uuid.UUID `gorm:"type:uuid;primaryKey"`
+	DistanceM int       `gorm:"primaryKey"`
+	DurationS int       `gorm:"not null"`
+}
+
+func (HikeBestEffortModel) TableName() string { return "hike_best_efforts" }
+
+func bestEffortsToDomain(ms []HikeBestEffortModel) []domain.BestEffort {
+	out := make([]domain.BestEffort, len(ms))
+	for i, m := range ms {
+		out[i] = domain.BestEffort{DistanceM: m.DistanceM, DurationS: m.DurationS}
+	}
+	return out
+}
+
+func bestEffortModels(id uuid.UUID, efforts []domain.BestEffort) []HikeBestEffortModel {
+	out := make([]HikeBestEffortModel, len(efforts))
+	for i, e := range efforts {
+		out[i] = HikeBestEffortModel{HikeID: id, DistanceM: e.DistanceM, DurationS: e.DurationS}
+	}
+	return out
+}
+
 func (m HikeModel) toDomain() domain.Hike {
 	labels := make([]string, len(m.Labels))
 	for i, l := range m.Labels {
@@ -170,6 +196,7 @@ func (m HikeModel) toDomain() domain.Hike {
 			MinEleM:        m.MinEleM,
 			MaxEleM:        m.MaxEleM,
 			MovingS:        m.MovingS,
+			BestEfforts:    bestEffortsToDomain(m.BestEfforts),
 		},
 		DerivedVersion: m.DerivedVersion,
 		Bounds:         domain.Bounds{MinLon: m.MinLon, MinLat: m.MinLat, MaxLon: m.MaxLon, MaxLat: m.MaxLat},

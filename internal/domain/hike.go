@@ -27,6 +27,15 @@ type HikeDerived struct {
 	MinEleM        *float64
 	MaxEleM        *float64
 	MovingS        *int64
+	// BestEfforts are the fastest times over standard distances the hike
+	// covers, shortest distance first. Empty without timestamps.
+	BestEfforts []BestEffort
+}
+
+// BestEffort is the shortest time a hike took to cover DistanceM.
+type BestEffort struct {
+	DistanceM int
+	DurationS int
 }
 
 type Hike struct {

@@ -19,6 +19,7 @@ function hike(startedAt: string | null, over: Partial<Hike> = {}): Hike {
     minEleM: null,
     maxEleM: null,
     movingS: 6000,
+    bestEfforts: [],
     bounds: [0, 0, 1, 1],
     createdAt: '2026-01-01T00:00:00Z',
     ...over,
