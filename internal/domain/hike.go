@@ -50,7 +50,7 @@ type Hike struct {
 	CreatedAt      time.Time
 	// Owner is loaded by list and single-hike reads.
 	Owner *User
-	// Participants are the friends the owner tagged. Only loaded by single-hike reads.
+	// Participants are the friends the owner tagged. Loaded by list and single-hike reads.
 	Participants []User
 }
 
@@ -70,8 +70,8 @@ type HikeTrack struct {
 
 type HikeRepository interface {
 	Create(ctx context.Context, h *Hike) error
-	// ListByUser returns the hikes a user owns or is tagged on, without
-	// geometry or raw GPX, newest first.
+	// ListByUser returns the hikes a user owns or is tagged on, with their
+	// participants but without geometry or raw GPX, newest first.
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]Hike, error)
 	GetByID(ctx context.Context, userID, id uuid.UUID) (*Hike, error)
 	// Find returns a hike whoever owns it, without geometry or raw GPX.

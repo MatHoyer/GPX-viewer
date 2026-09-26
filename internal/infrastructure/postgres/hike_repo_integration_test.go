@@ -85,6 +85,9 @@ func TestHikeRepository(t *testing.T) {
 	if list, _ := hikes.ListByUser(ctx, bob); len(list) != 1 || list[0].Owner == nil || list[0].Owner.ID != alice || list[0].Owner.PasswordHash != "" {
 		t.Errorf("bob's list after tag = %+v", list)
 	}
+	if list, _ := hikes.ListByUser(ctx, alice); len(list) != 1 || len(list[0].Participants) != 1 || list[0].Participants[0].ID != bob || list[0].Participants[0].PasswordHash != "" {
+		t.Errorf("alice's list participants = %+v", list)
+	}
 	if tracks, _ := hikes.ListTracks(ctx, bob, 0); len(tracks) != 1 {
 		t.Errorf("bob's tracks have %d hikes after tag", len(tracks))
 	}

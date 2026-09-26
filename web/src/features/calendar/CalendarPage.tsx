@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { Hike } from '@/features/hikes/api'
 import { hikeColor } from '@/features/hikes/colors'
 import { useMe } from '@/features/auth/useAuth'
+import { FilterBar } from '@/features/hikes/FilterBar'
+import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
 import { taggedBy } from '@/features/hikes/owner'
 import { useHikes } from '@/features/hikes/useHikes'
 import { formatDistance, formatDuration, formatElevation } from '@/lib/format'
@@ -25,19 +27,30 @@ const weekdays = Array.from({ length: 7 }, (_, i) => weekdayFormatter.format(new
 
 export function CalendarPage() {
   const hikes = useHikes()
+  const me = useMe()
+  const filters = useHikeFilters((s) => s.filters)
   const [params, setParams] = useSearchParams()
   const month = parseMonth(params.get('month')) ?? currentMonth()
   const today = dayKey(new Date())
 
   function goTo(next: YearMonth) {
-    setParams({ month: formatMonthParam(next) }, { replace: true })
+    setParams(
+      (p) => {
+        p.set('month', formatMonthParam(next))
+        return p
+      },
+      { replace: true },
+    )
   }
 
-  // Colors follow the list order so a hike has the same color as on the map.
+  // Colors follow the unfiltered list order so a hike has the same color as on the map.
   const { byDay, undated } = useMemo(() => {
+    const all = hikes.data ?? []
+    const shown = new Set(filterHikes(all, filters, me.data?.id))
     const byDay = new Map<string, DatedHike[]>()
     let undated = 0
-    ;(hikes.data ?? []).forEach((hike, i) => {
+    all.forEach((hike, i) => {
+      if (!shown.has(hike)) return
       if (!hike.startedAt) {
         undated++
         return
@@ -48,7 +61,7 @@ export function CalendarPage() {
     })
     for (const list of byDay.values()) list.sort((a, b) => a.start.getTime() - b.start.getTime())
     return { byDay, undated }
-  }, [hikes.data])
+  }, [hikes.data, filters, me.data?.id])
 
   const days = monthGrid(month)
   const inMonth = days.filter((d) => d.getMonth() === month.month).flatMap((d) => byDay.get(dayKey(d)) ?? [])
@@ -77,6 +90,12 @@ export function CalendarPage() {
           </Button>
         </div>
       </header>
+
+      {hikes.data && hikes.data.length > 0 && (
+        <div className="border-b px-2 py-1.5 sm:px-4">
+          <FilterBar hikes={hikes.data} userId={me.data?.id} matched={filterHikes(hikes.data, filters, me.data?.id).length} />
+        </div>
+      )}
 
       <div className="grid grid-cols-7 border-b">
         {weekdays.map((d) => (
