@@ -1,0 +1,35 @@
+export class ApiError extends Error {
+  readonly status: number
+  readonly field?: string
+
+  constructor(status: number, message: string, field?: string) {
+    super(message)
+    this.status = status
+    this.field = field
+  }
+}
+
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers)
+  if (init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const res = await fetch(`/api${path}`, { ...init, headers, credentials: 'same-origin' })
+  if (!res.ok) {
+    let message = res.statusText
+    let field: string | undefined
+    try {
+      const body = (await res.json()) as { error?: string; field?: string }
+      message = body.error ?? message
+      field = body.field
+    } catch {
+      // Non-JSON error body.
+    }
+    throw new ApiError(res.status, message, field)
+  }
+  if (res.status === 204) {
+    return undefined as T
+  }
+  return (await res.json()) as T
+}
