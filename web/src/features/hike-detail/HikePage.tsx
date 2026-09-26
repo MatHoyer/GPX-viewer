@@ -18,13 +18,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
-import { useDeleteHike } from '@/features/hikes/useHikes'
+import { useDeleteHike, useHikeSummits } from '@/features/hikes/useHikes'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 
 import { useHike, useProfile } from './api'
 import { EditableTitle } from './EditableTitle'
 import { HikeNotes } from './HikeNotes'
+import { HikeSummits } from './HikeSummits'
 import { HikeStats } from './HikeStats'
 import { Participants } from './Participants'
 import { ProfileCharts } from './ProfileCharts'
@@ -42,6 +43,7 @@ export function HikePage() {
   const me = useMe()
   const hike = useHike(id)
   const profile = useProfile(id)
+  const summits = useHikeSummits(id)
   const deleteHike = useDeleteHike()
   const [confirmDelete, setConfirmDelete] = useState(false)
   // Someone else's hike, shared with the viewer: read-only, credited to its owner.
@@ -132,13 +134,14 @@ export function HikePage() {
 
       <main className="mx-auto max-w-screen-2xl space-y-4 p-4">
         {profile.data ? <HikeStats summary={profile.data.summary} /> : <Skeleton className="h-20 w-full" />}
+        {summits.data && <HikeSummits peaks={summits.data} />}
         {hike.data && <HikeNotes hike={hike.data} isOwner={isOwner} />}
         {hike.data && me.data && <SameRoute hike={hike.data} />}
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <section className="bg-card space-y-3 rounded-xl border p-3 lg:sticky lg:top-20 lg:self-start">
             <div className="h-[45vh] overflow-hidden rounded-lg lg:h-[calc(100svh-17rem)]">
-              {profile.data ? <ReplayMap profile={profile.data} /> : <Skeleton className="size-full" />}
+              {profile.data ? <ReplayMap profile={profile.data} peaks={summits.data} /> : <Skeleton className="size-full" />}
             </div>
             {profile.data && <ReplayControls profile={profile.data} />}
           </section>

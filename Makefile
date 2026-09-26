@@ -1,7 +1,7 @@
 include $(wildcard .env)
 export
 
-.PHONY: dev-db dev-api dev-web web build test test-integration lint up down release
+.PHONY: dev-db dev-api dev-web web build test test-integration lint up down release import-peaks
 
 dev-db: ## Start PostGIS and Mailpit (inbox at http://localhost:8025)
 	docker compose up -d db mailpit
@@ -36,3 +36,6 @@ down:
 
 release: ## Bump, commit, tag and push a release (BUMP=patch|minor|major|X.Y.Z)
 	scripts/release.sh $(BUMP)
+
+import-peaks: ## Load OSM peaks in a region: make import-peaks BBOX=minLon,minLat,maxLon,maxLat
+	go run ./cmd/api import-peaks -bbox $(BBOX)

@@ -2,6 +2,8 @@ import { useEffect, useMemo } from 'react'
 
 import { MapControls, MapMarker, MapRoute, MarkerContent, useMap } from '@/components/ui/map'
 import { FitBounds } from '@/features/hikes/FitBounds'
+import type { Peak } from '@/features/stats/summits'
+import { formatElevation } from '@/lib/format'
 import { LayeredMap } from '@/features/map/LayeredMap'
 
 import { boundsBetween, linesBetween, positionAt, type Profile } from './profile'
@@ -10,7 +12,7 @@ import { useReplay } from './store'
 const TRACK_COLOR = '#2e86ab'
 const HEAD_COLOR = 'var(--replay-head)'
 
-export function ReplayMap({ profile }: { profile: Profile }) {
+export function ReplayMap({ profile, peaks = [] }: { profile: Profile; peaks?: Peak[] }) {
   const fullLines = useMemo(() => linesBetween(profile, 0, profile.lon.length - 1), [profile])
 
   return (
@@ -23,6 +25,16 @@ export function ReplayMap({ profile }: { profile: Profile }) {
       <RangeRoute profile={profile} />
       <TraveledRoute profile={profile} />
       <StartEndMarkers profile={profile} />
+      {peaks.map((p) => (
+        <MapMarker key={p.id} longitude={p.lon} latitude={p.lat}>
+          <MarkerContent>
+            <span
+              className="block size-0 border-x-[7px] border-b-[12px] border-x-transparent border-b-neutral-800 drop-shadow dark:border-b-white"
+              title={p.eleM !== null ? `${p.name} (${formatElevation(p.eleM)})` : p.name}
+            />
+          </MarkerContent>
+        </MapMarker>
+      ))}
       <HoverMarker profile={profile} />
       <HeadMarker profile={profile} />
       <FollowCamera profile={profile} />

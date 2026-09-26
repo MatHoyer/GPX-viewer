@@ -214,3 +214,14 @@ func (m HikeModel) toDomain() domain.Hike {
 		CreatedAt:      m.CreatedAt,
 	}
 }
+
+// PeakModel is a named OpenStreetMap peak. Geom is only written and queried
+// in SQL, so it is kept as its text form here.
+type PeakModel struct {
+	ID   int64    `gorm:"primaryKey;autoIncrement:false"`
+	Name string   `gorm:"not null"`
+	EleM *float64 `gorm:"type:double precision"`
+	Geom string   `gorm:"type:geometry(Point,4326);not null;index:idx_peaks_geom,type:gist"`
+}
+
+func (PeakModel) TableName() string { return "peaks" }
