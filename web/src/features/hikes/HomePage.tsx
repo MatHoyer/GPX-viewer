@@ -1,6 +1,6 @@
 import { LogOut, Monitor, Moon, MountainSnow, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import {
@@ -39,6 +39,7 @@ import { formatDistance, formatElevation } from '@/lib/format'
 
 import type { Hike } from './api'
 import { HikeList } from './HikeList'
+import type { PopupState } from './HikePopup'
 import { HikesMap } from './HikesMap'
 import { UploadDialog } from './UploadDialog'
 import { useDeleteHike, useHikes, useTracks } from './useHikes'
@@ -50,6 +51,27 @@ export function HomePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Hike | null>(null)
+  const [popup, setPopup] = useState<PopupState | null>(null)
+  const nonce = useRef(0)
+
+  function openPopup(hikeId: string, longitude: number, latitude: number) {
+    setSelectedId(hikeId)
+    setPopup({ hikeId, longitude, latitude, nonce: ++nonce.current })
+  }
+
+  function closePopup(closedNonce: number) {
+    setPopup((p) => (p?.nonce === closedNonce ? null : p))
+  }
+
+  function selectFromList(id: string | null) {
+    const start = id ? tracks.data?.features.find((f) => f.properties.id === id)?.geometry.coordinates[0]?.[0] : null
+    if (id && start) {
+      openPopup(id, start[0], start[1])
+    } else {
+      setSelectedId(id)
+      setPopup(null)
+    }
+  }
 
   const totals = useMemo(() => {
     const list = hikes.data ?? []
@@ -66,6 +88,7 @@ export function HomePage() {
     deleteHike.mutate(hike.id, {
       onSuccess: () => {
         if (selectedId === hike.id) setSelectedId(null)
+        if (popup?.hikeId === hike.id) setPopup(null)
         toast.success(`Deleted “${hike.name}”`)
       },
       onError: () => toast.error('Could not delete hike'),
@@ -95,7 +118,7 @@ export function HomePage() {
                 hikes={hikes.data}
                 isLoading={hikes.isLoading}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
+                onSelect={selectFromList}
                 onHover={setHoveredId}
                 onDelete={setPendingDelete}
               />
@@ -114,8 +137,10 @@ export function HomePage() {
           tracks={tracks.data}
           selectedId={selectedId}
           hoveredId={hoveredId}
-          onSelect={setSelectedId}
+          popup={popup}
+          onRouteClick={openPopup}
           onHover={setHoveredId}
+          onPopupClose={closePopup}
         />
       </SidebarInset>
 

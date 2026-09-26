@@ -1,21 +1,27 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 
-import { Map, MapControls, MapRoute, useMap } from '@/components/ui/map'
+import { Map, MapControls, MapRoute } from '@/components/ui/map'
 
-import type { Bounds, Hike, Tracks } from './api'
+import type { Hike, Tracks } from './api'
 import { hikeColor } from './colors'
+import { unionBounds } from './bounds'
+import { FitBounds } from './FitBounds'
+import { HikePopup, type PopupState } from './HikePopup'
 
 type Props = {
   hikes: Hike[]
   tracks: Tracks | undefined
   selectedId: string | null
   hoveredId: string | null
-  onSelect: (id: string | null) => void
+  popup: PopupState | null
+  onRouteClick: (id: string, longitude: number, latitude: number) => void
   onHover: (id: string | null) => void
+  onPopupClose: (nonce: number) => void
 }
 
-export function HikesMap({ hikes, tracks, selectedId, hoveredId, onSelect, onHover }: Props) {
+export function HikesMap({ hikes, tracks, selectedId, hoveredId, popup, onRouteClick, onHover, onPopupClose }: Props) {
   const colorById = useMemo(() => new globalThis.Map(hikes.map((h, i) => [h.id, hikeColor(i)])), [hikes])
+  const popupHike = popup ? hikes.find((h) => h.id === popup.hikeId) : undefined
 
   const fitTarget = useMemo(() => {
     const selected = hikes.find((h) => h.id === selectedId)
@@ -41,32 +47,21 @@ export function HikesMap({ hikes, tracks, selectedId, hoveredId, onSelect, onHov
             active={highlighted}
             activeWidth={5}
             activeOpacity={1}
-            onClick={() => onSelect(id === selectedId ? null : id)}
+            onClick={(e) => onRouteClick(id, e.lngLat.lng, e.lngLat.lat)}
             onMouseEnter={() => onHover(id)}
             onMouseLeave={() => onHover(null)}
           />
         ))
       })}
+      {popup && popupHike && (
+        <HikePopup
+          key={popup.nonce}
+          hike={popupHike}
+          popup={popup}
+          color={colorById.get(popupHike.id) ?? hikeColor(0)}
+          onClose={onPopupClose}
+        />
+      )}
     </Map>
-  )
-}
-
-function FitBounds({ bounds }: { bounds: Bounds | null }) {
-  const { map, isLoaded } = useMap()
-  const [minLon, minLat, maxLon, maxLat] = bounds ?? []
-
-  useEffect(() => {
-    if (!map || !isLoaded || minLon === undefined) return
-    map.fitBounds([minLon, minLat, maxLon, maxLat] as Bounds, { padding: 64, maxZoom: 15, duration: 800 })
-  }, [map, isLoaded, minLon, minLat, maxLon, maxLat])
-
-  return null
-}
-
-function unionBounds(all: Bounds[]): Bounds | null {
-  if (all.length === 0) return null
-  return all.reduce<Bounds>(
-    (acc, b) => [Math.min(acc[0], b[0]), Math.min(acc[1], b[1]), Math.max(acc[2], b[2]), Math.max(acc[3], b[3])],
-    [...all[0]],
   )
 }
