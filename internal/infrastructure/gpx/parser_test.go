@@ -126,3 +126,44 @@ func TestSamplesWithoutSensors(t *testing.T) {
 		}
 	}
 }
+
+func TestRouteDropsTimesAndSensors(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "garmin_ext.gpx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := NewParser()
+	route, err := p.Route(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := p.Parse(route)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.StartedAt != nil || parsed.DurationS != 0 {
+		t.Errorf("times kept: %+v", parsed)
+	}
+	samples, err := p.Samples(route)
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := p.Samples(data)
+	if len(samples) != len(orig) || len(samples) == 0 {
+		t.Fatalf("samples = %d, want %d", len(samples), len(orig))
+	}
+	for _, s := range samples {
+		if s.Time != nil || s.HR != nil || s.Cad != nil || s.Temp != nil {
+			t.Errorf("activity data kept: %+v", s)
+		}
+	}
+	if (orig[0].Ele == nil) != (samples[0].Ele == nil) || samples[0].Lat != orig[0].Lat {
+		t.Errorf("geometry changed: %+v vs %+v", samples[0], orig[0])
+	}
+}
+
+func TestRouteInvalid(t *testing.T) {
+	if _, err := NewParser().Route([]byte("nope")); !errors.Is(err, domain.ErrInvalidGPX) {
+		t.Errorf("err = %v", err)
+	}
+}

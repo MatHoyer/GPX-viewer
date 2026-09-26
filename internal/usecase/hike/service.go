@@ -51,25 +51,26 @@ func (s *Service) Import(ctx context.Context, userID uuid.UUID, filename string,
 	return s.importHike(ctx, userID, filename, data, false)
 }
 
-// ImportPlanned stores a GPX route as a hike userID plans to do.
+// ImportPlanned stores a GPX route as a hike userID plans to do. Only the
+// route is kept: times and sensor data of whoever recorded it are dropped.
 func (s *Service) ImportPlanned(ctx context.Context, userID uuid.UUID, filename string, data []byte) (*domain.Hike, error) {
 	return s.importHike(ctx, userID, filename, data, true)
 }
 
 func (s *Service) importHike(ctx context.Context, userID uuid.UUID, filename string, data []byte, planned bool) (*domain.Hike, error) {
-	parsed, err := s.parser.Parse(data)
-	if err != nil {
-		return nil, err
+	if planned {
+		route, err := s.parser.Route(data)
+		if err != nil {
+			return nil, err
+		}
+		data = route
 	}
-	if countPoints(parsed.Segments) < 2 {
-		return nil, domain.ErrInvalidGPX
-	}
-	samples, err := s.parser.Samples(data)
+	h, parsedName, err := s.buildTrack(data)
 	if err != nil {
 		return nil, err
 	}
 
-	name := strings.TrimSpace(parsed.Name)
+	name := strings.TrimSpace(parsedName)
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
 	}
@@ -77,11 +78,32 @@ func (s *Service) importHike(ctx context.Context, userID uuid.UUID, filename str
 		name = "Untitled hike"
 	}
 
-	h := &domain.Hike{
-		ID:             uuid.New(),
-		UserID:         userID,
-		Name:           name,
-		Planned:        planned,
+	h.ID = uuid.New()
+	h.UserID = userID
+	h.Name = name
+	h.Planned = planned
+	h.CreatedAt = s.now().UTC()
+	if err := s.hikes.Create(ctx, h); err != nil {
+		return nil, err
+	}
+	return h, nil
+}
+
+// buildTrack parses a GPX file into a hike's track, stats and derived data,
+// and returns the name the file gives it.
+func (s *Service) buildTrack(data []byte) (*domain.Hike, string, error) {
+	parsed, err := s.parser.Parse(data)
+	if err != nil {
+		return nil, "", err
+	}
+	if countPoints(parsed.Segments) < 2 {
+		return nil, "", domain.ErrInvalidGPX
+	}
+	samples, err := s.parser.Samples(data)
+	if err != nil {
+		return nil, "", err
+	}
+	return &domain.Hike{
 		DistanceM:      parsed.DistanceM,
 		ElevationGainM: parsed.ElevationGainM,
 		StartedAt:      parsed.StartedAt,
@@ -91,12 +113,35 @@ func (s *Service) importHike(ctx context.Context, userID uuid.UUID, filename str
 		Segments:       parsed.Segments,
 		Bounds:         computeBounds(parsed.Segments),
 		RawGPX:         data,
-		CreatedAt:      s.now().UTC(),
-	}
-	if err := s.hikes.Create(ctx, h); err != nil {
+	}, parsed.Name, nil
+}
+
+// MarkDone marks one of userID's planned hikes as walked. With a GPX file, the
+// recorded track replaces the planned route, bringing its times and sensor
+// data; without one, the route is kept as walked.
+func (s *Service) MarkDone(ctx context.Context, userID, id uuid.UUID, data []byte) (*domain.Hike, error) {
+	h, err := s.hikes.GetByID(ctx, userID, id)
+	if err != nil {
 		return nil, err
 	}
-	return h, nil
+	if !h.Planned {
+		return nil, &domain.ValidationError{Field: "planned", Message: "hike is already done"}
+	}
+	if data == nil {
+		done := false
+		if err := s.hikes.Update(ctx, userID, id, domain.HikeUpdate{Planned: &done}); err != nil {
+			return nil, err
+		}
+	} else {
+		track, _, err := s.buildTrack(data)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.hikes.ReplaceTrack(ctx, userID, id, track); err != nil {
+			return nil, err
+		}
+	}
+	return s.hikes.GetByID(ctx, userID, id)
 }
 
 // List returns the hikes owner owns or is tagged on, if viewer may see owner's hikes.

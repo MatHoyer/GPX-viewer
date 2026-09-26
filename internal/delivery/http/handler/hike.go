@@ -30,6 +30,7 @@ type HikeService interface {
 	Get(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Update(ctx context.Context, userID, id uuid.UUID, u domain.HikeUpdate) (*domain.Hike, error)
+	MarkDone(ctx context.Context, userID, id uuid.UUID, data []byte) (*domain.Hike, error)
 	Labels(ctx context.Context, userID uuid.UUID) ([]string, error)
 	Tracks(ctx context.Context, viewer, owner uuid.UUID) ([]domain.HikeTrack, error)
 	Tiles(ctx context.Context, viewer, owner uuid.UUID) (map[uuid.UUID][]domain.Tile, error)
@@ -205,12 +206,53 @@ func (h *HikeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if in.Name == nil && in.Notes == nil && in.Labels == nil && in.Planned == nil {
+	if in.Name == nil && in.Notes == nil && in.Labels == nil {
 		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update"})
 		return
 	}
-	u := domain.HikeUpdate{Name: in.Name, Notes: in.Notes, Labels: in.Labels, Planned: in.Planned}
+	u := domain.HikeUpdate{Name: in.Name, Notes: in.Notes, Labels: in.Labels}
 	hike, err := h.svc.Update(r.Context(), middleware.UserFrom(r.Context()).ID, id, u)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dto.NewHike(hike))
+}
+
+// MarkDone marks a planned hike as walked. An optional multipart "file" holds
+// the GPX recorded on the walk, which replaces the planned route.
+func (h *HikeHandler) MarkDone(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	var data []byte
+	if ct, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); ct == "multipart/form-data" {
+		r.Body = http.MaxBytesReader(w, r.Body, h.maxFileSize+1<<20)
+		file, _, err := r.FormFile("file")
+		switch {
+		case errors.Is(err, http.ErrMissingFile):
+		case err != nil:
+			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid multipart body"})
+			return
+		default:
+			data, err = io.ReadAll(io.LimitReader(file, h.maxFileSize+1))
+			file.Close()
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, dto.Error{Error: "failed to read upload"})
+				return
+			}
+			if int64(len(data)) > h.maxFileSize {
+				writeJSON(w, http.StatusBadRequest, dto.Error{Error: fmt.Sprintf("file exceeds %d MB", h.maxFileSize>>20)})
+				return
+			}
+		}
+	}
+	hike, err := h.svc.MarkDone(r.Context(), middleware.UserFrom(r.Context()).ID, id, data)
+	if errors.Is(err, domain.ErrInvalidGPX) {
+		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "not a valid GPX file"})
+		return
+	}
 	if err != nil {
 		writeError(w, r, err)
 		return

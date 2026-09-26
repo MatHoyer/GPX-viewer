@@ -184,6 +184,40 @@ func TestHikeRepository(t *testing.T) {
 	if got, _ := hikes.ListLabels(ctx, bob); len(got) != 0 {
 		t.Errorf("bob labels = %q", got)
 	}
+
+	started := time.Date(2026, 7, 1, 8, 0, 0, 0, time.UTC)
+	walked := &domain.Hike{
+		DistanceM: 1500,
+		StartedAt: &started,
+		DurationS: 3600,
+		Segments:  []domain.Segment{{{Lon: 7, Lat: 46, Ele: 500}, {Lon: 7.01, Lat: 46.01, Ele: 600}}},
+		Bounds:    domain.Bounds{MinLon: 7, MinLat: 46, MaxLon: 7.01, MaxLat: 46.01},
+		HikeDerived: domain.HikeDerived{
+			BestEfforts: []domain.BestEffort{{DistanceM: 1000, DurationS: 900}},
+			Tiles:       []domain.Tile{{X: 8510, Y: 5830}},
+		},
+		RawGPX: []byte("<gpx>walked</gpx>"),
+	}
+	if err := hikes.ReplaceTrack(ctx, bob, h.ID, walked); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("bob replace track err = %v", err)
+	}
+	if err := hikes.ReplaceTrack(ctx, alice, h.ID, walked); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := hikes.GetByID(ctx, alice, h.ID)
+	if got == nil || got.Planned || got.Name != "Renamed" || got.DistanceM != 1500 || got.DurationS != 3600 ||
+		got.StartedAt == nil || !got.StartedAt.Equal(started) || !slices.Equal(got.BestEfforts, walked.BestEfforts) || got.Bounds != walked.Bounds {
+		t.Errorf("after replace track = %+v", got)
+	}
+	if raw, _ := hikes.GetRawGPX(ctx, alice, h.ID); string(raw) != "<gpx>walked</gpx>" {
+		t.Errorf("raw GPX after replace = %q", raw)
+	}
+	if tiles, _ := hikes.ListTiles(ctx, alice); !slices.Equal(tiles[h.ID], walked.Tiles) {
+		t.Errorf("tiles after replace = %+v", tiles)
+	}
+	if segs, _ := hikes.GetTrack(ctx, h.ID, 0); len(segs) != 1 || segs[0][0].Lon != 7 {
+		t.Errorf("track after replace = %+v", segs)
+	}
 	if err := hikes.Delete(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("bob delete err = %v", err)
 	}

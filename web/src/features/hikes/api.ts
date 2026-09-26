@@ -74,7 +74,7 @@ export async function uploadHikes({ files, planned = false }: { files: File[]; p
   return res.results
 }
 
-export type HikeUpdate = { name?: string; notes?: string; labels?: string[]; planned?: boolean }
+export type HikeUpdate = { name?: string; notes?: string; labels?: string[] }
 
 /** Hikes actually walked, for stats and records. */
 export function doneHikes(hikes: Hike[]): Hike[] {
@@ -83,6 +83,16 @@ export function doneHikes(hikes: Hike[]): Hike[] {
 
 export function updateHike({ id, ...patch }: { id: string } & HikeUpdate) {
   return api<Hike>(`/hikes/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+}
+
+/** Marks a planned hike as walked; a recorded GPX file, if given, replaces the planned route. */
+export function markHikeDone({ id, file }: { id: string; file?: File }) {
+  let body: FormData | undefined
+  if (file) {
+    body = new FormData()
+    body.append('file', file)
+  }
+  return api<Hike>(`/hikes/${id}/done`, { method: 'POST', body })
 }
 
 /** The labels on the signed-in user's hikes, most used first. */

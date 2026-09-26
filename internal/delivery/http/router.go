@@ -71,6 +71,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/summits", d.Summits.Mine)
 			r.Get("/feed", d.Hikes.Feed)
 			r.Patch("/hikes/{id}", d.Hikes.Update)
+			r.Post("/hikes/{id}/done", d.Hikes.MarkDone)
 			r.Delete("/hikes/{id}", d.Hikes.Delete)
 			r.Get("/hikes/{id}/similar", d.Hikes.Similar)
 			r.Put("/hikes/{id}/kudos", d.Interactions.GiveKudos)
