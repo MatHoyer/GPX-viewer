@@ -127,6 +127,11 @@
   html {
     @apply font-sans;
     }
+  /* The inset's overflow-hidden (and clip-path) don't clip the GPU-composited map
+     canvas to its rounded corners in every browser; rounding the canvas itself does. */
+  [data-slot="sidebar-inset"] .maplibregl-canvas {
+    @apply md:rounded-xl;
+    }
   .maplibregl-popup-content {
     @apply bg-transparent! shadow-none! p-0! rounded-none!;
     }

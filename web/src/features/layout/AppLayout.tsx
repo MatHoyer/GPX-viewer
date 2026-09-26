@@ -30,7 +30,7 @@ const views = [
 export function AppLayout() {
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar variant="inset">
         <SidebarHeader className="gap-3">
           <div className="flex items-center gap-2 px-2 pt-1 font-semibold">
             <MountainSnow className="size-5" />
@@ -57,7 +57,8 @@ export function AppLayout() {
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="relative h-svh overflow-hidden">
+      {/* The inset variant adds an m-2 margin from md up, so the height gives it back. */}
+      <SidebarInset className="relative h-svh overflow-hidden md:h-[calc(100svh-1rem)]">
         <Outlet />
       </SidebarInset>
     </SidebarProvider>
