@@ -14,6 +14,8 @@ type ParsedTrack struct {
 
 type TrackParser interface {
 	Parse(data []byte) (*ParsedTrack, error)
+	// Samples returns every point with its optional sensor data.
+	Samples(data []byte) ([]Sample, error)
 }
 
 type PasswordHasher interface {

@@ -80,3 +80,46 @@ func TestParseInvalid(t *testing.T) {
 		})
 	}
 }
+
+func TestSamplesWithExtensions(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "garmin_ext.gpx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := NewParser().Samples(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 4 {
+		t.Fatalf("len = %d", len(got))
+	}
+	first := got[0]
+	if first.HR == nil || *first.HR != 110 || first.Cad == nil || *first.Cad != 80 || first.Temp == nil || *first.Temp != 18.5 {
+		t.Errorf("first sample sensors = hr %v cad %v temp %v", first.HR, first.Cad, first.Temp)
+	}
+	if first.Ele == nil || *first.Ele != 1000 || first.Time == nil {
+		t.Errorf("first sample ele/time missing")
+	}
+	if got[1].Cad != nil || got[2].HR != nil {
+		t.Errorf("missing values should stay nil")
+	}
+	if got[1].Segment != 0 || got[2].Segment != 1 {
+		t.Errorf("segments = %d, %d", got[1].Segment, got[2].Segment)
+	}
+}
+
+func TestSamplesWithoutSensors(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "no_time_no_ele.gpx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := NewParser().Samples(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range got {
+		if s.Ele != nil || s.Time != nil || s.HR != nil {
+			t.Errorf("unexpected optional data: %+v", s)
+		}
+	}
+}

@@ -42,6 +42,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/hikes", d.Hikes.Upload)
 			r.Get("/hikes/tracks", d.Hikes.Tracks)
 			r.Get("/hikes/{id}", d.Hikes.Get)
+			r.Get("/hikes/{id}/profile", d.Hikes.Profile)
 			r.Delete("/hikes/{id}", d.Hikes.Delete)
 		})
 

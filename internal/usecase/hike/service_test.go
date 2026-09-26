@@ -46,16 +46,26 @@ func (f *fakeRepo) Delete(_ context.Context, userID, id uuid.UUID) error {
 	return domain.ErrNotFound
 }
 
+func (f *fakeRepo) GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([]byte, error) {
+	h, err := f.GetByID(ctx, userID, id)
+	if err != nil {
+		return nil, err
+	}
+	return h.RawGPX, nil
+}
+
 func (f *fakeRepo) ListTracks(context.Context, uuid.UUID, float64) ([]domain.HikeTrack, error) {
 	return nil, nil
 }
 
 type fakeParser struct {
-	res *domain.ParsedTrack
-	err error
+	res     *domain.ParsedTrack
+	err     error
+	samples []domain.Sample
 }
 
 func (p fakeParser) Parse([]byte) (*domain.ParsedTrack, error) { return p.res, p.err }
+func (p fakeParser) Samples([]byte) ([]domain.Sample, error)   { return p.samples, p.err }
 
 var twoPoints = []domain.Segment{{{Lon: 6, Lat: 45}, {Lon: 7, Lat: 46, Ele: 10}}}
 
@@ -123,5 +133,24 @@ func TestUserScoping(t *testing.T) {
 	}
 	if list, _ := svc.List(ctx, bob); len(list) != 0 {
 		t.Errorf("bob sees %d hikes", len(list))
+	}
+}
+
+func TestProfileScopedToOwner(t *testing.T) {
+	ctx := context.Background()
+	samples := []domain.Sample{{Lon: 6, Lat: 45}, {Lon: 6, Lat: 45.001}}
+	svc := NewService(&fakeRepo{}, fakeParser{res: &domain.ParsedTrack{Segments: twoPoints}, samples: samples})
+	alice, bob := uuid.New(), uuid.New()
+
+	h, err := svc.Import(ctx, alice, "a.gpx", []byte("raw"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := svc.Profile(ctx, alice, h.ID)
+	if err != nil || len(p.Points) != 2 {
+		t.Fatalf("profile = %+v, %v", p, err)
+	}
+	if _, err := svc.Profile(ctx, bob, h.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("bob profile err = %v", err)
 	}
 }

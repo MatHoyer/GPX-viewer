@@ -23,6 +23,7 @@ type HikeService interface {
 	Get(ctx context.Context, userID, id uuid.UUID) (*domain.Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Tracks(ctx context.Context, userID uuid.UUID) ([]domain.HikeTrack, error)
+	Profile(ctx context.Context, userID, id uuid.UUID) (*domain.Profile, error)
 }
 
 type HikeHandler struct {
@@ -134,6 +135,19 @@ func (h *HikeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *HikeHandler) Profile(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	p, err := h.svc.Profile(r.Context(), middleware.UserFrom(r.Context()).ID, id)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dto.NewProfile(p))
 }
 
 func (h *HikeHandler) Tracks(w http.ResponseWriter, r *http.Request) {

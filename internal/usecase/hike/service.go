@@ -73,6 +73,19 @@ func (s *Service) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	return s.hikes.Delete(ctx, userID, id)
 }
 
+// Profile builds the detailed time/distance series of a hike from its original GPX.
+func (s *Service) Profile(ctx context.Context, userID, id uuid.UUID) (*domain.Profile, error) {
+	raw, err := s.hikes.GetRawGPX(ctx, userID, id)
+	if err != nil {
+		return nil, err
+	}
+	samples, err := s.parser.Samples(raw)
+	if err != nil {
+		return nil, err
+	}
+	return BuildProfile(samples, ProfileMaxPoints), nil
+}
+
 func (s *Service) Tracks(ctx context.Context, userID uuid.UUID) ([]domain.HikeTrack, error) {
 	return s.hikes.ListTracks(ctx, userID, TrackTolerance)
 }

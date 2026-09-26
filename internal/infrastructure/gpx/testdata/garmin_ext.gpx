@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Garmin Connect"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+  <trk>
+    <name>Watch hike</name>
+    <trkseg>
+      <trkpt lat="45.0000" lon="6.0000"><ele>1000</ele><time>2026-07-01T08:00:00Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:atemp>18.5</gpxtpx:atemp><gpxtpx:hr>110</gpxtpx:hr><gpxtpx:cad>80</gpxtpx:cad></gpxtpx:TrackPointExtension></extensions></trkpt>
+      <trkpt lat="45.0010" lon="6.0000"><ele>1010</ele><time>2026-07-01T08:01:00Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>120</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions></trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="45.0100" lon="6.0000"><ele>1050</ele><time>2026-07-01T08:30:00Z</time></trkpt>
+      <trkpt lat="45.0110" lon="6.0000"><ele>1060</ele><time>2026-07-01T08:31:00Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>130</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

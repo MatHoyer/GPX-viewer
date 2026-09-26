@@ -3,6 +3,7 @@ package gpx
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,11 +16,13 @@ type Parser struct{}
 
 func NewParser() *Parser { return &Parser{} }
 
-// Parse reads GPX tracks and routes. Routes are treated as extra track segments.
-func (p *Parser) Parse(data []byte) (*domain.ParsedTrack, error) {
+// load parses GPX data and returns it with its usable segments.
+// Routes are treated as extra track segments; segments with fewer than
+// two points are dropped since they cannot form a line.
+func load(data []byte) (*gpx.GPX, [][]gpx.GPXPoint, error) {
 	g, err := gpx.ParseBytes(data)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrInvalidGPX, err)
+		return nil, nil, fmt.Errorf("%w: %v", domain.ErrInvalidGPX, err)
 	}
 
 	for _, r := range g.Routes {
@@ -31,35 +34,46 @@ func (p *Parser) Parse(data []byte) (*domain.ParsedTrack, error) {
 		}
 	}
 
-	var segments []domain.Segment
-	var start, end time.Time
+	var segments [][]gpx.GPXPoint
 	for _, t := range g.Tracks {
 		for _, s := range t.Segments {
-			// A line needs at least two points.
-			if len(s.Points) < 2 {
-				continue
+			if len(s.Points) >= 2 {
+				segments = append(segments, s.Points)
 			}
-			seg := make(domain.Segment, 0, len(s.Points))
-			for _, pt := range s.Points {
-				ele := 0.0
-				if pt.Elevation.NotNull() {
-					ele = pt.Elevation.Value()
-				}
-				seg = append(seg, domain.Point{Lon: pt.Longitude, Lat: pt.Latitude, Ele: ele})
-				if ts := pt.Timestamp; !ts.IsZero() {
-					if start.IsZero() || ts.Before(start) {
-						start = ts
-					}
-					if ts.After(end) {
-						end = ts
-					}
-				}
-			}
-			segments = append(segments, seg)
 		}
 	}
 	if len(segments) == 0 {
-		return nil, fmt.Errorf("%w: no track points", domain.ErrInvalidGPX)
+		return nil, nil, fmt.Errorf("%w: no track points", domain.ErrInvalidGPX)
+	}
+	return g, segments, nil
+}
+
+func (p *Parser) Parse(data []byte) (*domain.ParsedTrack, error) {
+	g, rawSegments, err := load(data)
+	if err != nil {
+		return nil, err
+	}
+
+	segments := make([]domain.Segment, 0, len(rawSegments))
+	var start, end time.Time
+	for _, pts := range rawSegments {
+		seg := make(domain.Segment, 0, len(pts))
+		for _, pt := range pts {
+			ele := 0.0
+			if pt.Elevation.NotNull() {
+				ele = pt.Elevation.Value()
+			}
+			seg = append(seg, domain.Point{Lon: pt.Longitude, Lat: pt.Latitude, Ele: ele})
+			if ts := pt.Timestamp; !ts.IsZero() {
+				if start.IsZero() || ts.Before(start) {
+					start = ts
+				}
+				if ts.After(end) {
+					end = ts
+				}
+			}
+		}
+		segments = append(segments, seg)
 	}
 
 	res := &domain.ParsedTrack{
@@ -75,6 +89,61 @@ func (p *Parser) Parse(data []byte) (*domain.ParsedTrack, error) {
 		res.DurationS = int64(end.Sub(start).Seconds())
 	}
 	return res, nil
+}
+
+func (p *Parser) Samples(data []byte) ([]domain.Sample, error) {
+	_, segments, err := load(data)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []domain.Sample
+	for segIdx, pts := range segments {
+		for _, pt := range pts {
+			s := domain.Sample{Lon: pt.Longitude, Lat: pt.Latitude, Segment: segIdx}
+			if pt.Elevation.NotNull() {
+				v := pt.Elevation.Value()
+				s.Ele = &v
+			}
+			if !pt.Timestamp.IsZero() {
+				ts := pt.Timestamp.UTC()
+				s.Time = &ts
+			}
+			readExtensions(pt.Extensions.Nodes, &s)
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}
+
+// readExtensions extracts sensor values from vendor extensions such as
+// Garmin TrackPointExtension (<gpxtpx:hr>, <gpxtpx:cad>, <gpxtpx:atemp>),
+// matching on local element names so any namespace prefix works.
+func readExtensions(nodes []gpx.ExtensionNode, s *domain.Sample) {
+	for _, n := range nodes {
+		if len(n.Nodes) > 0 {
+			readExtensions(n.Nodes, s)
+			continue
+		}
+		v, err := strconv.ParseFloat(strings.TrimSpace(n.Data), 64)
+		if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
+			continue
+		}
+		switch strings.ToLower(n.XMLName.Local) {
+		case "hr", "heartrate":
+			if s.HR == nil && v > 0 {
+				s.HR = &v
+			}
+		case "cad", "cadence":
+			if s.Cad == nil {
+				s.Cad = &v
+			}
+		case "atemp", "temp", "temperature":
+			if s.Temp == nil {
+				s.Temp = &v
+			}
+		}
+	}
 }
 
 func trackName(g *gpx.GPX) string {

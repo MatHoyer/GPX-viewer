@@ -73,6 +73,18 @@ func (r *HikeRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*do
 	return &h, nil
 }
 
+func (r *HikeRepository) GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([]byte, error) {
+	var m HikeModel
+	err := r.db.WithContext(ctx).
+		Select("gpx_raw").
+		Where("user_id = ? AND id = ?", userID, id).
+		First(&m).Error
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	return m.GPXRaw, nil
+}
+
 func (r *HikeRepository) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	res := r.db.WithContext(ctx).Where("user_id = ? AND id = ?", userID, id).Delete(&HikeModel{})
 	if res.Error != nil {
