@@ -1,4 +1,4 @@
-import { ChevronDown, UserCheck, UserMinus, UserPlus, UserX } from 'lucide-react'
+import { EllipsisVertical, UserCheck, UserMinus, UserPlus, UserX } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -17,10 +17,12 @@ type Props = {
   userId: string
   relation: Relation
   size?: 'sm' | 'default'
+  /** Show a "Friends" label next to the menu; off where every row is a friend. */
+  showStatus?: boolean
 }
 
 /** The friendship action that fits the current relation. */
-export function FriendButton({ userId, relation, size = 'default' }: Props) {
+export function FriendButton({ userId, relation, size = 'default', showStatus = true }: Props) {
   const add = useAddFriend()
   const remove = useRemoveFriend()
   const busy = add.isPending || remove.isPending
@@ -66,21 +68,27 @@ export function FriendButton({ userId, relation, size = 'default' }: Props) {
       )
     case 'friends':
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size={size} variant="outline" disabled={busy}>
-              <UserCheck />
+        <div className="flex items-center gap-1">
+          {showStatus && (
+            <span className="text-muted-foreground flex items-center gap-1.5 px-1 text-sm">
+              <UserCheck className="size-4" />
               Friends
-              <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem variant="destructive" onClick={() => drop('Friend removed')}>
-              <UserMinus />
-              Remove friend
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </span>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size={size === 'sm' ? 'icon-sm' : 'icon'} variant="ghost" disabled={busy} aria-label="Friend options">
+                <EllipsisVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem variant="destructive" onClick={() => drop('Friend removed')}>
+                <UserMinus />
+                Remove friend
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       )
     default:
       return null
