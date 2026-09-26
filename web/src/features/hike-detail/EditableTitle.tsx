@@ -5,13 +5,13 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { MAX_NAME_LENGTH, type Hike } from '@/features/hikes/api'
-import { useRenameHike } from '@/features/hikes/useHikes'
+import { useUpdateHike } from '@/features/hikes/useHikes'
 import { ApiError } from '@/lib/api'
 
 /** Hike name that turns into an input on click; Enter saves, Escape cancels. */
 export function EditableTitle({ hike }: { hike: Hike }) {
   const [draft, setDraft] = useState<string | null>(null)
-  const rename = useRenameHike()
+  const rename = useUpdateHike()
 
   function save(e?: FormEvent) {
     e?.preventDefault()

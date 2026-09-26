@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { deleteHike, getTracks, listHikes, renameHike, uploadHikes } from './api'
+import { deleteHike, getTracks, listHikes, listLabels, updateHike, uploadHikes } from './api'
 
 const keys = {
   all: ['hikes'] as const,
   list: ['hikes', 'list'] as const,
   tracks: ['hikes', 'tracks'] as const,
+  labels: ['hikes', 'labels'] as const,
 }
 
 export function useHikes() {
@@ -16,6 +17,10 @@ export function useTracks() {
   return useQuery({ queryKey: keys.tracks, queryFn: getTracks })
 }
 
+export function useLabels() {
+  return useQuery({ queryKey: keys.labels, queryFn: listLabels })
+}
+
 export function useUploadHikes() {
   const qc = useQueryClient()
   return useMutation({
@@ -24,10 +29,10 @@ export function useUploadHikes() {
   })
 }
 
-export function useRenameHike() {
+export function useUpdateHike() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: renameHike,
+    mutationFn: updateHike,
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
   })
 }

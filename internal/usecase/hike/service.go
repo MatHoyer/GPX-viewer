@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -154,22 +155,75 @@ func (s *Service) Untag(ctx context.Context, viewer, id, participant uuid.UUID) 
 	return s.hikes.RemoveParticipant(ctx, id, participant)
 }
 
-// MaxNameLength bounds hike names, in characters.
-const MaxNameLength = 200
+const (
+	// MaxNameLength bounds hike names, in characters.
+	MaxNameLength = 200
+	// MaxNotesLength bounds hike notes, in characters.
+	MaxNotesLength = 10000
+	// MaxLabelLength bounds each label, in characters.
+	MaxLabelLength = 32
+	// MaxLabels bounds the number of labels on a hike.
+	MaxLabels = 20
+)
 
-// Rename changes a hike's name and returns the updated hike.
-func (s *Service) Rename(ctx context.Context, userID, id uuid.UUID, name string) (*domain.Hike, error) {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return nil, &domain.ValidationError{Field: "name", Message: "must not be empty"}
+// Update changes a hike's name, notes and labels, and returns the updated hike.
+func (s *Service) Update(ctx context.Context, userID, id uuid.UUID, u domain.HikeUpdate) (*domain.Hike, error) {
+	if u.Name != nil {
+		name := strings.TrimSpace(*u.Name)
+		if name == "" {
+			return nil, &domain.ValidationError{Field: "name", Message: "must not be empty"}
+		}
+		if utf8.RuneCountInString(name) > MaxNameLength {
+			return nil, &domain.ValidationError{Field: "name", Message: fmt.Sprintf("must be at most %d characters", MaxNameLength)}
+		}
+		u.Name = &name
 	}
-	if utf8.RuneCountInString(name) > MaxNameLength {
-		return nil, &domain.ValidationError{Field: "name", Message: fmt.Sprintf("must be at most %d characters", MaxNameLength)}
+	if u.Notes != nil {
+		notes := strings.TrimSpace(*u.Notes)
+		if utf8.RuneCountInString(notes) > MaxNotesLength {
+			return nil, &domain.ValidationError{Field: "notes", Message: fmt.Sprintf("must be at most %d characters", MaxNotesLength)}
+		}
+		u.Notes = &notes
 	}
-	if err := s.hikes.Rename(ctx, userID, id, name); err != nil {
+	if u.Labels != nil {
+		labels, err := normalizeLabels(*u.Labels)
+		if err != nil {
+			return nil, err
+		}
+		u.Labels = &labels
+	}
+	if err := s.hikes.Update(ctx, userID, id, u); err != nil {
 		return nil, err
 	}
 	return s.hikes.GetByID(ctx, userID, id)
+}
+
+// normalizeLabels lowercases, trims and collapses inner spaces, then drops
+// duplicates and sorts, so "Snow " and "snow" are the same label.
+func normalizeLabels(in []string) ([]string, error) {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, l := range in {
+		l = strings.Join(strings.Fields(strings.ToLower(l)), " ")
+		if l == "" || seen[l] {
+			continue
+		}
+		if utf8.RuneCountInString(l) > MaxLabelLength {
+			return nil, &domain.ValidationError{Field: "labels", Message: fmt.Sprintf("each label must be at most %d characters", MaxLabelLength)}
+		}
+		seen[l] = true
+		out = append(out, l)
+	}
+	if len(out) > MaxLabels {
+		return nil, &domain.ValidationError{Field: "labels", Message: fmt.Sprintf("at most %d labels per hike", MaxLabels)}
+	}
+	slices.Sort(out)
+	return out, nil
+}
+
+// Labels returns the labels a user has put on their hikes, most used first.
+func (s *Service) Labels(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	return s.hikes.ListLabels(ctx, userID)
 }
 
 func (s *Service) Delete(ctx context.Context, userID, id uuid.UUID) error {

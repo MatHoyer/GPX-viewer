@@ -100,17 +100,19 @@ func (m PasswordResetModel) toDomain() *domain.PasswordReset {
 }
 
 type HikeModel struct {
-	ID             uuid.UUID  `gorm:"type:uuid;primaryKey"`
-	UserID         uuid.UUID  `gorm:"type:uuid;not null;index"`
-	User           UserModel  `gorm:"constraint:OnDelete:CASCADE"`
-	Name           string     `gorm:"not null"`
-	DistanceM      float64    `gorm:"type:double precision;not null"`
-	ElevationGainM float64    `gorm:"type:double precision;not null"`
-	StartedAt      *time.Time `gorm:"index"`
-	DurationS      int64      `gorm:"not null"`
-	ElevationLossM float64    `gorm:"type:double precision;not null;default:0"`
-	MinEleM        *float64   `gorm:"type:double precision"`
-	MaxEleM        *float64   `gorm:"type:double precision"`
+	ID             uuid.UUID        `gorm:"type:uuid;primaryKey"`
+	UserID         uuid.UUID        `gorm:"type:uuid;not null;index"`
+	User           UserModel        `gorm:"constraint:OnDelete:CASCADE"`
+	Name           string           `gorm:"not null"`
+	DistanceM      float64          `gorm:"type:double precision;not null"`
+	ElevationGainM float64          `gorm:"type:double precision;not null"`
+	StartedAt      *time.Time       `gorm:"index"`
+	DurationS      int64            `gorm:"not null"`
+	Notes          string           `gorm:"not null;default:''"`
+	Labels         []HikeLabelModel `gorm:"foreignKey:HikeID;constraint:OnDelete:CASCADE"`
+	ElevationLossM float64          `gorm:"type:double precision;not null;default:0"`
+	MinEleM        *float64         `gorm:"type:double precision"`
+	MaxEleM        *float64         `gorm:"type:double precision"`
 	MovingS        *int64
 	DerivedVersion int              `gorm:"not null;default:0;index"`
 	MinLon         float64          `gorm:"type:double precision;not null"`
@@ -135,7 +137,19 @@ type HikeParticipantModel struct {
 
 func (HikeParticipantModel) TableName() string { return "hike_participants" }
 
+// HikeLabelModel is one of the owner's labels on a hike.
+type HikeLabelModel struct {
+	HikeID uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Label  string    `gorm:"primaryKey"`
+}
+
+func (HikeLabelModel) TableName() string { return "hike_labels" }
+
 func (m HikeModel) toDomain() domain.Hike {
+	labels := make([]string, len(m.Labels))
+	for i, l := range m.Labels {
+		labels[i] = l.Label
+	}
 	var owner *domain.User
 	if m.User.ID != uuid.Nil {
 		owner = m.User.toDomain()
@@ -149,6 +163,8 @@ func (m HikeModel) toDomain() domain.Hike {
 		ElevationGainM: m.ElevationGainM,
 		StartedAt:      m.StartedAt,
 		DurationS:      m.DurationS,
+		Notes:          m.Notes,
+		Labels:         labels,
 		HikeDerived: domain.HikeDerived{
 			ElevationLossM: m.ElevationLossM,
 			MinEleM:        m.MinEleM,

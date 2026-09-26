@@ -28,6 +28,11 @@ func withOwner(db *gorm.DB) *gorm.DB {
 	})
 }
 
+// withLabels loads each hike's labels in alphabetical order.
+func withLabels(db *gorm.DB) *gorm.DB {
+	return db.Preload("Labels", func(db *gorm.DB) *gorm.DB { return db.Order("label") })
+}
+
 // ownedOrTagged matches the hikes of a user, including those they are tagged on.
 const ownedOrTagged = "user_id = ? OR id IN (SELECT hike_id FROM hike_participants WHERE user_id = ?)"
 
@@ -40,6 +45,7 @@ func (r *HikeRepository) Create(ctx context.Context, h *domain.Hike) error {
 		ID:             h.ID,
 		UserID:         h.UserID,
 		Name:           h.Name,
+		Notes:          h.Notes,
 		DistanceM:      h.DistanceM,
 		ElevationGainM: h.ElevationGainM,
 		StartedAt:      h.StartedAt,
@@ -63,7 +69,7 @@ func (r *HikeRepository) Create(ctx context.Context, h *domain.Hike) error {
 func (r *HikeRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]domain.Hike, error) {
 	var ms []HikeModel
 	err := r.db.WithContext(ctx).
-		Scopes(withOwner).
+		Scopes(withOwner, withLabels).
 		Omit("geom", "gpx_raw").
 		Where(ownedOrTagged, userID, userID).
 		Order(hikeOrder).
@@ -81,6 +87,7 @@ func (r *HikeRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]do
 func (r *HikeRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*domain.Hike, error) {
 	var m HikeModel
 	err := r.db.WithContext(ctx).
+		Scopes(withLabels).
 		Omit("geom", "gpx_raw").
 		Where("user_id = ? AND id = ?", userID, id).
 		First(&m).Error
@@ -93,7 +100,7 @@ func (r *HikeRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*do
 
 func (r *HikeRepository) Find(ctx context.Context, id uuid.UUID) (*domain.Hike, error) {
 	var m HikeModel
-	if err := r.db.WithContext(ctx).Scopes(withOwner).Omit("geom", "gpx_raw").Where("id = ?", id).First(&m).Error; err != nil {
+	if err := r.db.WithContext(ctx).Scopes(withOwner, withLabels).Omit("geom", "gpx_raw").Where("id = ?", id).First(&m).Error; err != nil {
 		return nil, mapErr(err)
 	}
 	h := m.toDomain()
@@ -112,18 +119,54 @@ func (r *HikeRepository) GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([
 	return m.GPXRaw, nil
 }
 
-func (r *HikeRepository) Rename(ctx context.Context, userID, id uuid.UUID, name string) error {
-	res := r.db.WithContext(ctx).
-		Model(&HikeModel{}).
-		Where("user_id = ? AND id = ?", userID, id).
-		Update("name", name)
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		return domain.ErrNotFound
-	}
-	return nil
+func (r *HikeRepository) Update(ctx context.Context, userID, id uuid.UUID, u domain.HikeUpdate) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var n int64
+		if err := tx.Model(&HikeModel{}).Where("user_id = ? AND id = ?", userID, id).Count(&n).Error; err != nil {
+			return err
+		}
+		if n == 0 {
+			return domain.ErrNotFound
+		}
+		cols := map[string]any{}
+		if u.Name != nil {
+			cols["name"] = *u.Name
+		}
+		if u.Notes != nil {
+			cols["notes"] = *u.Notes
+		}
+		if len(cols) > 0 {
+			if err := tx.Model(&HikeModel{}).Where("id = ?", id).Updates(cols).Error; err != nil {
+				return err
+			}
+		}
+		if u.Labels == nil {
+			return nil
+		}
+		if err := tx.Where("hike_id = ?", id).Delete(&HikeLabelModel{}).Error; err != nil {
+			return err
+		}
+		if len(*u.Labels) == 0 {
+			return nil
+		}
+		ms := make([]HikeLabelModel, len(*u.Labels))
+		for i, l := range *u.Labels {
+			ms[i] = HikeLabelModel{HikeID: id, Label: l}
+		}
+		return tx.Omit(clause.Associations).Create(&ms).Error
+	})
+}
+
+func (r *HikeRepository) ListLabels(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	var labels []string
+	err := r.db.WithContext(ctx).
+		Model(&HikeLabelModel{}).
+		Joins("JOIN hikes h ON h.id = hike_labels.hike_id").
+		Where("h.user_id = ?", userID).
+		Group("label").
+		Order("COUNT(*) DESC, label").
+		Pluck("label", &labels).Error
+	return labels, err
 }
 
 func (r *HikeRepository) Delete(ctx context.Context, userID, id uuid.UUID) error {
