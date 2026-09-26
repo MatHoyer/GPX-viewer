@@ -24,6 +24,8 @@ type Deps struct {
 	Static fs.FS
 	// AppURL is the public base URL, used for canonical links and the sitemap.
 	AppURL string
+	// HikeMeta finds public hikes to describe in link previews of their pages. Optional.
+	HikeMeta HikeMeta
 }
 
 func NewRouter(d Deps) http.Handler {
@@ -90,6 +92,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/hikes/{id}", d.Hikes.Get)
 			r.Get("/hikes/{id}/profile", d.Hikes.Profile)
 			r.Get("/hikes/{id}/gpx", d.Hikes.GPX)
+			r.Get("/hikes/{id}/card.png", d.Hikes.Card)
 			r.Get("/hikes/{id}/summits", d.Summits.OnHike)
 			r.Get("/hikes/{id}/comments", d.Interactions.Comments)
 
@@ -110,6 +113,9 @@ func NewRouter(d Deps) http.Handler {
 
 	if d.Static != nil {
 		r.With(middleware.OptionalAuth(d.Authenticator)).Handle("/", rootHandler(d.Static, d.AppURL))
+		if d.HikeMeta != nil {
+			r.Get("/hikes/{id}", hikePageHandler(d.Static, d.AppURL, d.HikeMeta))
+		}
 		r.Handle("/*", spaHandler(d.Static))
 	}
 	return r

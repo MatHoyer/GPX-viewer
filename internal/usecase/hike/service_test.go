@@ -166,6 +166,14 @@ func (f *fakeRepo) ListFeed(_ context.Context, userID uuid.UUID, after *domain.F
 	return out, nil
 }
 
+func (f *fakeRepo) GetTrack(ctx context.Context, id uuid.UUID, _ float64) ([]domain.Segment, error) {
+	h, err := f.Find(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return h.Segments, nil
+}
+
 func (f *fakeRepo) ListTiles(_ context.Context, userID uuid.UUID) (map[uuid.UUID][]domain.Tile, error) {
 	out := map[uuid.UUID][]domain.Tile{}
 	for _, h := range f.hikes {
@@ -533,5 +541,18 @@ func TestFeedPages(t *testing.T) {
 	page, next, err = svc.Feed(ctx, alice, next)
 	if err != nil || len(page) != 3 || next != nil {
 		t.Errorf("last page = %d hikes, next %+v, %v", len(page), next, err)
+	}
+}
+
+func TestCardNeedsAccess(t *testing.T) {
+	ctx := context.Background()
+	alice := uuid.New()
+	svc := NewService(&fakeRepo{}, fakeParser{res: &domain.ParsedTrack{Segments: twoPoints}}, ownerOnly{})
+	h, _ := svc.Import(ctx, alice, "a.gpx", nil)
+	if got, segs, err := svc.Card(ctx, alice, h.ID); err != nil || got.ID != h.ID || len(segs) != 1 {
+		t.Errorf("card = %+v, %v, %v", got, segs, err)
+	}
+	if _, _, err := svc.Card(ctx, uuid.Nil, h.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("anonymous card err = %v", err)
 	}
 }

@@ -248,6 +248,19 @@ func (r *HikeRepository) Delete(ctx context.Context, userID, id uuid.UUID) error
 	return nil
 }
 
+func (r *HikeRepository) GetTrack(ctx context.Context, id uuid.UUID, tolerance float64) ([]domain.Segment, error) {
+	var row struct{ Geom []byte }
+	err := r.db.WithContext(ctx).
+		Model(&HikeModel{}).
+		Select("ST_AsBinary(ST_Force2D(ST_SimplifyPreserveTopology(geom, ?))) AS geom", tolerance).
+		Where("id = ?", id).
+		Take(&row).Error
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	return wkbToSegments(row.Geom)
+}
+
 func (r *HikeRepository) ListTracks(ctx context.Context, userID uuid.UUID, tolerance float64) ([]domain.HikeTrack, error) {
 	var rows []struct {
 		ID   uuid.UUID

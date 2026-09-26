@@ -79,6 +79,12 @@ func TestHikeRepository(t *testing.T) {
 		t.Fatalf("tracks = %+v", tracks)
 	}
 
+	if segs, err := hikes.GetTrack(ctx, h.ID, 0); err != nil || len(segs) != 2 || segs[1][1] != (domain.Point{Lon: 6.83, Lat: 45.93}) {
+		t.Errorf("track = %+v, %v", segs, err)
+	}
+	if _, err := hikes.GetTrack(ctx, uuid.New(), 0); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("missing track err = %v", err)
+	}
 	if list, _ := hikes.ListByUser(ctx, bob); len(list) != 0 {
 		t.Errorf("bob sees %d hikes", len(list))
 	}

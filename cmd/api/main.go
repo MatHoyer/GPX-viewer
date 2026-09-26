@@ -14,6 +14,7 @@ import (
 	httpdelivery "github.com/MatHoyer/gpx-viewer/internal/delivery/http"
 	"github.com/MatHoyer/gpx-viewer/internal/delivery/http/handler"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/gpx"
+	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/ogimage"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/overpass"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/postgres"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/security"
@@ -86,13 +87,14 @@ func run() error {
 	router := httpdelivery.NewRouter(httpdelivery.Deps{
 		Auth:          handler.NewAuthHandler(authSvc, cfg.CookieSecure),
 		Account:       handler.NewAccountHandler(accountSvc),
-		Hikes:         handler.NewHikeHandler(hikeSvc, interactionSvc, cfg.MaxUploadMB<<20),
+		Hikes:         handler.NewHikeHandler(hikeSvc, interactionSvc, ogimage.Render, cfg.MaxUploadMB<<20),
 		Social:        handler.NewSocialHandler(socialSvc),
 		Summits:       handler.NewSummitHandler(summitSvc),
 		Interactions:  handler.NewInteractionHandler(interactionSvc),
 		Authenticator: authSvc,
 		Static:        web.Dist(),
 		AppURL:        cfg.AppURL,
+		HikeMeta:      hikeSvc,
 	})
 
 	srv := &http.Server{

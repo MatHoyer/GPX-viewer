@@ -111,6 +111,8 @@ type HikeRepository interface {
 	// ListLabels returns the labels on a user's own hikes, most used first.
 	ListLabels(ctx context.Context, userID uuid.UUID) ([]string, error)
 	GetRawGPX(ctx context.Context, userID, id uuid.UUID) ([]byte, error)
+	// GetTrack returns one hike's geometry, simplified with the given tolerance (degrees).
+	GetTrack(ctx context.Context, id uuid.UUID, tolerance float64) ([]Segment, error)
 	// ListTracks returns geometries of the hikes a user owns or is tagged on,
 	// simplified with the given tolerance (degrees).
 	ListTracks(ctx context.Context, userID uuid.UUID, tolerance float64) ([]HikeTrack, error)
