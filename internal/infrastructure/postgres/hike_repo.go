@@ -28,9 +28,11 @@ func withOwner(db *gorm.DB) *gorm.DB {
 	})
 }
 
-// withLabels loads each hike's labels in alphabetical order.
-func withLabels(db *gorm.DB) *gorm.DB {
-	return db.Preload("Labels", func(db *gorm.DB) *gorm.DB { return db.Order("label") })
+// withDetails loads each hike's labels in alphabetical order and its best efforts.
+func withDetails(db *gorm.DB) *gorm.DB {
+	return db.
+		Preload("Labels", func(db *gorm.DB) *gorm.DB { return db.Order("label") }).
+		Preload("BestEfforts", func(db *gorm.DB) *gorm.DB { return db.Order("distance_m") })
 }
 
 // ownedOrTagged matches the hikes of a user, including those they are tagged on.
@@ -63,13 +65,26 @@ func (r *HikeRepository) Create(ctx context.Context, h *domain.Hike) error {
 		GPXRaw:         h.RawGPX,
 		CreatedAt:      h.CreatedAt,
 	}
-	return r.db.WithContext(ctx).Omit(clause.Associations).Create(&m).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Omit(clause.Associations).Create(&m).Error; err != nil {
+			return err
+		}
+		return createBestEfforts(tx, h.ID, h.BestEfforts)
+	})
+}
+
+func createBestEfforts(tx *gorm.DB, id uuid.UUID, efforts []domain.BestEffort) error {
+	if len(efforts) == 0 {
+		return nil
+	}
+	ms := bestEffortModels(id, efforts)
+	return tx.Create(&ms).Error
 }
 
 func (r *HikeRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]domain.Hike, error) {
 	var ms []HikeModel
 	err := r.db.WithContext(ctx).
-		Scopes(withOwner, withLabels).
+		Scopes(withOwner, withDetails).
 		Omit("geom", "gpx_raw").
 		Where(ownedOrTagged, userID, userID).
 		Order(hikeOrder).
@@ -122,7 +137,7 @@ func (r *HikeRepository) loadParticipants(ctx context.Context, hikes []domain.Hi
 func (r *HikeRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*domain.Hike, error) {
 	var m HikeModel
 	err := r.db.WithContext(ctx).
-		Scopes(withLabels).
+		Scopes(withDetails).
 		Omit("geom", "gpx_raw").
 		Where("user_id = ? AND id = ?", userID, id).
 		First(&m).Error
@@ -135,7 +150,7 @@ func (r *HikeRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*do
 
 func (r *HikeRepository) Find(ctx context.Context, id uuid.UUID) (*domain.Hike, error) {
 	var m HikeModel
-	if err := r.db.WithContext(ctx).Scopes(withOwner, withLabels).Omit("geom", "gpx_raw").Where("id = ?", id).First(&m).Error; err != nil {
+	if err := r.db.WithContext(ctx).Scopes(withOwner, withDetails).Omit("geom", "gpx_raw").Where("id = ?", id).First(&m).Error; err != nil {
 		return nil, mapErr(err)
 	}
 	h := m.toDomain()
@@ -291,14 +306,22 @@ func (r *HikeRepository) ListOutdated(ctx context.Context, version, limit int) (
 }
 
 func (r *HikeRepository) SaveDerived(ctx context.Context, id uuid.UUID, d domain.HikeDerived, version int) error {
-	return r.db.WithContext(ctx).
-		Model(&HikeModel{}).
-		Where("id = ?", id).
-		Updates(map[string]any{
-			"elevation_loss_m": d.ElevationLossM,
-			"min_ele_m":        d.MinEleM,
-			"max_ele_m":        d.MaxEleM,
-			"moving_s":         d.MovingS,
-			"derived_version":  version,
-		}).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.Model(&HikeModel{}).
+			Where("id = ?", id).
+			Updates(map[string]any{
+				"elevation_loss_m": d.ElevationLossM,
+				"min_ele_m":        d.MinEleM,
+				"max_ele_m":        d.MaxEleM,
+				"moving_s":         d.MovingS,
+				"derived_version":  version,
+			}).Error
+		if err != nil {
+			return err
+		}
+		if err := tx.Where("hike_id = ?", id).Delete(&HikeBestEffortModel{}).Error; err != nil {
+			return err
+		}
+		return createBestEfforts(tx, id, d.BestEfforts)
+	})
 }

@@ -28,6 +28,7 @@ import { HikeNotes } from './HikeNotes'
 import { HikeStats } from './HikeStats'
 import { Participants } from './Participants'
 import { ProfileCharts } from './ProfileCharts'
+import { RecordBadge } from './RecordBadge'
 import { ReplayControls } from './ReplayControls'
 import { ReplayMap } from './ReplayMap'
 import { useReplay } from './store'
@@ -106,6 +107,7 @@ export function HikePage() {
                     </Link>
                   )}
                   <Participants hike={hike.data} isOwner={isOwner} viewerId={me.data?.id} />
+                  {me.data && <RecordBadge hikeId={hike.data.id} />}
                 </div>
               </>
             ) : (

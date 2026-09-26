@@ -29,6 +29,8 @@ export type Hike = {
   maxEleM: number | null
   /** Null when the track has no timestamps. */
   movingS: number | null
+  /** Fastest times over standard distances the hike covers, shortest first. */
+  bestEfforts: BestEffort[]
   bounds: Bounds
   createdAt: string
   /** Omitted on hikes just returned by an upload. */
@@ -36,6 +38,8 @@ export type Hike = {
   /** Friends the owner tagged. Only set when fetching a single hike. */
   participants?: Person[]
 }
+
+export type BestEffort = { distanceM: number; durationS: number }
 
 export type TrackProperties = { id: string; name: string }
 export type Tracks = GeoJSON.FeatureCollection<GeoJSON.MultiLineString, TrackProperties>

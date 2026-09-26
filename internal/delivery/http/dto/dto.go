@@ -118,19 +118,20 @@ type Error struct {
 }
 
 type Hike struct {
-	ID             string     `json:"id"`
-	UserID         string     `json:"userId"`
-	Name           string     `json:"name"`
-	DistanceM      float64    `json:"distanceM"`
-	ElevationGainM float64    `json:"elevationGainM"`
-	StartedAt      *time.Time `json:"startedAt"`
-	DurationS      int64      `json:"durationS"`
-	Notes          string     `json:"notes"`
-	Labels         []string   `json:"labels"`
-	ElevationLossM float64    `json:"elevationLossM"`
-	MinEleM        *float64   `json:"minEleM"`
-	MaxEleM        *float64   `json:"maxEleM"`
-	MovingS        *int64     `json:"movingS"`
+	ID             string       `json:"id"`
+	UserID         string       `json:"userId"`
+	Name           string       `json:"name"`
+	DistanceM      float64      `json:"distanceM"`
+	ElevationGainM float64      `json:"elevationGainM"`
+	StartedAt      *time.Time   `json:"startedAt"`
+	DurationS      int64        `json:"durationS"`
+	Notes          string       `json:"notes"`
+	Labels         []string     `json:"labels"`
+	ElevationLossM float64      `json:"elevationLossM"`
+	MinEleM        *float64     `json:"minEleM"`
+	MaxEleM        *float64     `json:"maxEleM"`
+	MovingS        *int64       `json:"movingS"`
+	BestEfforts    []BestEffort `json:"bestEfforts"`
 	// Bounds is [minLon, minLat, maxLon, maxLat].
 	Bounds    [4]float64 `json:"bounds"`
 	CreatedAt time.Time  `json:"createdAt"`
@@ -165,10 +166,24 @@ func NewHike(h *domain.Hike) Hike {
 		MinEleM:        h.MinEleM,
 		MaxEleM:        h.MaxEleM,
 		MovingS:        h.MovingS,
+		BestEfforts:    NewBestEfforts(h.BestEfforts),
 		Bounds:         [4]float64{h.Bounds.MinLon, h.Bounds.MinLat, h.Bounds.MaxLon, h.Bounds.MaxLat},
 		CreatedAt:      h.CreatedAt,
 		Participants:   NewPublicUsers(h.Participants),
 	}
+}
+
+type BestEffort struct {
+	DistanceM int `json:"distanceM"`
+	DurationS int `json:"durationS"`
+}
+
+func NewBestEfforts(efforts []domain.BestEffort) []BestEffort {
+	out := make([]BestEffort, len(efforts))
+	for i, e := range efforts {
+		out[i] = BestEffort{DistanceM: e.DistanceM, DurationS: e.DurationS}
+	}
+	return out
 }
 
 // UpdateHike is a partial update; nil fields are left unchanged.

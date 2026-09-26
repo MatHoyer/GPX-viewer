@@ -51,11 +51,15 @@ func TestHikeRepository(t *testing.T) {
 			{{Lon: 6.8, Lat: 45.9, Ele: 1000}, {Lon: 6.81, Lat: 45.91, Ele: 1100}},
 			{{Lon: 6.82, Lat: 45.92, Ele: 1200}, {Lon: 6.83, Lat: 45.93, Ele: 1300}},
 		},
-		RawGPX:    []byte("<gpx/>"),
-		CreatedAt: time.Now(),
+		HikeDerived: domain.HikeDerived{BestEfforts: []domain.BestEffort{{DistanceM: 1000, DurationS: 600}}},
+		RawGPX:      []byte("<gpx/>"),
+		CreatedAt:   time.Now(),
 	}
 	if err := hikes.Create(ctx, h); err != nil {
 		t.Fatal(err)
+	}
+	if got, _ := hikes.Find(ctx, h.ID); got == nil || !slices.Equal(got.BestEfforts, h.BestEfforts) {
+		t.Errorf("created best efforts = %+v", got)
 	}
 
 	tracks, err := hikes.ListTracks(ctx, alice, 0)
@@ -107,12 +111,16 @@ func TestHikeRepository(t *testing.T) {
 		t.Errorf("bob raw err = %v", err)
 	}
 	moving, maxEle := int64(3600), 1300.0
-	if err := hikes.SaveDerived(ctx, h.ID, domain.HikeDerived{ElevationLossM: 12, MaxEleM: &maxEle, MovingS: &moving}, 5); err != nil {
+	efforts := []domain.BestEffort{{DistanceM: 1000, DurationS: 500}, {DistanceM: 5000, DurationS: 3000}}
+	if err := hikes.SaveDerived(ctx, h.ID, domain.HikeDerived{ElevationLossM: 12, MaxEleM: &maxEle, MovingS: &moving, BestEfforts: efforts}, 5); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := hikes.GetByID(ctx, alice, h.ID); got == nil || got.DerivedVersion != 5 || got.ElevationLossM != 12 ||
 		got.MinEleM != nil || got.MaxEleM == nil || *got.MaxEleM != maxEle || got.MovingS == nil || *got.MovingS != moving {
 		t.Errorf("after save derived = %+v", got)
+	}
+	if list, _ := hikes.ListByUser(ctx, alice); len(list) != 1 || !slices.Equal(list[0].BestEfforts, efforts) {
+		t.Errorf("listed best efforts = %+v", list)
 	}
 	outdated := func(version int) bool {
 		list, err := hikes.ListOutdated(ctx, version, 10000)

@@ -22,6 +22,7 @@ function hike(over: Partial<Hike>): Hike {
     minEleM: null,
     maxEleM: null,
     movingS: null,
+    bestEfforts: [],
     bounds: [0, 0, 1, 1],
     createdAt: '2026-07-01T12:00:00Z',
     owner: me,

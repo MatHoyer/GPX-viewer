@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp } from 'lucide-react'
+import { Link } from 'react-router'
 import { useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
@@ -11,7 +12,9 @@ import { useMe } from '@/features/auth/useAuth'
 import { FilterBar } from '@/features/hikes/FilterBar'
 import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
 import { useHikes } from '@/features/hikes/useHikes'
-import { formatDistance, formatDuration, formatElevation } from '@/lib/format'
+import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
+
+import { personalRecords } from './records'
 
 import {
   change,
@@ -54,6 +57,7 @@ export function StatsPage() {
   const current = useMemo(() => totals(year === null ? shown : inYear(shown, year)), [shown, year])
   const previous = useMemo(() => (year === null ? null : totals(inYear(shown, year - 1))), [shown, year])
   const streak = useMemo(() => longestWeekStreak(year === null ? shown : inYear(shown, year)), [shown, year])
+  const records = useMemo(() => personalRecords(year === null ? shown : inYear(shown, year)), [shown, year])
   const bars = useMemo(
     () =>
       year === null
@@ -117,6 +121,28 @@ export function StatsPage() {
                 <PeriodChart bars={bars} metric={metric} />
                 <PeriodTable bars={bars} />
               </section>
+              {records.length > 0 && (
+                <section className="space-y-2">
+                  <h2 className="text-sm font-medium">{year === null ? 'Personal records' : `Best of ${year}`}</h2>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {records.map((r) => (
+                      <Link
+                        key={r.key}
+                        to={`/hikes/${r.hike.id}`}
+                        className="bg-card hover:bg-muted/50 focus-visible:ring-ring/50 rounded-xl border p-3 outline-none focus-visible:ring-3"
+                      >
+                        <p className="text-muted-foreground text-xs">{r.label}</p>
+                        <p className="text-lg font-semibold tabular-nums">
+                          {r.value}
+                          {r.detail && <span className="text-muted-foreground ml-1.5 text-xs font-normal">{r.detail}</span>}
+                        </p>
+                        <p className="truncate text-sm">{r.hike.name}</p>
+                        {r.hike.startedAt && <p className="text-muted-foreground text-xs">{formatDate(r.hike.startedAt)}</p>}
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           )}
         </div>

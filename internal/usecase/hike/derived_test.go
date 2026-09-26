@@ -84,3 +84,35 @@ func TestRefreshDerivedMarksUnparsableHikes(t *testing.T) {
 		t.Errorf("unparsable hike left outdated")
 	}
 }
+
+func TestBestEfforts(t *testing.T) {
+	// 6 km north with a fix every 10 s: 10 m per fix, except 20 m per fix
+	// (twice as fast) between 2 km and 3 km.
+	t0 := time.Date(2026, 7, 1, 8, 0, 0, 0, time.UTC)
+	var samples []domain.Sample
+	dist, ts := 0.0, t0
+	for dist <= 6000 {
+		at := ts
+		samples = append(samples, domain.Sample{Lon: 6, Lat: 45 + dist/111195, Time: &at})
+		step := 10.0
+		if dist >= 2000 && dist < 3000 {
+			step = 20
+		}
+		dist += step
+		ts = ts.Add(10 * time.Second)
+	}
+	got := derive(&domain.ParsedTrack{}, samples).BestEfforts
+	if len(got) != 2 || got[0].DistanceM != 1000 || got[1].DistanceM != 5000 {
+		t.Fatalf("efforts = %+v", got)
+	}
+	// 1 km at 2 m/s takes 500 s; 5 km is 1 km fast plus 4 km at 1 m/s.
+	if abs(got[0].DurationS-500) > 10 || abs(got[1].DurationS-4500) > 20 {
+		t.Errorf("durations = %+v", got)
+	}
+
+	if e := derive(&domain.ParsedTrack{}, []domain.Sample{{Lon: 6, Lat: 45}, {Lon: 6, Lat: 45.1}}).BestEfforts; len(e) != 0 {
+		t.Errorf("untimed efforts = %+v", e)
+	}
+}
+
+func abs(v int) int { return max(v, -v) }
