@@ -30,7 +30,7 @@ type Deps struct {
 
 func NewRouter(d Deps) http.Handler {
 	r := chi.NewRouter()
-	r.Use(chimw.RequestID, chimw.RealIP, chimw.Logger, chimw.Recoverer)
+	r.Use(chimw.RequestID, middleware.CloudflareIP, chimw.Logger, chimw.Recoverer)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(middleware.RejectCrossSite)
