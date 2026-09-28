@@ -63,16 +63,34 @@ func (m FriendshipModel) toDomain() *domain.Friendship {
 
 type SessionModel struct {
 	TokenHash string    `gorm:"primaryKey"`
+	ID        uuid.UUID `gorm:"type:uuid;not null;default:gen_random_uuid();uniqueIndex"`
 	UserID    uuid.UUID `gorm:"type:uuid;not null;index"`
 	User      UserModel `gorm:"constraint:OnDelete:CASCADE"`
+	UserAgent string    `gorm:"not null;default:''"`
+	IP        string    `gorm:"not null;default:''"`
 	ExpiresAt time.Time `gorm:"not null;index"`
-	CreatedAt time.Time `gorm:"not null"`
+	// LastUsedAt is nil on sessions from before it was tracked.
+	LastUsedAt *time.Time
+	CreatedAt  time.Time `gorm:"not null"`
 }
 
 func (SessionModel) TableName() string { return "sessions" }
 
 func (m SessionModel) toDomain() *domain.Session {
-	return &domain.Session{TokenHash: m.TokenHash, UserID: m.UserID, ExpiresAt: m.ExpiresAt, CreatedAt: m.CreatedAt}
+	lastUsed := m.CreatedAt
+	if m.LastUsedAt != nil {
+		lastUsed = *m.LastUsedAt
+	}
+	return &domain.Session{
+		ID:         m.ID,
+		TokenHash:  m.TokenHash,
+		UserID:     m.UserID,
+		UserAgent:  m.UserAgent,
+		IP:         m.IP,
+		ExpiresAt:  m.ExpiresAt,
+		LastUsedAt: lastUsed,
+		CreatedAt:  m.CreatedAt,
+	}
 }
 
 // EmailVerificationModel is a pending verification link, one per user.

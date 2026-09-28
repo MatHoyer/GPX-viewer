@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -32,6 +33,10 @@ const (
 	// InviteTTL is how long the link of an account created by an admin stays
 	// valid.
 	InviteTTL = 7 * 24 * time.Hour
+	// sessionTouchInterval is how stale a session's last use may get before
+	// a request records it again, so browsing does not write on every call.
+	sessionTouchInterval = 5 * time.Minute
+	maxUserAgentLength   = 512
 )
 
 type Service struct {
@@ -504,7 +509,17 @@ func (s *Service) startSession(ctx context.Context, userID uuid.UUID) (string, *
 		return "", nil, err
 	}
 	now := s.now()
-	sess := &domain.Session{TokenHash: hashToken(token), UserID: userID, ExpiresAt: now.Add(s.ttl), CreatedAt: now}
+	client := domain.ClientFrom(ctx)
+	sess := &domain.Session{
+		ID:         uuid.New(),
+		TokenHash:  hashToken(token),
+		UserID:     userID,
+		UserAgent:  truncate(client.UserAgent, maxUserAgentLength),
+		IP:         client.IP,
+		ExpiresAt:  now.Add(s.ttl),
+		LastUsedAt: now,
+		CreatedAt:  now,
+	}
 	if err := s.sessions.Create(ctx, sess); err != nil {
 		return "", nil, err
 	}
@@ -530,9 +545,16 @@ func (s *Service) Authenticate(ctx context.Context, token string) (*domain.User,
 	if err != nil {
 		return nil, err
 	}
-	if !s.now().Before(sess.ExpiresAt) {
+	now := s.now()
+	if !now.Before(sess.ExpiresAt) {
 		_ = s.sessions.Delete(ctx, sess.TokenHash)
 		return nil, domain.ErrUnauthorized
+	}
+	if now.Sub(sess.LastUsedAt) >= sessionTouchInterval {
+		// Only informs the sessions list; not worth failing the request.
+		if err := s.sessions.Touch(ctx, sess.TokenHash, now, domain.ClientFrom(ctx).IP); err != nil {
+			slog.Warn("touch session", "err", err)
+		}
 	}
 	u, err := s.users.GetByID(ctx, sess.UserID)
 	if errors.Is(err, domain.ErrNotFound) {
@@ -548,6 +570,37 @@ func (s *Service) Authenticate(ctx context.Context, token string) (*domain.User,
 	return u, nil
 }
 
+// Sessions lists the user's live sessions, most recently used first, with
+// the ID of the one token belongs to (uuid.Nil if none).
+func (s *Service) Sessions(ctx context.Context, userID uuid.UUID, token string) ([]domain.Session, uuid.UUID, error) {
+	list, err := s.sessions.ListByUserID(ctx, userID, s.now())
+	if err != nil {
+		return nil, uuid.Nil, err
+	}
+	current := uuid.Nil
+	hash := hashToken(token)
+	for _, sess := range list {
+		if sess.TokenHash == hash {
+			current = sess.ID
+		}
+	}
+	return list, current, nil
+}
+
+// RevokeSession signs one of the user's other devices out. The session token
+// belongs to is refused: signing out does that.
+func (s *Service) RevokeSession(ctx context.Context, userID, id uuid.UUID, token string) error {
+	if sess, err := s.sessions.GetByTokenHash(ctx, hashToken(token)); err == nil && sess.ID == id {
+		return &domain.ValidationError{Field: "session", Message: "this is your current session; sign out instead"}
+	}
+	return s.sessions.DeleteByID(ctx, userID, id)
+}
+
+// RevokeOtherSessions signs the user out everywhere but the session of token.
+func (s *Service) RevokeOtherSessions(ctx context.Context, userID uuid.UUID, token string) error {
+	return s.sessions.DeleteOthers(ctx, userID, hashToken(token))
+}
+
 // PurgeExpired deletes expired sessions, verification and reset links.
 func (s *Service) PurgeExpired(ctx context.Context) error {
 	now := s.now()
@@ -556,6 +609,18 @@ func (s *Service) PurgeExpired(ctx context.Context) error {
 		s.verifications.DeleteExpired(ctx, now),
 		s.resets.DeleteExpired(ctx, now),
 	)
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	s = s[:n]
+	// Drop a rune cut in half.
+	for len(s) > 0 && !utf8.ValidString(s) {
+		s = s[:len(s)-1]
+	}
+	return s
 }
 
 func newToken() (string, error) {

@@ -3,6 +3,8 @@ package dto
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
 )
 
@@ -48,6 +50,43 @@ func NewAdminUsers(us []domain.AdminUser) []AdminUser {
 	out := make([]AdminUser, len(us))
 	for i := range us {
 		out[i] = NewAdminUser(&us[i])
+	}
+	return out
+}
+
+// UserPage is one page of the admin user list.
+type UserPage struct {
+	Users    []AdminUser `json:"users"`
+	Total    int64       `json:"total"`
+	Page     int         `json:"page"`
+	PageSize int         `json:"pageSize"`
+}
+
+// Session is a signed-in device.
+type Session struct {
+	ID         string    `json:"id"`
+	UserAgent  string    `json:"userAgent"`
+	IP         string    `json:"ip"`
+	CreatedAt  time.Time `json:"createdAt"`
+	LastUsedAt time.Time `json:"lastUsedAt"`
+	ExpiresAt  time.Time `json:"expiresAt"`
+	// Current marks the session making the request.
+	Current bool `json:"current"`
+}
+
+// NewSessions converts sessions, marking current (uuid.Nil for none).
+func NewSessions(ss []domain.Session, current uuid.UUID) []Session {
+	out := make([]Session, len(ss))
+	for i, s := range ss {
+		out[i] = Session{
+			ID:         s.ID.String(),
+			UserAgent:  s.UserAgent,
+			IP:         s.IP,
+			CreatedAt:  s.CreatedAt,
+			LastUsedAt: s.LastUsedAt,
+			ExpiresAt:  s.ExpiresAt,
+			Current:    current != uuid.Nil && s.ID == current,
+		}
 	}
 	return out
 }

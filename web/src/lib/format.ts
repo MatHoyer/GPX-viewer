@@ -35,3 +35,23 @@ export function formatPace(minPerKm: number): string {
   const s = Math.round((minPerKm - m) * 60)
   return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, '0')}`
 }
+
+const relativeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
+
+const relativeUnits: [Intl.RelativeTimeFormatUnit, number][] = [
+  ['year', 365 * 24 * 3600],
+  ['month', 30 * 24 * 3600],
+  ['week', 7 * 24 * 3600],
+  ['day', 24 * 3600],
+  ['hour', 3600],
+  ['minute', 60],
+]
+
+/** How long ago iso was, e.g. "5 minutes ago"; under a minute is "just now". */
+export function formatRelative(iso: string, now = Date.now()): string {
+  const seconds = (new Date(iso).getTime() - now) / 1000
+  for (const [unit, size] of relativeUnits) {
+    if (Math.abs(seconds) >= size) return relativeFormatter.format(Math.round(seconds / size), unit)
+  }
+  return 'just now'
+}

@@ -1,30 +1,21 @@
-import { MoreHorizontal, UserPlus } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
-import { toast } from 'sonner'
+import { ChevronLeft, ChevronRight, Search, UserPlus } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useConfig, useMe } from '@/features/auth/useAuth'
-import { ApiError } from '@/lib/api'
-import { formatDate } from '@/lib/format'
-import { cn } from '@/lib/utils'
+import { formatDate, formatRelative } from '@/lib/format'
 
 import type { AdminUser } from './api'
-import { BanDialog } from './BanDialog'
 import { InviteDialog } from './InviteDialog'
-import { RevokeInviteDialog } from './RevokeInviteDialog'
-import { useSetAdmin, useUnbanUser, useUsers } from './useAdmin'
+import { Pill, UserPills } from './Pill'
+import { useUsers } from './useAdmin'
 
 export function AdminPage() {
   return (
@@ -73,39 +64,67 @@ function RegistrationCard() {
   )
 }
 
-type DialogState =
-  | { kind: 'invite' }
-  | { kind: 'reinvite' | 'revoke' | 'ban'; user: AdminUser }
-  | null
-
+/** Users, a page at a time; the search and page live in the URL so going back keeps them. */
 function UsersCard() {
-  const users = useUsers()
-  const [dialog, setDialog] = useState<DialogState>(null)
+  const [params, setParams] = useSearchParams()
+  const q = params.get('q') ?? ''
+  const page = Math.max(1, Number(params.get('page')) || 1)
+  const [search, setSearch] = useState(q)
+  const [inviting, setInviting] = useState(false)
+  const users = useUsers(q, page)
+  const data = users.data
+  const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
+
+  // Searching resets to the first page.
+  useEffect(() => {
+    const next = search.trim()
+    if (next === q) return
+    const t = setTimeout(() => setParams(next ? { q: next } : {}, { replace: true }), 300)
+    return () => clearTimeout(t)
+  }, [search, q, setParams])
+
+  function goTo(p: number) {
+    const next = new URLSearchParams(params)
+    if (p > 1) next.set('page', String(p))
+    else next.delete('page')
+    setParams(next)
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Users{users.data && ` (${users.data.length})`}</CardTitle>
+        <CardTitle>Users{data && ` (${data.total})`}</CardTitle>
         <CardAction>
-          <Button size="sm" onClick={() => setDialog({ kind: 'invite' })}>
+          <Button size="sm" onClick={() => setInviting(true)}>
             <UserPlus />
             Invite
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent>
-        {users.data ? (
-          <ul className="divide-y">
-            {users.data.map((u) => (
-              <UserRow
-                key={u.id}
-                user={u}
-                onReinvite={() => setDialog({ kind: 'reinvite', user: u })}
-                onRevoke={() => setDialog({ kind: 'revoke', user: u })}
-                onBan={() => setDialog({ kind: 'ban', user: u })}
-              />
-            ))}
-          </ul>
+      <CardContent className="space-y-3">
+        <div className="relative">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+          <Input
+            type="search"
+            placeholder="Search by email or name"
+            aria-label="Search users"
+            className="pl-8"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        {data ? (
+          data.users.length > 0 ? (
+            <ul className={users.isPlaceholderData ? 'opacity-60' : undefined}>
+              {data.users.map((u) => (
+                <UserRow key={u.id} user={u} />
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground py-4 text-center text-sm">
+              {q ? `No user matches "${q}".` : 'No users yet.'}
+            </p>
+          )
         ) : users.isError ? (
           <p role="alert" className="text-destructive text-sm">
             Could not load users.
@@ -117,129 +136,58 @@ function UsersCard() {
           </div>
         )}
       </CardContent>
-      <InviteDialog
-        open={dialog?.kind === 'invite' || dialog?.kind === 'reinvite'}
-        user={dialog?.kind === 'reinvite' ? dialog.user : undefined}
-        onOpenChange={(open) => !open && setDialog(null)}
-      />
-      <RevokeInviteDialog user={dialog?.kind === 'revoke' ? dialog.user : null} onClose={() => setDialog(null)} />
-      <BanDialog user={dialog?.kind === 'ban' ? dialog.user : null} onClose={() => setDialog(null)} />
+      {data && pages > 1 && (
+        <CardFooter className="justify-between">
+          <span className="text-muted-foreground text-sm">
+            {(page - 1) * data.pageSize + 1}–{Math.min(page * data.pageSize, data.total)} of {data.total}
+          </span>
+          <div className="flex gap-1">
+            <Button variant="outline" size="icon" aria-label="Previous page" disabled={page <= 1} onClick={() => goTo(page - 1)}>
+              <ChevronLeft />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Next page"
+              disabled={page >= pages}
+              onClick={() => goTo(page + 1)}
+            >
+              <ChevronRight />
+            </Button>
+          </div>
+        </CardFooter>
+      )}
+      <InviteDialog open={inviting} onOpenChange={setInviting} />
     </Card>
   )
 }
 
-type RowProps = { user: AdminUser; onReinvite: () => void; onRevoke: () => void; onBan: () => void }
-
-function UserRow({ user, onReinvite, onRevoke, onBan }: RowProps) {
+function UserRow({ user }: { user: AdminUser }) {
   const me = useMe()
-  const self = me.data?.id === user.id
-  const unban = useUnbanUser()
-  const setAdmin = useSetAdmin()
-  const busy = unban.isPending || setAdmin.isPending
-  const name = displayName(user)
-  const onError = (fallback: string) => (err: Error) =>
-    toast.error(err instanceof ApiError ? err.message : fallback)
-
   const meta = [
     `Joined ${formatDate(user.createdAt)}`,
-    user.lastSeenAt && `last seen ${formatDate(user.lastSeenAt)}`,
+    user.lastSeenAt && `active ${formatRelative(user.lastSeenAt)}`,
     `${user.hikes} ${user.hikes === 1 ? 'hike' : 'hikes'}`,
   ].filter(Boolean)
 
   return (
-    <li className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-      <UserAvatar user={user} className="mt-0.5 size-9" />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="truncate font-medium">{name}</span>
-          {self && <span className="text-muted-foreground text-xs">(you)</span>}
-          {user.isAdmin && <Pill tone="primary">Admin</Pill>}
-          {user.bannedAt ? (
-            <Pill tone="danger">Banned</Pill>
-          ) : (
-            !user.emailVerifiedAt && <Pill tone="muted">Not signed in yet</Pill>
-          )}
+    <li>
+      <Link
+        to={`/admin/users/${user.id}`}
+        className="hover:bg-muted/60 -mx-2 flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors"
+      >
+        <UserAvatar user={user} className="mt-0.5 size-9" />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="truncate font-medium">{displayName(user)}</span>
+            {me.data?.id === user.id && <span className="text-muted-foreground text-xs">(you)</span>}
+            <UserPills user={user} />
+          </div>
+          <p className="text-muted-foreground truncate text-sm">{user.email}</p>
+          <p className="text-muted-foreground text-xs">{meta.join(' · ')}</p>
         </div>
-        <p className="text-muted-foreground truncate text-sm">{user.email}</p>
-        <p className="text-muted-foreground text-xs">{meta.join(' · ')}</p>
-        {user.bannedAt && (
-          <p className="text-destructive text-xs break-words">
-            Banned {formatDate(user.bannedAt)}: {user.banReason}
-          </p>
-        )}
-      </div>
-      {!self && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="shrink-0" disabled={busy} aria-label={`Manage ${name}`}>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {!user.emailVerifiedAt && (
-              <>
-                <DropdownMenuItem onSelect={onReinvite}>New invite link…</DropdownMenuItem>
-                {user.hikes === 0 && (
-                  <DropdownMenuItem variant="destructive" onSelect={onRevoke}>
-                    Revoke invite…
-                  </DropdownMenuItem>
-                )}
-              </>
-            )}
-            {!user.bannedAt && (
-              <DropdownMenuItem
-                onSelect={() =>
-                  setAdmin.mutate(
-                    { id: user.id, admin: !user.isAdmin },
-                    {
-                      onSuccess: () => toast.success(user.isAdmin ? `${name} is no longer an admin` : `${name} is now an admin`),
-                      onError: onError('Could not change their role'),
-                    },
-                  )
-                }
-              >
-                {user.isAdmin ? 'Remove admin role' : 'Make admin'}
-              </DropdownMenuItem>
-            )}
-            {!user.isAdmin && (
-              <>
-                <DropdownMenuSeparator />
-                {user.bannedAt ? (
-                  <DropdownMenuItem
-                    onSelect={() =>
-                      unban.mutate(user.id, {
-                        onSuccess: () => toast.success(`${name} can sign in again`),
-                        onError: onError('Could not lift the ban'),
-                      })
-                    }
-                  >
-                    Lift ban
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem variant="destructive" onSelect={onBan}>
-                    Ban…
-                  </DropdownMenuItem>
-                )}
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+        <ChevronRight className="text-muted-foreground mt-2 size-4 shrink-0" aria-hidden />
+      </Link>
     </li>
-  )
-}
-
-const pillTones = {
-  primary: 'bg-primary/10 text-primary',
-  good: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  danger: 'bg-destructive/10 text-destructive',
-  muted: 'bg-muted text-muted-foreground',
-}
-
-function Pill({ tone, children }: { tone: keyof typeof pillTones; children: ReactNode }) {
-  return (
-    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap', pillTones[tone])}>
-      {children}
-    </span>
   )
 }

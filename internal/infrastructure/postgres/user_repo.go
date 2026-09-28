@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -120,26 +121,59 @@ func (r *UserRepository) CountAdmins(ctx context.Context) (int64, error) {
 	return n, err
 }
 
-func (r *UserRepository) ListUsers(ctx context.Context) ([]domain.AdminUser, error) {
-	var rows []struct {
-		UserModel
-		Hikes      int64
-		LastSeenAt *time.Time
+type adminUserRow struct {
+	UserModel
+	Hikes      int64
+	LastSeenAt *time.Time
+}
+
+// adminUsers selects users with their hike count and last activity.
+func (r *UserRepository) adminUsers(ctx context.Context) *gorm.DB {
+	return r.db.WithContext(ctx).Table("users AS u").Select(`u.*,
+		(SELECT COUNT(*) FROM hikes h WHERE h.user_id = u.id) AS hikes,
+		(SELECT MAX(COALESCE(s.last_used_at, s.created_at)) FROM sessions s WHERE s.user_id = u.id) AS last_seen_at`)
+}
+
+func (row *adminUserRow) toDomain() domain.AdminUser {
+	return domain.AdminUser{User: *row.UserModel.toDomain(), Hikes: row.Hikes, LastSeenAt: row.LastSeenAt}
+}
+
+func (r *UserRepository) ListUsers(ctx context.Context, query string, limit, offset int) ([]domain.AdminUser, int64, error) {
+	match := func(db *gorm.DB) *gorm.DB {
+		if query == "" {
+			return db
+		}
+		pattern := "%" + likeEscaper.Replace(query) + "%"
+		return db.Where("u.email ILIKE ? OR u.name ILIKE ?", pattern, pattern)
 	}
-	err := r.db.WithContext(ctx).Raw(`
-		SELECT u.*,
-			(SELECT COUNT(*) FROM hikes h WHERE h.user_id = u.id) AS hikes,
-			(SELECT MAX(s.created_at) FROM sessions s WHERE s.user_id = u.id) AS last_seen_at
-		FROM users u
-		ORDER BY u.created_at, u.id`).Scan(&rows).Error
+	var total int64
+	if err := match(r.db.WithContext(ctx).Table("users AS u")).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var rows []adminUserRow
+	err := match(r.adminUsers(ctx)).Order("u.created_at, u.id").Limit(limit).Offset(offset).Scan(&rows).Error
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	out := make([]domain.AdminUser, len(rows))
-	for i, row := range rows {
-		out[i] = domain.AdminUser{User: *row.toDomain(), Hikes: row.Hikes, LastSeenAt: row.LastSeenAt}
+	for i := range rows {
+		out[i] = rows[i].toDomain()
 	}
-	return out, nil
+	return out, total, nil
+}
+
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+func (r *UserRepository) GetAdminUser(ctx context.Context, id uuid.UUID) (*domain.AdminUser, error) {
+	var rows []adminUserRow
+	if err := r.adminUsers(ctx).Where("u.id = ?", id).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, domain.ErrNotFound
+	}
+	u := rows[0].toDomain()
+	return &u, nil
 }
 
 func (r *UserRepository) SetAdmin(ctx context.Context, id uuid.UUID, admin bool) error {

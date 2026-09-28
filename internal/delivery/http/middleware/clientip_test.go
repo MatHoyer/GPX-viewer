@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/MatHoyer/gpx-viewer/internal/domain"
 )
 
 func TestCloudflareIP(t *testing.T) {
@@ -36,5 +38,28 @@ func TestCloudflareIP(t *testing.T) {
 				t.Errorf("RemoteAddr = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestClientInfo(t *testing.T) {
+	for _, tc := range []struct{ remote, cf, want string }{
+		{"[::1]:1234", "", "::1"},
+		{"10.0.0.5:1234", "", "10.0.0.5"},
+		{"10.0.0.5:1234", "2001:db8::42", "2001:db8::42"},
+	} {
+		var got domain.Client
+		h := CloudflareIP(ClientInfo(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			got = domain.ClientFrom(r.Context())
+		})))
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.RemoteAddr = tc.remote
+		r.Header.Set("User-Agent", "ua")
+		if tc.cf != "" {
+			r.Header.Set("CF-Connecting-IP", tc.cf)
+		}
+		h.ServeHTTP(httptest.NewRecorder(), r)
+		if got.IP != tc.want || got.UserAgent != "ua" {
+			t.Errorf("%s/%s: client = %+v, want ip %s", tc.remote, tc.cf, got, tc.want)
+		}
 	}
 }

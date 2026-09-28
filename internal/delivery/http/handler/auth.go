@@ -21,6 +21,9 @@ type AuthService interface {
 	ResetPassword(ctx context.Context, token, password string) (string, *domain.Session, error)
 	ChangePassword(ctx context.Context, userID uuid.UUID, current, password string) (string, *domain.Session, error)
 	DeleteAccount(ctx context.Context, userID uuid.UUID, password string) error
+	Sessions(ctx context.Context, userID uuid.UUID, token string) ([]domain.Session, uuid.UUID, error)
+	RevokeSession(ctx context.Context, userID, id uuid.UUID, token string) error
+	RevokeOtherSessions(ctx context.Context, userID uuid.UUID, token string) error
 }
 
 type AuthHandler struct {
@@ -151,6 +154,45 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dto.NewUser(middleware.UserFrom(r.Context())))
+}
+
+// Sessions lists the devices the user is signed in on, marking this one.
+func (h *AuthHandler) Sessions(w http.ResponseWriter, r *http.Request) {
+	ss, current, err := h.svc.Sessions(r.Context(), middleware.UserFrom(r.Context()).ID, sessionToken(r))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dto.NewSessions(ss, current))
+}
+
+// RevokeSession signs one of the user's other devices out.
+func (h *AuthHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	if err := h.svc.RevokeSession(r.Context(), middleware.UserFrom(r.Context()).ID, id, sessionToken(r)); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RevokeOtherSessions signs the user out everywhere but this device.
+func (h *AuthHandler) RevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RevokeOtherSessions(r.Context(), middleware.UserFrom(r.Context()).ID, sessionToken(r)); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func sessionToken(r *http.Request) string {
+	if c, err := r.Cookie(middleware.SessionCookie); err == nil {
+		return c.Value
+	}
+	return ""
 }
 
 func (h *AuthHandler) setCookie(w http.ResponseWriter, value string, expires time.Time) {
