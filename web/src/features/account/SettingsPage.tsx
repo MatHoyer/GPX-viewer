@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { FloatingInput } from '@/components/ui/floating-input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import type { User, Visibility } from '@/features/auth/api'
-import { useChangePassword, useMe, useRequestPasswordReset } from '@/features/auth/useAuth'
+import { useChangePassword, useConfig, useMe, useRequestPasswordReset } from '@/features/auth/useAuth'
 import { SessionsCard } from '@/features/sessions/SessionsCard'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
@@ -104,6 +104,7 @@ function PasswordCard({ user }: { user: User }) {
   const [password, setPassword] = useState('')
   const change = useChangePassword()
   const sendReset = useRequestPasswordReset()
+  const emailEnabled = useConfig().data?.emailEnabled
   const error = change.error instanceof ApiError ? change.error : null
 
   function onSubmit(e: FormEvent) {
@@ -164,9 +165,13 @@ function PasswordCard({ user }: { user: User }) {
           )}
         </CardContent>
         <CardFooter className="flex-wrap justify-between gap-2">
-          <Button type="button" variant="link" className="px-0" disabled={sendReset.isPending} onClick={onForgot}>
-            Forgot your current password?
-          </Button>
+          {emailEnabled !== false ? (
+            <Button type="button" variant="link" className="px-0" disabled={sendReset.isPending} onClick={onForgot}>
+              Forgot your current password?
+            </Button>
+          ) : (
+            <span className="text-muted-foreground text-sm">Forgot it? An admin can send you a link.</span>
+          )}
           <Button type="submit" disabled={!currentPassword || !password || change.isPending}>
             {change.isPending ? 'Changing…' : 'Change password'}
           </Button>

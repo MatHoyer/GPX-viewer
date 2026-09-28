@@ -20,6 +20,11 @@ export type AppConfig = {
   registrationEnabled: boolean
   /** Whether the sign-up form accepts accounts; also true before the first account exists. */
   registrationOpen: boolean
+  /**
+   * False without a mail server: nothing is emailed, accounts sign in without
+   * verifying their email, and admins hand out password links.
+   */
+  emailEnabled: boolean
 }
 
 export function fetchConfig() {

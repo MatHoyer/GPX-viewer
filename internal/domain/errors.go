@@ -12,6 +12,8 @@ var (
 	ErrEmailNotVerified   = errors.New("email not verified")
 	ErrInvalidToken       = errors.New("invalid or expired token")
 	ErrRegistrationClosed = errors.New("registration closed")
+	// ErrEmailDisabled means no mail server is configured.
+	ErrEmailDisabled = errors.New("email is not configured")
 )
 
 // BannedError refuses to sign in a user an admin banned.

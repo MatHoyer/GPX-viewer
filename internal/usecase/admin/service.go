@@ -22,10 +22,13 @@ const (
 	maxQueryLength = 200
 )
 
-// Inviter creates accounts that finish signing up through an invite link.
+// Inviter creates accounts that finish signing up through an invite link, and
+// hands out links to choose a password.
 type Inviter interface {
 	Invite(ctx context.Context, email, name string, send bool) (*domain.User, string, bool, error)
-	ReissueInvite(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error)
+	PasswordLink(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error)
+	// RequiresVerifiedEmail reports whether unverified accounts cannot sign in.
+	RequiresVerifiedEmail() bool
 }
 
 // Sessions lists and revokes users' sessions.
@@ -106,21 +109,43 @@ func (s *Service) Invite(ctx context.Context, email, name string, send bool) (*d
 	return s.inviter.Invite(ctx, email, name, send)
 }
 
-// ReissueInvite replaces the invite link of a user who has not signed in yet.
-func (s *Service) ReissueInvite(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error) {
-	return s.inviter.ReissueInvite(ctx, userID, send)
+// PasswordLink issues a link where the user chooses a password: their invite
+// again while it is pending, otherwise a password reset.
+func (s *Service) PasswordLink(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error) {
+	return s.inviter.PasswordLink(ctx, userID, send)
 }
 
-// RevokeInvite cancels the invite of a user who has not accepted it yet by
-// deleting their account, which also voids the link. The email can be
-// invited again. Accounts that own hikes are kept.
+// SetEmailVerified marks someone else's email verified or not. Unverifying
+// signs them out when unverified accounts cannot sign in.
+func (s *Service) SetEmailVerified(ctx context.Context, actorID, targetID uuid.UUID, verified bool) error {
+	u, err := s.other(ctx, actorID, targetID, "you cannot change your own email status")
+	if err != nil {
+		return err
+	}
+	var at *time.Time
+	if verified {
+		now := s.now()
+		at = &now
+	}
+	if err := s.users.SetEmailVerified(ctx, u.ID, at); err != nil {
+		return err
+	}
+	if !verified && s.inviter.RequiresVerifiedEmail() {
+		return s.sessions.DeleteByUserID(ctx, u.ID)
+	}
+	return nil
+}
+
+// RevokeInvite cancels a pending invite by deleting the account, which also
+// voids the link. The email can be invited again. Accounts that own hikes are
+// kept.
 func (s *Service) RevokeInvite(ctx context.Context, targetID uuid.UUID) error {
 	u, err := s.users.GetByID(ctx, targetID)
 	if err != nil {
 		return err
 	}
-	if u.EmailVerifiedAt != nil {
-		return &domain.ValidationError{Field: "user", Message: "they already accepted; ban them instead"}
+	if u.InvitedAt == nil {
+		return &domain.ValidationError{Field: "user", Message: "they have no pending invite; ban them instead"}
 	}
 	err = s.users.DeletePending(ctx, u.ID)
 	if errors.Is(err, domain.ErrConflict) {

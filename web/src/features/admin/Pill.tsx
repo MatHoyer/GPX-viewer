@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { useConfig } from '@/features/auth/useAuth'
 import { cn } from '@/lib/utils'
 
 import type { AdminUser } from './api'
@@ -21,13 +22,17 @@ export function Pill({ tone, children }: { tone: keyof typeof tones; children: R
 
 /** The role and state of an account at a glance. */
 export function UserPills({ user }: { user: AdminUser }) {
+  // Without a mail server nobody verifies their email, so it says nothing.
+  const emailEnabled = useConfig().data?.emailEnabled ?? true
   return (
     <>
       {user.isAdmin && <Pill tone="primary">Admin</Pill>}
       {user.bannedAt ? (
         <Pill tone="danger">Banned</Pill>
+      ) : user.invitedAt ? (
+        <Pill tone="muted">Invite pending</Pill>
       ) : (
-        !user.emailVerifiedAt && <Pill tone="muted">Not signed in yet</Pill>
+        emailEnabled && !user.emailVerifiedAt && <Pill tone="muted">Email not verified</Pill>
       )}
     </>
   )

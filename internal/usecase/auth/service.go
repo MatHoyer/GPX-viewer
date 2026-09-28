@@ -33,6 +33,8 @@ const (
 	// InviteTTL is how long the link of an account created by an admin stays
 	// valid.
 	InviteTTL = 7 * 24 * time.Hour
+	// AdminResetTTL is how long a password link an admin hands out stays valid.
+	AdminResetTTL = 24 * time.Hour
 	// sessionTouchInterval is how stale a session's last use may get before
 	// a request records it again, so browsing does not write on every call.
 	sessionTouchInterval = 5 * time.Minute
@@ -55,7 +57,9 @@ type Service struct {
 
 // NewService builds the auth service. appURL is the public base URL of the
 // app, used in the links it emails. Unless registration is enabled, only the
-// first account can sign up; admins invite the others.
+// first account can sign up; admins invite the others. mailer is nil when no
+// mail server is configured: emails are then never required to be verified,
+// and links are only handed out by admins.
 func NewService(
 	users domain.UserRepository,
 	sessions domain.SessionRepository,
@@ -87,6 +91,17 @@ func NewService(
 	}, nil
 }
 
+// EmailEnabled reports whether a mail server is configured.
+func (s *Service) EmailEnabled() bool {
+	return s.mailer != nil
+}
+
+// RequiresVerifiedEmail reports whether accounts must verify their email
+// before signing in, which needs a mail server to send the link.
+func (s *Service) RequiresVerifiedEmail() bool {
+	return s.EmailEnabled()
+}
+
 func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
@@ -106,9 +121,10 @@ func (s *Service) RegistrationOpen(ctx context.Context) (bool, error) {
 	return n == 0, err
 }
 
-// Register creates an unverified account and emails it a verification link.
-// The account cannot sign in until the link is followed. The first account
-// becomes the admin.
+// Register creates an unverified account. With a mail server, it emails a
+// verification link and the account cannot sign in until the link is
+// followed; without one, it can sign in right away. The first account becomes
+// the admin.
 func (s *Service) Register(ctx context.Context, email, password string) (*domain.User, error) {
 	email = normalizeEmail(email)
 	if err := validateEmail(email); err != nil {
@@ -138,6 +154,9 @@ func (s *Service) Register(ctx context.Context, email, password string) (*domain
 	if err := s.users.Create(ctx, u); err != nil {
 		return nil, err
 	}
+	if !s.EmailEnabled() {
+		return u, nil
+	}
 	// The account exists either way; the next sign-in attempt retries.
 	if err := s.sendVerification(ctx, u); err != nil {
 		slog.Error("send verification email", "user", u.ID, "err", err)
@@ -148,8 +167,8 @@ func (s *Service) Register(ctx context.Context, email, password string) (*domain
 // Invite creates an account for email on behalf of an admin, whatever the
 // registration setting, and returns a link where its owner chooses a
 // password. Following the link also verifies the email. The link is emailed
-// when send is set; a failed delivery is logged and reported by emailed, and
-// the link still works.
+// when send is set and a mail server is configured; a failed delivery is
+// logged and reported by emailed, and the link still works.
 func (s *Service) Invite(ctx context.Context, email, name string, send bool) (u *domain.User, link string, emailed bool, err error) {
 	email = normalizeEmail(email)
 	if err := validateEmail(email); err != nil {
@@ -170,37 +189,56 @@ func (s *Service) Invite(ctx context.Context, email, name string, send bool) (u 
 	if err != nil {
 		return nil, "", false, err
 	}
-	u = &domain.User{ID: uuid.New(), Email: email, Name: name, PasswordHash: hash, Visibility: domain.VisibilityPrivate, CreatedAt: s.now()}
+	now := s.now()
+	u = &domain.User{ID: uuid.New(), Email: email, Name: name, PasswordHash: hash, Visibility: domain.VisibilityPrivate, InvitedAt: &now, CreatedAt: now}
 	if err := s.users.Create(ctx, u); err != nil {
 		return nil, "", false, err
 	}
-	link, emailed, err = s.sendInvite(ctx, u, send)
+	link, emailed, err = s.sendPasswordLink(ctx, u, send)
 	return u, link, emailed, err
 }
 
-// ReissueInvite replaces the invite link of an account whose email is not
-// verified yet, and emails it when send is set.
-func (s *Service) ReissueInvite(ctx context.Context, userID uuid.UUID, send bool) (link string, emailed bool, err error) {
+// PasswordLink issues a new link where a user chooses a password, for an
+// admin to hand over: the invite link again while an invite is pending,
+// otherwise a password reset link, which is how people who forgot their
+// password get back in without email. It is emailed when send is set and a
+// mail server is configured.
+func (s *Service) PasswordLink(ctx context.Context, userID uuid.UUID, send bool) (link string, emailed bool, err error) {
 	u, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return "", false, err
 	}
-	if u.EmailVerifiedAt != nil {
-		return "", false, &domain.ValidationError{Field: "user", Message: "this user already signed in; they can reset their password"}
+	if u.BannedAt != nil {
+		return "", false, &domain.ValidationError{Field: "user", Message: "lift their ban first"}
 	}
-	return s.sendInvite(ctx, u, send)
+	return s.sendPasswordLink(ctx, u, send)
 }
 
-func (s *Service) sendInvite(ctx context.Context, u *domain.User, send bool) (link string, emailed bool, err error) {
-	token, err := s.issueReset(ctx, u.ID, InviteTTL)
+func (s *Service) sendPasswordLink(ctx context.Context, u *domain.User, send bool) (link string, emailed bool, err error) {
+	invite := u.InvitedAt != nil
+	ttl := AdminResetTTL
+	if invite {
+		ttl = InviteTTL
+	}
+	token, err := s.issueReset(ctx, u.ID, ttl)
 	if err != nil {
 		return "", false, err
 	}
-	link = s.appURL + "/reset-password?invite=1&token=" + url.QueryEscape(token)
-	if !send {
+	link = s.appURL + "/reset-password?token=" + url.QueryEscape(token)
+	if invite {
+		link = s.appURL + "/reset-password?invite=1&token=" + url.QueryEscape(token)
+	}
+	if !send || !s.EmailEnabled() {
 		return link, false, nil
 	}
-	body := fmt.Sprintf(`You have been invited to GPX Viewer!
+	subject, body := "Choose a new password", fmt.Sprintf(`An admin of GPX Viewer sent you a link to choose a new password:
+
+%s
+
+The link expires in 24 hours. Your current password works until you use it.
+`, link)
+	if invite {
+		subject, body = "You're invited to GPX Viewer", fmt.Sprintf(`You have been invited to GPX Viewer!
 
 Choose a password to finish creating your account:
 
@@ -208,8 +246,9 @@ Choose a password to finish creating your account:
 
 The link expires in 7 days.
 `, link)
-	if err := s.mailer.Send(ctx, u.Email, "You're invited to GPX Viewer", body); err != nil {
-		slog.Error("send invite email", "user", u.ID, "err", err)
+	}
+	if err := s.mailer.Send(ctx, u.Email, subject, body); err != nil {
+		slog.Error("send password link", "user", u.ID, "err", err)
 		return link, false, nil
 	}
 	return link, true, nil
@@ -249,7 +288,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, *d
 	if u.BannedAt != nil {
 		return "", nil, &domain.BannedError{Reason: u.BanReason}
 	}
-	if u.EmailVerifiedAt == nil {
+	if u.EmailVerifiedAt == nil && s.RequiresVerifiedEmail() {
 		if err := s.ensureVerificationSent(ctx, u); err != nil {
 			slog.Error("send verification email", "user", u.ID, "err", err)
 		}
@@ -334,7 +373,12 @@ The link expires in 24 hours. If you did not create an account, ignore this emai
 
 // RequestPasswordReset emails a reset link to the account, if there is one.
 // Unknown emails succeed silently so the form does not reveal who signed up.
+// Without a mail server it fails with ErrEmailDisabled: an admin hands out
+// the link instead.
 func (s *Service) RequestPasswordReset(ctx context.Context, email string) error {
+	if !s.EmailEnabled() {
+		return domain.ErrEmailDisabled
+	}
 	u, err := s.users.GetByEmail(ctx, normalizeEmail(email))
 	if errors.Is(err, domain.ErrNotFound) {
 		return nil
@@ -424,9 +468,15 @@ func (s *Service) ResetPassword(ctx context.Context, token, password string) (st
 	if err := s.setPassword(ctx, u.ID, password); err != nil {
 		return "", nil, err
 	}
-	// Following the emailed link proves the address is theirs.
+	// Following the link, emailed or handed over by an admin, vouches for the
+	// address, and accepts a pending invite.
 	if u.EmailVerifiedAt == nil {
 		if err := s.users.MarkEmailVerified(ctx, u.ID, now); err != nil {
+			return "", nil, err
+		}
+	}
+	if u.InvitedAt != nil {
+		if err := s.users.AcceptInvite(ctx, u.ID); err != nil {
 			return "", nil, err
 		}
 	}

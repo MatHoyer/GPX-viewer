@@ -39,6 +39,9 @@ export function AuthPage({ mode }: { mode: Mode }) {
   const config = useConfig()
   // Hidden until known, so a closed instance never flashes the link.
   const registrationOpen = config.data?.registrationOpen ?? false
+  // Without a mail server there is no reset email nor verification to wait for.
+  // Unknown until the config loads: hide the reset link, but expect to verify.
+  const emailEnabled = config.data?.emailEnabled
   const mutation = mode === 'login' ? loginMutation : registerMutation
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -56,7 +59,16 @@ export function AuthPage({ mode }: { mode: Mode }) {
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (mode === 'register') {
-      registerMutation.mutate({ email, password }, { onSuccess: (user) => setUnverifiedEmail(user.email) })
+      registerMutation.mutate(
+        { email, password },
+        {
+          onSuccess: (user) => {
+            if (emailEnabled !== false) setUnverifiedEmail(user.email)
+            // Nothing to verify: sign straight in.
+            else loginMutation.mutate({ email, password }, { onSuccess: () => navigate('/', { replace: true }) })
+          },
+        },
+      )
       return
     }
     loginMutation.mutate(
@@ -134,7 +146,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
                 aria-invalid={error?.field === 'password' || undefined}
                 description={mode === 'register' ? 'At least 8 characters.' : undefined}
               />
-              {mode === 'login' && (
+              {mode === 'login' && emailEnabled === true && (
                 <Link
                   to={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'}
                   className="text-muted-foreground hover:text-foreground block text-right text-sm underline-offset-4 hover:underline"

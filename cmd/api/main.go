@@ -13,6 +13,7 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/config"
 	httpdelivery "github.com/MatHoyer/gpx-viewer/internal/delivery/http"
 	"github.com/MatHoyer/gpx-viewer/internal/delivery/http/handler"
+	"github.com/MatHoyer/gpx-viewer/internal/domain"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/gpx"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/ogimage"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/overpass"
@@ -57,9 +58,16 @@ func run() error {
 		return err
 	}
 
-	mailer, err := smtp.NewMailer(smtp.Config(cfg.SMTP))
-	if err != nil {
-		return err
+	// Without SMTP, accounts sign in unverified and admins hand out links.
+	var mailer domain.Mailer
+	if cfg.SMTP != nil {
+		m, err := smtp.NewMailer(smtp.Config(*cfg.SMTP))
+		if err != nil {
+			return err
+		}
+		mailer = m
+	} else {
+		slog.Info("SMTP not configured: emails are not verified and no email is sent")
 	}
 
 	users := postgres.NewUserRepository(db)
@@ -89,17 +97,19 @@ func run() error {
 	go refreshDerived(ctx, hikeSvc)
 
 	router := httpdelivery.NewRouter(httpdelivery.Deps{
-		Auth:          handler.NewAuthHandler(authSvc, cfg.CookieSecure),
-		Account:       handler.NewAccountHandler(accountSvc),
-		Hikes:         handler.NewHikeHandler(hikeSvc, interactionSvc, ogimage.Render, cfg.MaxUploadMB<<20),
-		Social:        handler.NewSocialHandler(socialSvc),
-		Summits:       handler.NewSummitHandler(summitSvc),
-		Interactions:  handler.NewInteractionHandler(interactionSvc),
-		Admin:         handler.NewAdminHandler(adminSvc, authSvc),
-		Authenticator: authSvc,
-		Static:        web.Dist(),
-		AppURL:        cfg.AppURL,
-		HikeMeta:      hikeSvc,
+		Auth:           handler.NewAuthHandler(authSvc, cfg.CookieSecure),
+		Account:        handler.NewAccountHandler(accountSvc),
+		Hikes:          handler.NewHikeHandler(hikeSvc, interactionSvc, ogimage.Render, cfg.MaxUploadMB<<20),
+		Social:         handler.NewSocialHandler(socialSvc),
+		Summits:        handler.NewSummitHandler(summitSvc),
+		Interactions:   handler.NewInteractionHandler(interactionSvc),
+		Admin:          handler.NewAdminHandler(adminSvc, authSvc),
+		Authenticator:  authSvc,
+		Static:         web.Dist(),
+		AppURL:         cfg.AppURL,
+		HikeMeta:       hikeSvc,
+		RealIPHeader:   cfg.RealIPHeader,
+		TrustedProxies: cfg.TrustedProxies,
 	})
 
 	srv := &http.Server{

@@ -33,8 +33,8 @@ func NewLimiter(n int, window time.Duration, what string) *Limiter {
 	}
 }
 
-// ByIP limits per client IP. The IP comes from RemoteAddr, which CloudflareIP
-// fills from the CF-Connecting-IP header.
+// ByIP limits per client IP. The IP comes from RemoteAddr, which RealIP fills
+// from a trusted proxy's header.
 func (l *Limiter) ByIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if l.limited(w, r, "ip:"+clientIP(r)) {

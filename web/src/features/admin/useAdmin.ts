@@ -6,11 +6,12 @@ import {
   fetchUser,
   fetchUsers,
   fetchUserSessions,
-  reissueInvite,
+  passwordLink,
   revokeInvite,
   revokeUserSession,
   revokeUserSessions,
   setAdmin,
+  setEmailVerified,
   unbanUser,
 } from './api'
 
@@ -43,10 +44,11 @@ function useUsersMutation<T, R>(fn: (input: T) => Promise<R>) {
 }
 
 export const useCreateUser = () => useUsersMutation(createUser)
-export const useReissueInvite = () => useUsersMutation(reissueInvite)
+export const usePasswordLink = () => useUsersMutation(passwordLink)
 export const useRevokeInvite = () => useUsersMutation(revokeInvite)
 export const useBanUser = () => useUsersMutation(banUser)
 export const useUnbanUser = () => useUsersMutation(unbanUser)
 export const useSetAdmin = () => useUsersMutation(setAdmin)
 export const useRevokeUserSession = () => useUsersMutation(revokeUserSession)
 export const useRevokeUserSessions = () => useUsersMutation(revokeUserSessions)
+export const useSetEmailVerified = () => useUsersMutation(setEmailVerified)

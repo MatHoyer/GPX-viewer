@@ -227,8 +227,8 @@ func TestUserRepositoryDeletePending(t *testing.T) {
 		t.Fatal(err)
 	}
 	users := NewUserRepository(db)
-	newUser := func(verified *time.Time) uuid.UUID {
-		u := &domain.User{ID: uuid.New(), Email: uuid.NewString() + "@test.local", PasswordHash: "x", EmailVerifiedAt: verified, CreatedAt: time.Now()}
+	newUser := func(invited *time.Time) uuid.UUID {
+		u := &domain.User{ID: uuid.New(), Email: uuid.NewString() + "@test.local", PasswordHash: "x", InvitedAt: invited, CreatedAt: time.Now()}
 		if err := users.Create(ctx, u); err != nil {
 			t.Fatal(err)
 		}
@@ -236,18 +236,40 @@ func TestUserRepositoryDeletePending(t *testing.T) {
 		return u.ID
 	}
 	now := time.Now()
-	pending, verified, withHike := newUser(nil), newUser(&now), newUser(nil)
+	pending, accepted, withHike := newUser(&now), newUser(nil), newUser(&now)
 	h := &domain.Hike{ID: uuid.New(), UserID: withHike, Name: "Hike", CreatedAt: time.Now(),
 		Segments: []domain.Segment{{{Lon: 6, Lat: 45}, {Lon: 6.01, Lat: 45.01}}}}
 	if err := NewHikeRepository(db).Create(ctx, h); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := users.DeletePending(ctx, verified); !errors.Is(err, domain.ErrConflict) {
-		t.Errorf("verified err = %v", err)
+	if err := users.DeletePending(ctx, accepted); !errors.Is(err, domain.ErrConflict) {
+		t.Errorf("no pending invite err = %v", err)
 	}
 	if err := users.DeletePending(ctx, withHike); !errors.Is(err, domain.ErrConflict) {
 		t.Errorf("with hike err = %v", err)
+	}
+	// Accepting clears the invite; the verified flag is set and cleared by admins.
+	if err := users.AcceptInvite(ctx, withHike); err != nil {
+		t.Fatal(err)
+	}
+	if err := users.SetEmailVerified(ctx, accepted, &now); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[uuid.UUID][2]bool{withHike: {false, false}, accepted: {false, true}} {
+		u, err := users.GetByID(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := [2]bool{u.InvitedAt != nil, u.EmailVerifiedAt != nil}; got != want {
+			t.Errorf("user %v invited, verified = %v, want %v", id, got, want)
+		}
+	}
+	if err := users.SetEmailVerified(ctx, accepted, nil); err != nil {
+		t.Fatal(err)
+	}
+	if u, _ := users.GetByID(ctx, accepted); u.EmailVerifiedAt != nil {
+		t.Error("unverify kept the date")
 	}
 	if err := users.DeletePending(ctx, pending); err != nil {
 		t.Fatal(err)

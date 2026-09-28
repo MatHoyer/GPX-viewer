@@ -9,7 +9,7 @@ import { ApiError } from '@/lib/api'
 
 import { AuthShell } from './AuthShell'
 import { CheckInbox } from './CheckInbox'
-import { useRequestPasswordReset } from './useAuth'
+import { useConfig, useRequestPasswordReset } from './useAuth'
 
 /** Asks for the account email and sends it a password reset link. */
 export function ForgotPasswordPage() {
@@ -17,6 +17,7 @@ export function ForgotPasswordPage() {
   const [params] = useSearchParams()
   const [email, setEmail] = useState(params.get('email') ?? '')
   const request = useRequestPasswordReset()
+  const config = useConfig()
 
   const errorMessage = request.error
     ? request.error instanceof ApiError
@@ -27,6 +28,26 @@ export function ForgotPasswordPage() {
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     request.mutate(email.trim())
+  }
+
+  if (config.data && !config.data.emailEnabled) {
+    return (
+      <AuthShell>
+        <CardHeader>
+          <CardTitle>Ask an admin</CardTitle>
+          <CardDescription>
+            This instance does not send emails. An admin can give you a link to choose a new password.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="mt-6">
+          <Button asChild size="lg" className="h-11 w-full rounded-xl">
+            <Link to="/login" replace>
+              Back to sign in
+            </Link>
+          </Button>
+        </CardFooter>
+      </AuthShell>
+    )
   }
 
   if (request.isSuccess) {

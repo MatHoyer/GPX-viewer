@@ -26,6 +26,8 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusBadRequest, dto.Error{Error: ve.Message, Field: ve.Field})
 	case errors.As(err, &be):
 		writeJSON(w, http.StatusForbidden, dto.Error{Error: "your account was suspended: " + be.Reason, Code: "banned", Reason: be.Reason})
+	case errors.Is(err, domain.ErrEmailDisabled):
+		writeJSON(w, http.StatusServiceUnavailable, dto.Error{Error: "email is not set up here; ask an admin for a password link", Code: "email_disabled"})
 	case errors.Is(err, domain.ErrRegistrationClosed):
 		writeJSON(w, http.StatusForbidden, dto.Error{Error: "sign-up is closed; ask the admin for an invite", Code: "registration_closed"})
 	case errors.Is(err, domain.ErrNotFound):

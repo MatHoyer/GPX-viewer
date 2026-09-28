@@ -15,6 +15,9 @@ type Config struct {
 	// RegistrationOpen is whether the sign-up form accepts accounts: when
 	// registration is enabled, or before the first account exists.
 	RegistrationOpen bool `json:"registrationOpen"`
+	// EmailEnabled is false without a mail server: emails need no
+	// verification and admins hand out password links.
+	EmailEnabled bool `json:"emailEnabled"`
 }
 
 // AdminUser is a user as listed in the admin panel.
@@ -26,6 +29,7 @@ type AdminUser struct {
 	EmailVerifiedAt *time.Time `json:"emailVerifiedAt"`
 	BannedAt        *time.Time `json:"bannedAt"`
 	BanReason       string     `json:"banReason"`
+	InvitedAt       *time.Time `json:"invitedAt"`
 	Hikes           int64      `json:"hikes"`
 	LastSeenAt      *time.Time `json:"lastSeenAt"`
 	CreatedAt       time.Time  `json:"createdAt"`
@@ -40,6 +44,7 @@ func NewAdminUser(u *domain.AdminUser) AdminUser {
 		EmailVerifiedAt: u.EmailVerifiedAt,
 		BannedAt:        u.BannedAt,
 		BanReason:       u.BanReason,
+		InvitedAt:       u.InvitedAt,
 		Hikes:           u.Hikes,
 		LastSeenAt:      u.LastSeenAt,
 		CreatedAt:       u.CreatedAt,
