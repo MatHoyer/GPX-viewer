@@ -317,6 +317,19 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, current,
 	return s.startSession(ctx, u.ID)
 }
 
+// DeleteAccount permanently removes a signed-in user and everything tied to
+// them, after checking their password.
+func (s *Service) DeleteAccount(ctx context.Context, userID uuid.UUID, password string) error {
+	u, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if err := s.hasher.Compare(u.PasswordHash, password); err != nil {
+		return &domain.ValidationError{Field: "password", Message: "password is incorrect"}
+	}
+	return s.users.Delete(ctx, u.ID)
+}
+
 // setPassword stores a new password and revokes every session, so whoever
 // knew the old one is signed out.
 func (s *Service) setPassword(ctx context.Context, userID uuid.UUID, password string) error {

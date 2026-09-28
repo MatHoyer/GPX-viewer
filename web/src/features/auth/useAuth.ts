@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 
 import {
   changePassword,
+  deleteAccount,
   fetchMe,
   login,
   logout,
@@ -55,10 +56,19 @@ export function useChangePassword() {
 }
 
 export function useLogout() {
+  return useSignOut(logout)
+}
+
+export function useDeleteAccount() {
+  return useSignOut(deleteAccount)
+}
+
+/** Runs fn, then leaves for the login page with a cleared cache. */
+function useSignOut<T = void>(fn: (input: T) => Promise<void>) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   return useMutation({
-    mutationFn: logout,
+    mutationFn: fn,
     onSuccess: () => {
       // Leave first: clearing the cache puts the session back in a pending
       // state, and the guards render nothing while it is pending.

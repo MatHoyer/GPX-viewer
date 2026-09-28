@@ -78,6 +78,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | POST | `/api/auth/logout` | |
 | GET | `/api/auth/me` | current user (`name`, `visibility`, `createdAt`) |
 | PATCH | `/api/me` | `{name}` to set the display name (empty clears it), `{visibility}` to set who sees your hikes |
+| DELETE | `/api/me` | `{password}`; permanently deletes the account with its hikes, tags, friendships, kudos and comments, and signs out |
 | GET | `/api/hikes` | your hikes and those you are tagged on, with stats, bounds, `owner` and `participants` |
 | POST | `/api/hikes` | multipart `files` (one or more GPX), per-file results; `?planned=true` stores them as planned routes, without times or sensor data |
 | GET | `/api/hikes/tracks` | GeoJSON of all tracks |

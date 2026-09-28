@@ -20,6 +20,7 @@ type AuthService interface {
 	RequestPasswordReset(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, password string) (string, *domain.Session, error)
 	ChangePassword(ctx context.Context, userID uuid.UUID, current, password string) (string, *domain.Session, error)
+	DeleteAccount(ctx context.Context, userID uuid.UUID, password string) error
 }
 
 type AuthHandler struct {
@@ -104,6 +105,22 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.setCookie(w, token, sess.ExpiresAt)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DeleteAccount permanently deletes the signed-in user after checking their
+// password, then clears the session cookie.
+func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	var in dto.DeleteAccount
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	id := middleware.UserFrom(r.Context()).ID
+	if err := h.svc.DeleteAccount(r.Context(), id, in.Password); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	h.setCookie(w, "", time.Unix(0, 0))
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -50,6 +50,14 @@ func (f *fakeUsers) UpdatePassword(_ context.Context, id uuid.UUID, hash string)
 	return nil
 }
 
+func (f *fakeUsers) Delete(_ context.Context, id uuid.UUID) error {
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	return nil
+}
+
 func (f *fakeUsers) MarkEmailVerified(_ context.Context, id uuid.UUID, at time.Time) error {
 	u, ok := f.byID[id]
 	if !ok {
@@ -471,6 +479,30 @@ func TestUnverifiedLoginWithoutLinkSendsOne(t *testing.T) {
 	}
 	if len(e.mailer.sent) != 1 || e.mailer.sent[0].to != "a@b.co" {
 		t.Fatalf("sent = %+v", e.mailer.sent)
+	}
+}
+
+func TestDeleteAccount(t *testing.T) {
+	ctx := context.Background()
+	e := newTestEnv(t)
+	u := e.registerVerified(t, "a@b.co", "password123")
+
+	var ve *domain.ValidationError
+	if err := e.svc.DeleteAccount(ctx, u.ID, "wrong-password"); !errors.As(err, &ve) || ve.Field != "password" {
+		t.Fatalf("wrong password err = %v", err)
+	}
+	if _, err := e.svc.users.GetByID(ctx, u.ID); err != nil {
+		t.Fatalf("user deleted despite wrong password: %v", err)
+	}
+
+	if err := e.svc.DeleteAccount(ctx, u.ID, "password123"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.users.GetByID(ctx, u.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("after delete err = %v", err)
+	}
+	if _, _, err := e.svc.Login(ctx, "a@b.co", "password123"); !errors.Is(err, domain.ErrInvalidCredentials) {
+		t.Errorf("login after delete err = %v", err)
 	}
 }
 
