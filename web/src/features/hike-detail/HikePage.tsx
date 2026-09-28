@@ -166,7 +166,7 @@ export function HikePage() {
             <div className="h-[45vh] overflow-hidden rounded-lg lg:h-[calc(100svh-17rem)]">
               {profile.data ? <ReplayMap profile={profile.data} peaks={summits.data} startedAt={hike.data?.planned ? null : hike.data?.startedAt} /> : <Skeleton className="size-full" />}
             </div>
-            {profile.data && <ReplayControls profile={profile.data} />}
+            {profile.data && <ReplayControls profile={profile.data} startedAt={hike.data?.planned ? null : hike.data?.startedAt} />}
           </section>
 
           <section className="bg-card rounded-xl border p-4">
