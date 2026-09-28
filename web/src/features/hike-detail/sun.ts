@@ -1,6 +1,6 @@
 import { getPosition, getTimes } from 'suncalc'
 
-import type { Profile } from './profile'
+import { positionAt, valueAt, type Profile } from './profile'
 
 /** Sun altitudes (degrees) below which it is twilight, then night (civil twilight). */
 const SUNSET_ALT = -0.833
@@ -50,4 +50,29 @@ export type DaylightTimes = { sunrise: Date | null; sunset: Date | null; alwaysU
 export function daylightAt(startedAt: string, lat: number, lon: number): DaylightTimes {
   const times = getTimes(new Date(startedAt), lat, lon)
   return { sunrise: times.sunrise, sunset: times.sunset, alwaysUp: !!times.alwaysUp, alwaysDown: !!times.alwaysDown }
+}
+
+export type SunPosition = { azimuth: number; altitude: number }
+
+/** Where the sun stands, in degrees, at a fractional profile index; null without a time there. */
+export function sunAtIndex(p: Profile, startedAt: string | null, f: number): SunPosition | null {
+  if (!startedAt || !p.has.time) return null
+  const t = valueAt(p.t, f)
+  if (t === null) return null
+  const [lon, lat] = positionAt(p, f)
+  const { azimuth, altitude } = getPosition(new Date(new Date(startedAt).getTime() + t * 1000), lat, lon)
+  return { azimuth, altitude }
+}
+
+export type SunTint = { color: string; opacity: number }
+
+const GOLDEN = '#ff9a3c'
+const DUSK = '#1d2352'
+
+/** A wash over the map for the sun's altitude: warm near the horizon, then darker blue through twilight into night. */
+export function sunTint(altitude: number): SunTint {
+  if (altitude >= 10) return { color: GOLDEN, opacity: 0 }
+  if (altitude > 0) return { color: GOLDEN, opacity: 0.15 * (1 - altitude / 10) }
+  if (altitude > CIVIL_DUSK_ALT) return { color: DUSK, opacity: 0.2 + (0.25 * altitude) / CIVIL_DUSK_ALT }
+  return { color: DUSK, opacity: Math.min(0.6, 0.45 + (0.15 * (altitude - CIVIL_DUSK_ALT)) / CIVIL_DUSK_ALT) }
 }

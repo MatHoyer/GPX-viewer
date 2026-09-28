@@ -164,7 +164,7 @@ export function HikePage() {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <section className="bg-card space-y-3 rounded-xl border p-3 lg:sticky lg:top-20 lg:self-start">
             <div className="h-[45vh] overflow-hidden rounded-lg lg:h-[calc(100svh-17rem)]">
-              {profile.data ? <ReplayMap profile={profile.data} peaks={summits.data} /> : <Skeleton className="size-full" />}
+              {profile.data ? <ReplayMap profile={profile.data} peaks={summits.data} startedAt={hike.data?.planned ? null : hike.data?.startedAt} /> : <Skeleton className="size-full" />}
             </div>
             {profile.data && <ReplayControls profile={profile.data} />}
           </section>

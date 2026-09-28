@@ -4,21 +4,31 @@ import { MapControls, MapMarker, MapRoute, MarkerContent, useMap } from '@/compo
 import { FitBounds } from '@/features/hikes/FitBounds'
 import type { Peak } from '@/features/stats/summits'
 import { formatElevation } from '@/lib/format'
+import { DEM_SOURCE_ID, demSource } from '@/features/map/basemaps'
 import { LayeredMap } from '@/features/map/LayeredMap'
 
 import { boundsBetween, linesBetween, positionAt, type Profile } from './profile'
 import { useReplay } from './store'
+import { sunAtIndex, sunTint } from './sun'
 
 const TRACK_COLOR = '#2e86ab'
 const HEAD_COLOR = 'var(--replay-head)'
 
-export function ReplayMap({ profile, peaks = [] }: { profile: Profile; peaks?: Peak[] }) {
+type Props = {
+  profile: Profile
+  peaks?: Peak[]
+  /** Start of a walked hike: the map is lit by the sun as it stood at the replay position. */
+  startedAt?: string | null
+}
+
+export function ReplayMap({ profile, peaks = [], startedAt = null }: Props) {
   const fullLines = useMemo(() => linesBetween(profile, 0, profile.lon.length - 1), [profile])
 
   return (
     <LayeredMap className="size-full" center={positionAt(profile, 0)} zoom={12}>
       <MapControls position="bottom-right" showZoom showCompass showFullscreen />
       <ZoomToRange profile={profile} />
+      <SunLighting profile={profile} startedAt={startedAt} />
       {fullLines.map((line, i) => (
         <MapRoute key={i} id={`track-${i}`} coordinates={line} color={TRACK_COLOR} width={4} opacity={0.35} interactive={false} />
       ))}
@@ -122,6 +132,59 @@ function FollowCamera({ profile }: { profile: Profile }) {
     if (!map || !isLoaded || !follow) return
     map.setCenter(positionAt(profile, pos))
   }, [map, isLoaded, follow, profile, pos])
+
+  return null
+}
+
+const SUN_SHADE_ID = 'sun-hillshade'
+const SUN_TINT_ID = 'sun-tint'
+const SHADE_EXAGGERATION = 0.25
+
+/**
+ * Lights the terrain from where the sun stood at the replay position, and
+ * washes the basemap warm near sunset and dark blue at night. Both layers sit
+ * under the tracks, so the route and markers keep their colors.
+ */
+function SunLighting({ profile, startedAt }: { profile: Profile; startedAt: string | null }) {
+  const { map, isLoaded } = useMap()
+  const pos = useReplay((s) => s.pos)
+  const sun = sunAtIndex(profile, startedAt, pos)
+  // Rounded so replay frames only repaint when the light visibly changes.
+  const azimuth = sun && Math.round(sun.azimuth)
+  const altitude = sun && Math.round(sun.altitude * 4) / 4
+  const enabled = sun !== null
+
+  useEffect(() => {
+    if (!map || !isLoaded || !enabled) return
+    if (!map.getSource(DEM_SOURCE_ID)) map.addSource(DEM_SOURCE_ID, demSource)
+    const before = map.getStyle().layers.find((l) => l.id.startsWith('route-'))?.id
+    map.addLayer(
+      {
+        id: SUN_SHADE_ID,
+        type: 'hillshade',
+        source: DEM_SOURCE_ID,
+        paint: { 'hillshade-method': 'combined', 'hillshade-illumination-anchor': 'map' },
+      },
+      before,
+    )
+    map.addLayer({ id: SUN_TINT_ID, type: 'background', paint: { 'background-opacity': 0 } }, before)
+    return () => {
+      // The style may already be gone (basemap swap, unmount).
+      for (const id of [SUN_TINT_ID, SUN_SHADE_ID]) if (map.style && map.getLayer(id)) map.removeLayer(id)
+    }
+  }, [map, isLoaded, enabled])
+
+  useEffect(() => {
+    if (!map || !isLoaded || azimuth === null || altitude === null || !map.getLayer(SUN_SHADE_ID)) return
+    // Shadows fade out as the sun sinks below the horizon, where only the tint remains.
+    const shade = altitude > 0 ? SHADE_EXAGGERATION : Math.max(0, SHADE_EXAGGERATION * (1 + altitude / 6))
+    map.setPaintProperty(SUN_SHADE_ID, 'hillshade-illumination-direction', azimuth)
+    map.setPaintProperty(SUN_SHADE_ID, 'hillshade-illumination-altitude', Math.max(0, altitude))
+    map.setPaintProperty(SUN_SHADE_ID, 'hillshade-exaggeration', shade)
+    const tint = sunTint(altitude)
+    map.setPaintProperty(SUN_TINT_ID, 'background-color', tint.color)
+    map.setPaintProperty(SUN_TINT_ID, 'background-opacity', tint.opacity)
+  }, [map, isLoaded, azimuth, altitude])
 
   return null
 }
