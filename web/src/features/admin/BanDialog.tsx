@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
+import { FloatingTextarea } from '@/components/ui/floating-textarea'
 import { displayName } from '@/features/account/displayName'
 import { ApiError } from '@/lib/api'
 
@@ -61,11 +61,10 @@ export function BanDialog({ user, onClose }: Props) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <label htmlFor="ban-reason" className="text-sm font-medium">
-              Reason, shown to them when they try to sign in
-            </label>
-            <Textarea
+            <FloatingTextarea
               id="ban-reason"
+              label="Reason"
+              description="Shown to them when they try to sign in."
               required
               autoFocus
               maxLength={MAX_BAN_REASON_LENGTH}

@@ -3,7 +3,7 @@ import { useState, type KeyboardEvent } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { FloatingTextarea } from '@/components/ui/floating-textarea'
 import { MAX_NOTES_LENGTH, type Hike } from '@/features/hikes/api'
 import { useUpdateHike } from '@/features/hikes/useHikes'
 import { ApiError } from '@/lib/api'
@@ -36,15 +36,15 @@ export function NotesBlock({ hike, isOwner }: { hike: Hike; isOwner: boolean }) 
   if (draft !== null) {
     return (
       <div className="space-y-2">
-        <Textarea
+        <FloatingTextarea
+          label="Notes"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
           maxLength={MAX_NOTES_LENGTH}
           autoFocus
           placeholder="Conditions, company, what to remember next time…"
-          aria-label="Notes"
-          className="bg-card max-h-72 min-h-20"
+          className="[&_textarea]:bg-card [&_textarea]:max-h-72"
         />
         <div className="flex items-center justify-end gap-2">
           <span className="text-muted-foreground mr-auto hidden text-xs sm:inline">Ctrl+Enter to save, Esc to cancel</span>
