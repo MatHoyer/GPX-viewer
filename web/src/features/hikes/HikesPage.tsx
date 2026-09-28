@@ -181,7 +181,7 @@ export function HikesPage() {
             {() => {
               const selected = table.getSelectedRowModel().rows
               return selected.length > 0 ? (
-                <div className="flex h-8 items-center gap-1.5">
+                <div className="flex h-10 items-center gap-1.5">
                   <Button
                     variant="ghost"
                     size="icon-sm"
