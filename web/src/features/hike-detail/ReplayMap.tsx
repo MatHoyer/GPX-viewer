@@ -1,3 +1,4 @@
+import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useEffect, useMemo } from 'react'
 
 import { MapControls, MapMarker, MapRoute, MarkerContent, useMap } from '@/components/ui/map'
@@ -140,27 +141,48 @@ const SUN_SHADE_ID = 'sun-hillshade'
 const SUN_TINT_ID = 'sun-tint'
 const SHADE_EXAGGERATION = 0.25
 
+/** Id of the first track layer, so sun layers slide in under the tracks. */
+function firstRouteLayer(map: MapLibreMap) {
+  return map.getStyle().layers.find((l) => l.id.startsWith('route-'))?.id
+}
+
+function removeLayer(map: MapLibreMap, id: string) {
+  // The style may already be gone (basemap swap, unmount).
+  if (map.style && map.getLayer(id)) map.removeLayer(id)
+}
+
 /**
- * Lights the terrain from where the sun stood at the replay position, and
- * washes the basemap warm near sunset and dark blue at night. Both layers sit
- * under the tracks, so the route and markers keep their colors.
+ * While the replay runs (playing, or paused away from the start), washes the
+ * basemap warm near sunset and dark blue at night, as the sun stood at the
+ * replay position. With 3D terrain on, whose elevation tiles are then already
+ * loaded, the relief is also lit from the sun. Both layers sit under the
+ * tracks, so the route and markers keep their colors.
  */
 function SunLighting({ profile, startedAt }: { profile: Profile; startedAt: string | null }) {
   const { map, isLoaded, resolvedTheme } = useMap()
   const basemap = useMapView((s) => s.basemap)
+  const terrain = useMapView((s) => s.terrain)
   // Only the default street map has a dark variant; it needs a lighter touch.
   const darkMap = resolvedTheme === 'dark' && basemapStyles[basemap] === undefined
   const pos = useReplay((s) => s.pos)
-  const sun = sunAtIndex(profile, startedAt, pos)
+  const replaying = useReplay((s) => s.playing) || pos > 0
+  const sun = replaying ? sunAtIndex(profile, startedAt, pos) : null
   // Rounded so replay frames only repaint when the light visibly changes.
   const azimuth = sun && Math.round(sun.azimuth)
   const altitude = sun && Math.round(sun.altitude * 4) / 4
-  const enabled = sun !== null
+  const lit = sun !== null
+  const shaded = lit && terrain
 
   useEffect(() => {
-    if (!map || !isLoaded || !enabled) return
+    if (!map || !isLoaded || !lit) return
+    map.addLayer({ id: SUN_TINT_ID, type: 'background', paint: { 'background-opacity': 0 } }, firstRouteLayer(map))
+    return () => removeLayer(map, SUN_TINT_ID)
+  }, [map, isLoaded, lit])
+
+  useEffect(() => {
+    if (!map || !isLoaded || !shaded) return
+    // The terrain adds the elevation source; the tint stays above the relief.
     if (!map.getSource(DEM_SOURCE_ID)) map.addSource(DEM_SOURCE_ID, demSource)
-    const before = map.getStyle().layers.find((l) => l.id.startsWith('route-'))?.id
     map.addLayer(
       {
         id: SUN_SHADE_ID,
@@ -168,28 +190,28 @@ function SunLighting({ profile, startedAt }: { profile: Profile; startedAt: stri
         source: DEM_SOURCE_ID,
         paint: { 'hillshade-method': 'combined', 'hillshade-illumination-anchor': 'map' },
       },
-      before,
+      map.getLayer(SUN_TINT_ID) ? SUN_TINT_ID : firstRouteLayer(map),
     )
-    map.addLayer({ id: SUN_TINT_ID, type: 'background', paint: { 'background-opacity': 0 } }, before)
-    return () => {
-      // The style may already be gone (basemap swap, unmount).
-      for (const id of [SUN_TINT_ID, SUN_SHADE_ID]) if (map.style && map.getLayer(id)) map.removeLayer(id)
-    }
-  }, [map, isLoaded, enabled])
+    return () => removeLayer(map, SUN_SHADE_ID)
+  }, [map, isLoaded, shaded])
 
   useEffect(() => {
-    if (!map || !isLoaded || azimuth === null || altitude === null || !map.getLayer(SUN_SHADE_ID)) return
-    // Shadows fade out as the sun sinks below the horizon, where only the tint remains.
-    const shade = altitude > 0 ? SHADE_EXAGGERATION : Math.max(0, SHADE_EXAGGERATION * (1 + altitude / 6))
-    map.setPaintProperty(SUN_SHADE_ID, 'hillshade-illumination-direction', azimuth)
-    map.setPaintProperty(SUN_SHADE_ID, 'hillshade-illumination-altitude', Math.max(0, altitude))
-    map.setPaintProperty(SUN_SHADE_ID, 'hillshade-exaggeration', shade)
-    // White highlights would grey out a dark map.
-    map.setPaintProperty(SUN_SHADE_ID, 'hillshade-highlight-color', darkMap ? 'rgba(255, 255, 255, 0.12)' : '#ffffff')
-    const tint = sunTint(altitude)
-    map.setPaintProperty(SUN_TINT_ID, 'background-color', tint.color)
-    map.setPaintProperty(SUN_TINT_ID, 'background-opacity', darkMap ? tint.opacity / 2 : tint.opacity)
-  }, [map, isLoaded, azimuth, altitude, darkMap])
+    if (!map || !isLoaded || azimuth === null || altitude === null) return
+    if (map.getLayer(SUN_TINT_ID)) {
+      const tint = sunTint(altitude)
+      map.setPaintProperty(SUN_TINT_ID, 'background-color', tint.color)
+      map.setPaintProperty(SUN_TINT_ID, 'background-opacity', darkMap ? tint.opacity / 2 : tint.opacity)
+    }
+    if (map.getLayer(SUN_SHADE_ID)) {
+      // Shadows fade out as the sun sinks below the horizon, where only the tint remains.
+      const shade = altitude > 0 ? SHADE_EXAGGERATION : Math.max(0, SHADE_EXAGGERATION * (1 + altitude / 6))
+      map.setPaintProperty(SUN_SHADE_ID, 'hillshade-illumination-direction', azimuth)
+      map.setPaintProperty(SUN_SHADE_ID, 'hillshade-illumination-altitude', Math.max(0, altitude))
+      map.setPaintProperty(SUN_SHADE_ID, 'hillshade-exaggeration', shade)
+      // White highlights would grey out a dark map.
+      map.setPaintProperty(SUN_SHADE_ID, 'hillshade-highlight-color', darkMap ? 'rgba(255, 255, 255, 0.12)' : '#ffffff')
+    }
+  }, [map, isLoaded, azimuth, altitude, darkMap, lit, shaded])
 
   return null
 }
