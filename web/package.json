@@ -17,6 +17,7 @@
     "@fontsource-variable/geist": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.104.0",
+    "@tanstack/react-table": "^9.2.4",
     "blobatar": "^2.7.0",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
