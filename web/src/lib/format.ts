@@ -14,16 +14,25 @@ export function formatDuration(seconds: number): string {
   return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`
 }
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
+const formatters = new Map<string, Intl.DateTimeFormat>()
 
-export function formatDate(iso: string | null): string | null {
-  return iso ? dateFormatter.format(new Date(iso)) : null
+/** A cached formatter; an undefined timeZone is the viewer's. */
+function formatter(style: 'date' | 'time', timeZone?: string): Intl.DateTimeFormat {
+  const key = `${style}|${timeZone ?? ''}`
+  let f = formatters.get(key)
+  if (!f) {
+    f = new Intl.DateTimeFormat(undefined, style === 'date' ? { dateStyle: 'medium', timeZone } : { timeStyle: 'short', timeZone })
+    formatters.set(key, f)
+  }
+  return f
 }
 
-const timeFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
+export function formatDate(iso: string | null, timeZone?: string): string | null {
+  return iso ? formatter('date', timeZone).format(new Date(iso)) : null
+}
 
-export function formatTime(date: Date): string {
-  return timeFormatter.format(date)
+export function formatTime(date: Date, timeZone?: string): string {
+  return formatter('time', timeZone).format(date)
 }
 
 export function formatClock(seconds: number): string {

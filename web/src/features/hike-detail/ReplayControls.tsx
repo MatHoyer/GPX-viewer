@@ -12,7 +12,16 @@ import { replaySpeeds, useReplay, visibleSpan } from './store'
 import { sunAtIndex, type SunPosition } from './sun'
 
 /** startedAt turns the replay's elapsed time into the time of day. */
-export function ReplayControls({ profile, startedAt = null }: { profile: Profile; startedAt?: string | null }) {
+export function ReplayControls({
+  profile,
+  startedAt = null,
+  timeZone,
+}: {
+  profile: Profile
+  startedAt?: string | null
+  /** The hike's own time zone, for the time of day; the viewer's when undefined. */
+  timeZone?: string
+}) {
   const playing = useReplay((s) => s.playing)
   const pos = useReplay((s) => s.pos)
   const range = useReplay((s) => s.range)
@@ -69,7 +78,7 @@ export function ReplayControls({ profile, startedAt = null }: { profile: Profile
           <Crosshair />
         </Toggle>
       </div>
-      <Readout profile={profile} pos={pos} startedAt={startedAt} />
+      <Readout profile={profile} pos={pos} startedAt={startedAt} timeZone={timeZone} />
     </div>
   )
 }
@@ -83,7 +92,17 @@ function sunIcon({ altitude, rising }: SunPosition): LucideIcon {
   return rising ? Sunrise : Sunset
 }
 
-function Readout({ profile, pos, startedAt }: { profile: Profile; pos: number; startedAt: string | null }) {
+function Readout({
+  profile,
+  pos,
+  startedAt,
+  timeZone,
+}: {
+  profile: Profile
+  pos: number
+  startedAt: string | null
+  timeZone?: string
+}) {
   const t = valueAt(profile.t, pos)
   const sun = sunAtIndex(profile, startedAt, pos)
   const dist = valueAt(profile.dist, pos) ?? 0
@@ -94,7 +113,7 @@ function Readout({ profile, pos, startedAt }: { profile: Profile; pos: number; s
     t !== null &&
       startedAt && {
         label: 'Time of day',
-        value: formatTime(new Date(new Date(startedAt).getTime() + t * 1000)),
+        value: formatTime(new Date(new Date(startedAt).getTime() + t * 1000), timeZone),
         icon: sun ? sunIcon(sun) : undefined,
       },
     t !== null && { label: 'Elapsed', value: formatClock(t) },
