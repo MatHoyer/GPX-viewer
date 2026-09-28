@@ -2,7 +2,7 @@ import type * as GeoJSON from 'geojson'
 
 import type { Person } from '@/features/account/displayName'
 import type { HikeTiles } from '@/features/map/tiles'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 
 export type Bounds = [minLon: number, minLat: number, maxLon: number, maxLat: number]
 
@@ -100,6 +100,29 @@ export function listLabels() {
   return api<string[]>('/labels')
 }
 
-export function deleteHike(id: string) {
-  return api<void>(`/hikes/${id}`, { method: 'DELETE' })
+
+/** Deletes those of ids you own; others are skipped. */
+export function deleteHikes(ids: string[]) {
+  return api<{ deleted: number }>('/hikes/delete', { method: 'POST', body: JSON.stringify({ ids }) })
+}
+
+/** Downloads a zip of the GPX files of those of ids you own. */
+export async function exportHikes(ids: string[]) {
+  const res = await fetch('/api/hikes/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ ids }),
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new ApiError(res.status, body.error ?? res.statusText)
+  }
+  const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? 'hikes.zip'
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.click()
+  URL.revokeObjectURL(url)
 }

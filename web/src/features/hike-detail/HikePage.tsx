@@ -3,16 +3,6 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,7 +10,8 @@ import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import { PlannedBadge } from '@/features/hikes/PlannedBadge'
-import { useDeleteHike, useHikeSummits, useUpdateHike } from '@/features/hikes/useHikes'
+import { DeleteHikesDialog } from '@/features/hikes/DeleteHikesDialog'
+import { useHikeSummits, useUpdateHike } from '@/features/hikes/useHikes'
 import { CommentsPanel } from '@/features/interactions/CommentsPanel'
 import { KudosButton } from '@/features/interactions/KudosButton'
 import { ApiError } from '@/lib/api'
@@ -50,7 +41,6 @@ export function HikePage() {
   const hike = useHike(id)
   const profile = useProfile(id)
   const summits = useHikeSummits(id)
-  const deleteHike = useDeleteHike()
   const update = useUpdateHike()
   const [confirmDelete, setConfirmDelete] = useState(false)
   // Someone else's hike, shared with the viewer: read-only, credited to its owner.
@@ -191,31 +181,11 @@ export function HikePage() {
       </main>
       {hike.data && <CommentsPanel hike={hike.data} viewerId={me.data?.id} />}
 
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this hike?</AlertDialogTitle>
-            <AlertDialogDescription>“{hike.data?.name}” and its GPX file will be permanently removed.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() =>
-                deleteHike.mutate(id, {
-                  onSuccess: () => {
-                    toast.success('Hike deleted')
-                    navigate('/', { replace: true })
-                  },
-                  onError: () => toast.error('Could not delete hike'),
-                })
-              }
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteHikesDialog
+        hikes={confirmDelete && hike.data ? [hike.data] : []}
+        onClose={() => setConfirmDelete(false)}
+        onDeleted={() => navigate('/', { replace: true })}
+      />
     </div>
   )
 }

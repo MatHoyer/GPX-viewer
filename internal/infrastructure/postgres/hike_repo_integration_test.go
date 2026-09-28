@@ -225,3 +225,50 @@ func TestHikeRepository(t *testing.T) {
 		t.Errorf("alice delete err = %v", err)
 	}
 }
+
+func TestHikeRepositoryDeleteMany(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	db, err := Open(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(db); err != nil {
+		t.Fatal(err)
+	}
+	users, hikes := NewUserRepository(db), NewHikeRepository(db)
+	newUser := func() uuid.UUID {
+		u := &domain.User{ID: uuid.New(), Email: uuid.NewString() + "@test.local", PasswordHash: "x", CreatedAt: time.Now()}
+		if err := users.Create(ctx, u); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { db.Delete(&UserModel{}, "id = ?", u.ID) })
+		return u.ID
+	}
+	newHike := func(owner uuid.UUID) uuid.UUID {
+		h := &domain.Hike{ID: uuid.New(), UserID: owner, Name: "Hike", CreatedAt: time.Now(),
+			Segments: []domain.Segment{{{Lon: 6, Lat: 45}, {Lon: 6.01, Lat: 45.01}}}}
+		if err := hikes.Create(ctx, h); err != nil {
+			t.Fatal(err)
+		}
+		return h.ID
+	}
+	alice, bob := newUser(), newUser()
+	a1, a2, a3, b1 := newHike(alice), newHike(alice), newHike(alice), newHike(bob)
+
+	n, err := hikes.DeleteMany(ctx, alice, []uuid.UUID{a1, a2, b1, uuid.New()})
+	if err != nil || n != 2 {
+		t.Fatalf("deleted %d, %v; want 2", n, err)
+	}
+	for id, want := range map[uuid.UUID]bool{a1: false, a2: false, a3: true, b1: true} {
+		if _, err := hikes.Find(ctx, id); (err == nil) != want {
+			t.Errorf("hike %v exists = %v, want %v", id, err == nil, want)
+		}
+	}
+	if n, err := hikes.DeleteMany(ctx, alice, nil); err != nil || n != 0 {
+		t.Errorf("empty = %d, %v", n, err)
+	}
+}

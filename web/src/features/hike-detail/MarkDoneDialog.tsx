@@ -16,9 +16,19 @@ import { useMarkHikeDone } from '@/features/hikes/useHikes'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
+type Props = {
+  id: string
+  /** Set both to open it from elsewhere, e.g. a menu; it then has no button of its own. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
 /** Marks a planned hike as walked, optionally with the GPX recorded on the walk. */
-export function MarkDoneDialog({ id }: { id: string }) {
-  const [open, setOpen] = useState(false)
+export function MarkDoneDialog({ id, open: controlledOpen, onOpenChange: setControlledOpen }: Props) {
+  const [ownOpen, setOwnOpen] = useState(false)
+  const controlled = controlledOpen !== undefined
+  const open = controlled ? controlledOpen : ownOpen
+  const setOpen = controlled ? (setControlledOpen ?? (() => {})) : setOwnOpen
   const [file, setFile] = useState<File>()
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -63,12 +73,14 @@ export function MarkDoneDialog({ id }: { id: string }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <CalendarCheck />
-          <span className="hidden sm:inline">Mark as done</span>
-        </Button>
-      </DialogTrigger>
+      {!controlled && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <CalendarCheck />
+            <span className="hidden sm:inline">Mark as done</span>
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Mark as done</DialogTitle>

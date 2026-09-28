@@ -89,6 +89,8 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | POST | `/api/hikes` | multipart `files` (one or more GPX), per-file results; `?planned=true` stores them as planned routes, without times or sensor data |
 | GET | `/api/hikes/tracks` | GeoJSON of all tracks |
 | GET | `/api/hikes/export` | zip of the original GPX of every hike you own, named `YYYY-MM-DD name.gpx` |
+| POST | `/api/hikes/export` | `{ids}` (up to 1000): the same zip, limited to those hikes you own |
+| POST | `/api/hikes/delete` | `{ids}` (up to 1000): deletes those you own, skipping the others; returns `{deleted}` |
 | GET | `/api/labels` | labels on your hikes, most used first |
 | GET | `/api/tiles` | `{zoom, hikes: {id: [[x, y], …]}}`: the zoom-14 map tiles each of your hikes passes through |
 | GET | `/api/summits` | every peak you reached (track within 50 m), with the hikes that went over it |

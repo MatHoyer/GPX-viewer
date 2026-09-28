@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,9 +24,13 @@ func (a fakeAuth) Authenticate(context.Context, string) (*domain.User, error) { 
 type exportService struct {
 	HikeService
 	hikes []domain.Hike
+	err   error
 }
 
-func (s exportService) Export(_ context.Context, _ uuid.UUID, fn func(*domain.Hike, []byte) error) error {
+func (s exportService) Export(_ context.Context, _ uuid.UUID, _ []uuid.UUID, fn func(*domain.Hike, []byte) error) error {
+	if s.err != nil {
+		return s.err
+	}
 	for i := range s.hikes {
 		if err := fn(&s.hikes[i], []byte("<gpx>"+s.hikes[i].Name+"</gpx>")); err != nil {
 			return err
@@ -77,6 +82,22 @@ func TestExport(t *testing.T) {
 		}
 		if !f.Modified.Equal(day) {
 			t.Errorf("file %d modified = %v", i, f.Modified)
+		}
+	}
+}
+
+// A selection the service rejects gets a JSON error, not a broken zip.
+func TestExportSelectedInvalid(t *testing.T) {
+	svc := exportService{err: &domain.ValidationError{Field: "ids", Message: "select at least one hike"}}
+	h := middleware.RequireAuth(fakeAuth{&domain.User{ID: uuid.New()}})(http.HandlerFunc(NewHikeHandler(svc, nil, nil, 1).ExportSelected))
+
+	for _, body := range []string{`{"ids":[]}`, `{"ids":["nope"]}`} {
+		req := httptest.NewRequest(http.MethodPost, "/api/hikes/export", strings.NewReader(body))
+		req.AddCookie(&http.Cookie{Name: middleware.SessionCookie, Value: "x"})
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Header().Get("Content-Type"), "json") {
+			t.Errorf("%s: status %d, content type %q", body, rec.Code, rec.Header().Get("Content-Type"))
 		}
 	}
 }

@@ -15,6 +15,7 @@ import { useMe } from '@/features/auth/useAuth'
 import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
 import { CalendarPage } from '@/features/calendar/CalendarPage'
 import { HikePage } from '@/features/hike-detail/HikePage'
+import { HikesPage } from '@/features/hikes/HikesPage'
 import { MapPage } from '@/features/hikes/MapPage'
 import { AppLayout } from '@/features/layout/AppLayout'
 import { GuestLayout } from '@/features/layout/GuestLayout'
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route path="/" element={<MapPage />} />
+                <Route path="/hikes" element={<HikesPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/feed" element={<FeedPage />} />

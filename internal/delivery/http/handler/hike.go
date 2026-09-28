@@ -39,7 +39,8 @@ type HikeService interface {
 	Card(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []domain.Segment, error)
 	Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error)
 	GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, []byte, error)
-	Export(ctx context.Context, userID uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error
+	Export(ctx context.Context, userID uuid.UUID, ids []uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error
+	DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) (int64, error)
 	Tag(ctx context.Context, owner, id, friend uuid.UUID) error
 	Untag(ctx context.Context, viewer, id, participant uuid.UUID) error
 }
@@ -320,14 +321,71 @@ func gpxFilename(name string) string {
 // signed-in user owns. Hikes are read one at a time and streamed, so an
 // error after the first file can only abort the download.
 func (h *HikeHandler) Export(w http.ResponseWriter, r *http.Request) {
+	h.export(w, r, nil)
+}
+
+// ExportSelected zips the GPX of the hikes in {ids} the user owns.
+func (h *HikeHandler) ExportSelected(w http.ResponseWriter, r *http.Request) {
+	var in dto.HikeIDs
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	ids, ok := parseIDs(w, in.IDs)
+	if !ok {
+		return
+	}
+	h.export(w, r, ids)
+}
+
+// DeleteMany deletes the hikes in {ids} the user owns, skipping the others.
+func (h *HikeHandler) DeleteMany(w http.ResponseWriter, r *http.Request) {
+	var in dto.HikeIDs
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	ids, ok := parseIDs(w, in.IDs)
+	if !ok {
+		return
+	}
+	n, err := h.svc.DeleteMany(r.Context(), middleware.UserFrom(r.Context()).ID, ids)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dto.Deleted{Deleted: n})
+}
+
+func parseIDs(w http.ResponseWriter, raw []string) ([]uuid.UUID, bool) {
+	ids := make([]uuid.UUID, len(raw))
+	for i, s := range raw {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid hike id", Field: "ids"})
+			return nil, false
+		}
+		ids[i] = id
+	}
+	return ids, true
+}
+
+// export streams a zip of the user's hikes, only ids unless nil. Headers are
+// sent with the first file, so errors before it still get a JSON answer.
+func (h *HikeHandler) export(w http.ResponseWriter, r *http.Request, ids []uuid.UUID) {
 	user := middleware.UserFrom(r.Context())
 	name := "hikes-" + time.Now().UTC().Format(time.DateOnly) + ".zip"
-	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+	started := false
+	start := func() {
+		if !started {
+			started = true
+			w.Header().Set("Content-Type", "application/zip")
+			w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+		}
+	}
 
 	zw := zip.NewWriter(w)
 	names := exportNames{}
-	err := h.svc.Export(r.Context(), user.ID, func(hike *domain.Hike, raw []byte) error {
+	err := h.svc.Export(r.Context(), user.ID, ids, func(hike *domain.Hike, raw []byte) error {
+		start()
 		modified := hike.CreatedAt
 		if hike.StartedAt != nil {
 			modified = *hike.StartedAt
@@ -339,7 +397,12 @@ func (h *HikeHandler) Export(w http.ResponseWriter, r *http.Request) {
 		_, err = f.Write(raw)
 		return err
 	})
+	if err != nil && !started {
+		writeError(w, r, err)
+		return
+	}
 	if err == nil {
+		start()
 		err = zw.Close()
 	}
 	if err != nil && r.Context().Err() == nil {
