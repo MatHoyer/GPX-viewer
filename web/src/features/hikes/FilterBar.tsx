@@ -2,6 +2,7 @@ import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { useMemo, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { FloatingInput } from '@/components/ui/floating-input'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -41,7 +42,7 @@ export function FilterBar({ hikes, userId, matched, className }: Props) {
       </div>
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="outline" size="sm" className="bg-background">
+          <Button variant="outline" size="sm" className="bg-background" aria-label="Filters">
             <SlidersHorizontal />
             <span className="hidden sm:inline">Filters</span>
             {active > 0 && (
@@ -173,12 +174,30 @@ function Range({
   onChange: (min: string, max: string) => void
 }) {
   return (
-    <fieldset className="space-y-2">
+    // Fieldsets default to min-width: min-content, which would keep the date inputs from shrinking.
+    <fieldset className="min-w-0 space-y-2">
       <legend className="text-sm font-medium">{label}</legend>
-      <div className="flex items-center gap-2">
-        <Input type={type} value={min} onChange={(e) => onChange(e.target.value, max)} aria-label={`${label} from`} min={0} />
-        <span className="text-muted-foreground">–</span>
-        <Input type={type} value={max} onChange={(e) => onChange(min, e.target.value)} aria-label={`${label} to`} min={0} />
+      {/* Two dates do not fit side by side on a phone. */}
+      <div className={cn('flex items-center gap-2', type === 'date' && 'max-sm:flex-col max-sm:items-stretch')}>
+        <FloatingInput
+          label="From"
+          type={type}
+          value={min}
+          onChange={(e) => onChange(e.target.value, max)}
+          aria-label={`${label} from`}
+          min={0}
+          className="min-w-0 flex-1"
+        />
+        <span className={cn('text-muted-foreground', type === 'date' && 'max-sm:hidden')}>–</span>
+        <FloatingInput
+          label="To"
+          type={type}
+          value={max}
+          onChange={(e) => onChange(min, e.target.value)}
+          aria-label={`${label} to`}
+          min={0}
+          className="min-w-0 flex-1"
+        />
       </div>
     </fieldset>
   )
