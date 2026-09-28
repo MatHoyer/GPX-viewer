@@ -3,7 +3,6 @@ import { useMemo, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { FloatingInput } from '@/components/ui/floating-input'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { displayName, type Person } from '@/features/account/displayName'
@@ -29,20 +28,19 @@ export function FilterBar({ hikes, userId, matched, className }: Props) {
 
   return (
     <div className={cn('flex items-center gap-1.5', className)}>
-      <div className="relative">
-        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2" />
-        <Input
-          type="search"
-          value={filters.query}
-          onChange={(e) => setFilters({ query: e.target.value })}
-          placeholder="Search hikes"
-          aria-label="Search hikes"
-          className="bg-background h-8 w-36 pl-7 sm:w-52"
-        />
-      </div>
+      <FloatingInput
+        size="sm"
+        type="search"
+        label="Search hikes"
+        icon={<Search />}
+        value={filters.query}
+        onChange={(e) => setFilters({ query: e.target.value })}
+        className="w-40 sm:w-56"
+        inputClassName="bg-background dark:bg-background"
+      />
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="outline" size="sm" className="bg-background" aria-label="Filters">
+          <Button variant="outline" className="bg-background h-10 rounded-lg" aria-label="Filters">
             <SlidersHorizontal />
             <span className="hidden sm:inline">Filters</span>
             {active > 0 && (
@@ -57,7 +55,7 @@ export function FilterBar({ hikes, userId, matched, className }: Props) {
           <span className="bg-background/80 text-muted-foreground hidden rounded px-1.5 text-xs tabular-nums sm:inline">
             {matched} of {hikes.length}
           </span>
-          <Button variant="ghost" size="icon-sm" onClick={clearFilters} aria-label="Clear filters" title="Clear filters">
+          <Button variant="ghost" size="icon-lg" className="size-10" onClick={clearFilters} aria-label="Clear filters" title="Clear filters">
             <X />
           </Button>
         </>

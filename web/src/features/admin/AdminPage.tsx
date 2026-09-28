@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { FloatingInput } from '@/components/ui/floating-input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
@@ -102,17 +102,13 @@ function UsersCard() {
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="relative">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
-            type="search"
-            placeholder="Search by email or name"
-            aria-label="Search users"
-            className="pl-8"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        <FloatingInput
+          type="search"
+          label="Search by email or name"
+          icon={<Search />}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         {data ? (
           data.users.length > 0 ? (
             <ul className={users.isPlaceholderData ? 'opacity-60' : undefined}>
