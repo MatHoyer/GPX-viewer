@@ -10,7 +10,10 @@ type Props = {
   maxZoom?: number
 }
 
-/** Fits the parent map to `bounds` whenever the bounds values change. */
+/**
+ * Fits the parent map to `bounds` whenever the bounds values change. Going to
+ * null leaves the view where it is, and fits the same bounds again next time.
+ */
 export function FitBounds({ bounds, padding = 64, maxZoom = 15 }: Props) {
   const { map, isLoaded } = useMap()
   const [minLon, minLat, maxLon, maxLat] = bounds ?? []
@@ -19,7 +22,11 @@ export function FitBounds({ bounds, padding = 64, maxZoom = 15 }: Props) {
   const fitted = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!map || !isLoaded || minLon === undefined) return
+    if (minLon === undefined) {
+      fitted.current = null
+      return
+    }
+    if (!map || !isLoaded) return
     const key = [minLon, minLat, maxLon, maxLat, padding, maxZoom].join()
     if (fitted.current === key) return
     fitted.current = key

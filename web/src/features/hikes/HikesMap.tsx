@@ -49,15 +49,16 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
     [tracks, planned],
   )
 
-  const fitTarget = useMemo(() => {
-    const selected = hikes.find((h) => h.id === selectedId)
-    return selected ? selected.bounds : unionBounds(hikes.map((h) => h.bounds))
-  }, [hikes, selectedId])
+  // Two fits: all hikes when the list changes (e.g. filters), and the selected
+  // hike when one is picked. Unselecting keeps the view where it is.
+  const allBounds = useMemo(() => unionBounds(hikes.map((h) => h.bounds)), [hikes])
+  const selectedBounds = hikes.find((h) => h.id === selectedId)?.bounds ?? null
 
   return (
     <LayeredMap center={[2.35, 46.6]} zoom={5} className="size-full" heatmapToggle tilesToggle={explorable}>
       <MapControls position="bottom-right" showZoom showCompass showLocate showFullscreen />
-      <FitBounds bounds={fitTarget} />
+      <FitBounds bounds={allBounds} />
+      <FitBounds bounds={selectedBounds} />
       {onViewChange && <ViewWatcher onChange={onViewChange} />}
       {heatmap && <HeatmapLayer lines={lines} />}
       {showTiles && tiles.data && <TilesLayer zoom={tiles.data.zoom} explored={explored} square={square} />}
