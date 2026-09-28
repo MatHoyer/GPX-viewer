@@ -27,6 +27,7 @@ export function AdminPage() {
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-4 p-4">
           <RegistrationCard />
+          <EmailCard />
           <UsersCard />
         </div>
       </main>
@@ -60,6 +61,32 @@ function RegistrationCard() {
           Nobody can sign up on their own. Invite people from the list below.
         </CardContent>
       )}
+    </Card>
+  )
+}
+
+/** Read-only: whether SMTP is set up, and what that changes. */
+function EmailCard() {
+  const config = useConfig()
+  const enabled = config.data?.emailEnabled
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Email</CardTitle>
+        <CardDescription>
+          {enabled === false
+            ? 'No mail server is set up (SMTP_HOST). Accounts sign in without verifying their email, and nothing is emailed: copy invite and password links from each user’s page.'
+            : 'Verification, invite and password reset emails are sent through SMTP_HOST.'}
+        </CardDescription>
+        <CardAction>
+          {enabled === undefined ? (
+            <Skeleton className="h-6 w-20" />
+          ) : (
+            <Pill tone={enabled ? 'good' : 'muted'}>{enabled ? 'Configured' : 'Not configured'}</Pill>
+          )}
+        </CardAction>
+      </CardHeader>
     </Card>
   )
 }

@@ -3,6 +3,7 @@ package http
 import (
 	"io/fs"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -27,11 +28,14 @@ type Deps struct {
 	AppURL string
 	// HikeMeta finds public hikes to describe in link previews of their pages. Optional.
 	HikeMeta HikeMeta
+	// RealIPHeader is read for the client IP on requests from TrustedProxies.
+	RealIPHeader   string
+	TrustedProxies []netip.Prefix
 }
 
 func NewRouter(d Deps) http.Handler {
 	r := chi.NewRouter()
-	r.Use(chimw.RequestID, middleware.CloudflareIP, middleware.ClientInfo, chimw.Logger, chimw.Recoverer)
+	r.Use(chimw.RequestID, middleware.RealIP(d.RealIPHeader, d.TrustedProxies), middleware.ClientInfo, chimw.Logger, chimw.Recoverer)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(middleware.RejectCrossSite)
@@ -102,7 +106,9 @@ func NewRouter(d Deps) http.Handler {
 				r.Delete("/users/{id}/sessions", d.Admin.RevokeSessions)
 				r.Delete("/users/{id}/sessions/{sessionId}", d.Admin.RevokeSession)
 				r.Post("/users", d.Admin.CreateUser)
-				r.Post("/users/{id}/invite", d.Admin.Invite)
+				r.Post("/users/{id}/password-link", d.Admin.PasswordLink)
+				r.Put("/users/{id}/verified", d.Admin.Verify)
+				r.Delete("/users/{id}/verified", d.Admin.Unverify)
 				r.Delete("/users/{id}/invite", d.Admin.RevokeInvite)
 				r.Put("/users/{id}/ban", d.Admin.Ban)
 				r.Delete("/users/{id}/ban", d.Admin.Unban)

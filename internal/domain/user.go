@@ -38,6 +38,9 @@ type User struct {
 	// BanReason, which the user sees when they try.
 	BannedAt  *time.Time
 	BanReason string
+	// InvitedAt is set while an account an admin created waits for its owner
+	// to follow the invite link.
+	InvitedAt *time.Time
 	CreatedAt time.Time
 }
 
@@ -46,6 +49,8 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error
+	// AcceptInvite clears InvitedAt once the invite link was followed.
+	AcceptInvite(ctx context.Context, id uuid.UUID) error
 	UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error
 	// Delete removes the user and, through cascading foreign keys, everything
 	// tied to them: hikes, tags, friendships, kudos, comments and sessions.
@@ -75,8 +80,10 @@ type AdminRepository interface {
 	SetAdmin(ctx context.Context, id uuid.UUID, admin bool) error
 	// SetBan bans the user when at is set, and lifts the ban when it is nil.
 	SetBan(ctx context.Context, id uuid.UUID, at *time.Time, reason string) error
-	// DeletePending deletes a user whose email is not verified and who owns
-	// no hikes. It returns ErrConflict when the user no longer qualifies.
+	// SetEmailVerified marks the email verified at at, or unverified when nil.
+	SetEmailVerified(ctx context.Context, id uuid.UUID, at *time.Time) error
+	// DeletePending deletes a user whose invite is pending and who owns no
+	// hikes. It returns ErrConflict when the user no longer qualifies.
 	DeletePending(ctx context.Context, id uuid.UUID) error
 }
 

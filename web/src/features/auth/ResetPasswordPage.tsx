@@ -9,7 +9,7 @@ import { FloatingInput } from '@/components/ui/floating-input'
 import { ApiError } from '@/lib/api'
 
 import { AuthShell } from './AuthShell'
-import { useResetPassword } from './useAuth'
+import { useConfig, useResetPassword } from './useAuth'
 
 /**
  * Landing page of the emailed reset link, and of invite links (invite=1) from
@@ -20,6 +20,7 @@ export function ResetPasswordPage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
   const invite = params.get('invite') === '1'
+  const emailEnabled = useConfig().data?.emailEnabled === true
   const [password, setPassword] = useState('')
   const reset = useResetPassword()
 
@@ -48,10 +49,10 @@ export function ResetPasswordPage() {
           <CardTitle>{invite ? 'Could not accept the invite' : 'Could not reset your password'}</CardTitle>
           <CardDescription role="alert">
             {token ? error?.message : 'This link is incomplete.'}{' '}
-            {invite ? 'Ask whoever invited you for a new link.' : 'Ask for a new link.'}
+            {invite ? 'Ask whoever invited you for a new link.' : emailEnabled ? 'Ask for a new link.' : 'Ask an admin for a new link.'}
           </CardDescription>
         </CardHeader>
-        {!invite && (
+        {!invite && emailEnabled && (
           <CardFooter className="mt-6">
             <Button asChild size="lg" className="h-11 w-full rounded-xl">
               <Link to="/forgot-password" replace>

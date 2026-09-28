@@ -50,12 +50,21 @@ func (f *fakeUsers) SetBan(_ context.Context, id uuid.UUID, at *time.Time, reaso
 	return nil
 }
 
+func (f *fakeUsers) SetEmailVerified(_ context.Context, id uuid.UUID, at *time.Time) error {
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.EmailVerifiedAt = at
+	return nil
+}
+
 func (f *fakeUsers) DeletePending(_ context.Context, id uuid.UUID) error {
 	u, ok := f.byID[id]
 	if !ok {
 		return domain.ErrNotFound
 	}
-	if u.EmailVerifiedAt != nil || u.Name == "has hikes" {
+	if u.InvitedAt == nil || u.Name == "has hikes" {
 		return domain.ErrConflict
 	}
 	delete(f.byID, id)
@@ -75,22 +84,29 @@ func (f *fakeSessions) DeleteByUserID(_ context.Context, id uuid.UUID) error {
 	return nil
 }
 
-type noInviter struct{}
+// noInviter stands in for the auth service; requireVerified mimics having SMTP.
+type noInviter struct{ requireVerified bool }
 
 func (noInviter) Invite(context.Context, string, string, bool) (*domain.User, string, bool, error) {
 	return nil, "", false, errors.New("not called")
 }
 
-func (noInviter) ReissueInvite(context.Context, uuid.UUID, bool) (string, bool, error) {
+func (noInviter) PasswordLink(context.Context, uuid.UUID, bool) (string, bool, error) {
 	return "", false, errors.New("not called")
 }
 
+func (i noInviter) RequiresVerifiedEmail() bool { return i.requireVerified }
+
 func setup() (*Service, *fakeSessions, *domain.User, *domain.User) {
+	return setupWith(noInviter{})
+}
+
+func setupWith(inviter Inviter) (*Service, *fakeSessions, *domain.User, *domain.User) {
 	admin := &domain.User{ID: uuid.New(), IsAdmin: true}
 	user := &domain.User{ID: uuid.New()}
 	sessions := &fakeSessions{}
 	users := &fakeUsers{byID: map[uuid.UUID]*domain.User{admin.ID: admin, user.ID: user}}
-	return NewService(users, sessions, noInviter{}), sessions, admin, user
+	return NewService(users, sessions, inviter), sessions, admin, user
 }
 
 func TestBan(t *testing.T) {
@@ -159,11 +175,11 @@ func TestRevokeInvite(t *testing.T) {
 	svc, _, admin, user := setup()
 	var ve *domain.ValidationError
 
-	now := time.Now()
-	admin.EmailVerifiedAt = &now
 	if err := svc.RevokeInvite(ctx, admin.ID); !errors.As(err, &ve) {
-		t.Errorf("verified user err = %v", err)
+		t.Errorf("no pending invite err = %v", err)
 	}
+	now := time.Now()
+	user.InvitedAt = &now
 	user.Name = "has hikes"
 	if err := svc.RevokeInvite(ctx, user.ID); !errors.As(err, &ve) {
 		t.Errorf("user with hikes err = %v", err)
@@ -174,5 +190,26 @@ func TestRevokeInvite(t *testing.T) {
 	}
 	if err := svc.RevokeInvite(ctx, user.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("revoked twice err = %v", err)
+	}
+}
+
+func TestSetEmailVerified(t *testing.T) {
+	ctx := context.Background()
+	for _, required := range []bool{true, false} {
+		svc, sessions, admin, user := setupWith(noInviter{requireVerified: required})
+		var ve *domain.ValidationError
+		if err := svc.SetEmailVerified(ctx, admin.ID, admin.ID, false); !errors.As(err, &ve) {
+			t.Errorf("self err = %v", err)
+		}
+		if err := svc.SetEmailVerified(ctx, admin.ID, user.ID, true); err != nil || user.EmailVerifiedAt == nil {
+			t.Fatalf("verify: %v, %v", user.EmailVerifiedAt, err)
+		}
+		if err := svc.SetEmailVerified(ctx, admin.ID, user.ID, false); err != nil || user.EmailVerifiedAt != nil {
+			t.Fatalf("unverify: %v, %v", user.EmailVerifiedAt, err)
+		}
+		// Unverified accounts only lose their sessions where they cannot sign in.
+		if signedOut := len(sessions.revoked) == 1; signedOut != required {
+			t.Errorf("required=%v: sessions revoked = %v", required, sessions.revoked)
+		}
 	}
 }

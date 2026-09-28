@@ -20,7 +20,8 @@ type AdminService interface {
 	RevokeSession(ctx context.Context, userID, id uuid.UUID) error
 	RevokeSessions(ctx context.Context, userID uuid.UUID) error
 	Invite(ctx context.Context, email, name string, send bool) (*domain.User, string, bool, error)
-	ReissueInvite(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error)
+	PasswordLink(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error)
+	SetEmailVerified(ctx context.Context, actorID, targetID uuid.UUID, verified bool) error
 	RevokeInvite(ctx context.Context, targetID uuid.UUID) error
 	Ban(ctx context.Context, actorID, targetID uuid.UUID, reason string) error
 	Unban(ctx context.Context, targetID uuid.UUID) error
@@ -30,6 +31,7 @@ type AdminService interface {
 // RegistrationSettings reports whether visitors can sign up.
 type RegistrationSettings interface {
 	RegistrationEnabled() bool
+	EmailEnabled() bool
 	RegistrationOpen(ctx context.Context) (bool, error)
 }
 
@@ -49,7 +51,11 @@ func (h *AdminHandler) Config(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, dto.Config{RegistrationEnabled: h.registration.RegistrationEnabled(), RegistrationOpen: open})
+	writeJSON(w, http.StatusOK, dto.Config{
+		RegistrationEnabled: h.registration.RegistrationEnabled(),
+		RegistrationOpen:    open,
+		EmailEnabled:        h.registration.EmailEnabled(),
+	})
 }
 
 // Users lists a page of users; ?q= searches emails and names, ?page= starts at 1.
@@ -129,8 +135,9 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Invite issues a new invite link for a user who has not signed in yet.
-func (h *AdminHandler) Invite(w http.ResponseWriter, r *http.Request) {
+// PasswordLink issues a link where the user chooses a password: their invite
+// while it is pending, otherwise a password reset.
+func (h *AdminHandler) PasswordLink(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(w, r)
 	if !ok {
 		return
@@ -139,7 +146,7 @@ func (h *AdminHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	link, sent, err := h.svc.ReissueInvite(r.Context(), id, in.SendEmail)
+	link, sent, err := h.svc.PasswordLink(r.Context(), id, in.SendEmail)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -154,6 +161,22 @@ func (h *AdminHandler) RevokeInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.respond(w, r, h.svc.RevokeInvite(r.Context(), id))
+}
+
+func (h *AdminHandler) Verify(w http.ResponseWriter, r *http.Request) {
+	h.setVerified(w, r, true)
+}
+
+func (h *AdminHandler) Unverify(w http.ResponseWriter, r *http.Request) {
+	h.setVerified(w, r, false)
+}
+
+func (h *AdminHandler) setVerified(w http.ResponseWriter, r *http.Request, verified bool) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	h.respond(w, r, h.svc.SetEmailVerified(r.Context(), middleware.UserFrom(r.Context()).ID, id, verified))
 }
 
 func (h *AdminHandler) Ban(w http.ResponseWriter, r *http.Request) {

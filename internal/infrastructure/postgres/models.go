@@ -18,7 +18,8 @@ type UserModel struct {
 	EmailVerifiedAt *time.Time
 	IsAdmin         bool `gorm:"not null;default:false"`
 	BannedAt        *time.Time
-	BanReason       string    `gorm:"not null;default:''"`
+	BanReason       string `gorm:"not null;default:''"`
+	InvitedAt       *time.Time
 	CreatedAt       time.Time `gorm:"not null"`
 }
 
@@ -35,6 +36,7 @@ func (m UserModel) toDomain() *domain.User {
 		IsAdmin:         m.IsAdmin,
 		BannedAt:        m.BannedAt,
 		BanReason:       m.BanReason,
+		InvitedAt:       m.InvitedAt,
 		CreatedAt:       m.CreatedAt,
 	}
 }

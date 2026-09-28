@@ -16,7 +16,15 @@ docker compose up --build
 
 Open http://localhost:8080, create an account and import `.gpx` files. The email verification link lands in Mailpit at http://localhost:8025.
 
-The first account becomes the admin. The admin panel (`/admin`, from the account menu) lists users (paginated and searchable, each with a page showing their sessions), invites people, bans them with a reason they see when they try to sign in, and makes other users admins. Set `REGISTRATION_ENABLED=false` to make the instance invite-only: the first account can still sign up, then only admins add people, by invite link (copied or emailed).
+The first account becomes the admin. The admin panel (`/admin`, from the account menu) lists users (paginated and searchable, each with a page showing their sessions), invites people, hands out password links, marks emails verified or not, bans people with a reason they see when they try to sign in, and makes other users admins. Set `REGISTRATION_ENABLED=false` to make the instance invite-only: the first account can still sign up, then only admins add people, by invite link (copied or emailed).
+
+### Self-hosting
+
+- **Email is optional.** Without `SMTP_HOST`, nothing is emailed and accounts sign in without verifying their email. Invites and password resets become links the admin copies from the user's page in the admin panel.
+- **Behind a reverse proxy**, set `REAL_IP_HEADER` to the header it puts the client IP in and `TRUSTED_PROXIES` to the proxy's addresses. Rate limits and sessions then see real clients. The header is ignored on requests from anywhere else, so clients cannot fake it. Examples:
+  - Cloudflare Tunnel into Kubernetes: `REAL_IP_HEADER=CF-Connecting-IP`, `TRUSTED_PROXIES=10.42.0.0/16` (the pod network).
+  - nginx or Caddy on the same host: `REAL_IP_HEADER=X-Forwarded-For`, `TRUSTED_PROXIES=127.0.0.1,::1`.
+  - Without either, the socket address is used, which is right when nothing sits in front of the app.
 
 ## Development
 
@@ -74,7 +82,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 | Method | Path | Description |
 | --- | --- | --- |
-| GET | `/api/config` | `{registrationEnabled, registrationOpen}`; open when enabled or before the first account exists |
+| GET | `/api/config` | `{registrationEnabled, registrationOpen, emailEnabled}`; open when enabled or before the first account exists |
 | POST | `/api/auth/register` | `{email, password}`, emails a verification link; no session until verified; `403` `code: registration_closed` when invite-only. The first account is admin |
 | POST | `/api/auth/login` | `{email, password}`, sets the `session` cookie; `403` `code: email_not_verified` while the email is unverified, emailing a new link if the last one expired; `403` `code: banned` with `reason` for a banned account |
 | POST | `/api/auth/verify` | `{token}` from the emailed `/verify?token=` link, verifies and sets the `session` cookie |
@@ -121,8 +129,9 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/admin/users/{id}/sessions` | their live sessions |
 | DELETE | `/api/admin/users/{id}/sessions/{sessionId}` / `/sessions` | sign them out of one device / everywhere; unlike a ban, they can sign in again |
 | POST | `/api/admin/users` | `{email, name, sendEmail}`: creates the account and returns `{user, inviteLink, emailSent}`; the `/reset-password?invite=1&token=` link is valid 7 days |
-| POST | `/api/admin/users/{id}/invite` | `{sendEmail}`: new invite link for a user who has not signed in yet |
-| DELETE | `/api/admin/users/{id}/invite` | revoke the invite: deletes the account if it never signed in and owns no hikes, voiding its link |
+| POST | `/api/admin/users/{id}/password-link` | `{sendEmail}`: a new link to choose a password: the invite again while it is pending (7 days), otherwise a password reset (24 hours). Emailed only when SMTP is set |
+| DELETE | `/api/admin/users/{id}/invite` | revoke a pending invite: deletes the account if it owns no hikes, voiding its link |
+| PUT / DELETE | `/api/admin/users/{id}/verified` | mark the email verified / unverified; unverifying signs them out when SMTP is set, since they then have to verify again |
 | PUT / DELETE | `/api/admin/users/{id}/ban` | `{reason}` bans and signs them out everywhere / lifts the ban; admins must be demoted first |
 | PUT / DELETE | `/api/admin/users/{id}/admin` | make admin / remove the role; not on yourself |
 
@@ -136,9 +145,11 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | `MAX_UPLOAD_MB` | `20` | per file |
 | `REGISTRATION_ENABLED` | `true` | `false` makes the instance invite-only; shown read-only in the admin panel |
 | `APP_URL` | `http://localhost:$PORT` | public URL, used in emailed links, canonical and Open Graph links, and the sitemap |
-| `SMTP_HOST` | required | |
+| `REAL_IP_HEADER` | empty | header a reverse proxy sets to the client IP, e.g. `CF-Connecting-IP`, `X-Real-IP` or `X-Forwarded-For` (read right to left, past the trusted proxies) |
+| `TRUSTED_PROXIES` | empty | comma-separated IPs or CIDRs allowed to set `REAL_IP_HEADER`; required with it |
+| `SMTP_HOST` | empty | mail server; without it email is off (see Self-hosting) |
 | `SMTP_PORT` | `587` | `465` uses implicit TLS, other ports STARTTLS when offered |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | empty | no auth when empty; never sent unencrypted except to localhost |
-| `SMTP_FROM` | required | e.g. `GPX Viewer <noreply@example.com>` |
+| `SMTP_FROM` | required with `SMTP_HOST` | e.g. `GPX Viewer <noreply@example.com>` |
 
-Accounts created before email verification existed start unverified: their first sign-in attempt emails them a link.
+Accounts created before email verification existed start unverified: with SMTP set, their first sign-in attempt emails them a link.

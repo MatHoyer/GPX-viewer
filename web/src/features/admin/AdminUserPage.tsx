@@ -23,6 +23,7 @@ import {
   useRevokeUserSession,
   useRevokeUserSessions,
   useSetAdmin,
+  useSetEmailVerified,
   useUnbanUser,
   useUser,
   useUserSessions,
@@ -126,6 +127,7 @@ function ActionsCard({ user }: { user: AdminUser }) {
   const [dialog, setDialog] = useState<Dialog>(null)
   const unban = useUnbanUser()
   const setAdmin = useSetAdmin()
+  const setVerified = useSetEmailVerified()
   const name = displayName(user)
 
   if (me.data?.id === user.id) {
@@ -139,16 +141,34 @@ function ActionsCard({ user }: { user: AdminUser }) {
     )
   }
 
-  const pending = !user.emailVerifiedAt
+  const pending = user.invitedAt !== null
+  const verified = user.emailVerifiedAt !== null
   return (
     <Card>
       <CardHeader>
         <CardTitle>Actions</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
-        {pending && (
+        {!user.bannedAt && (
           <Button variant="outline" onClick={() => setDialog('reinvite')}>
-            New invite link
+            {pending ? 'New invite link' : 'Password link'}
+          </Button>
+        )}
+        {!pending && (
+          <Button
+            variant="outline"
+            disabled={setVerified.isPending}
+            onClick={() =>
+              setVerified.mutate(
+                { id: user.id, verified: !verified },
+                {
+                  onSuccess: () => toast.success(verified ? 'Email marked as not verified' : 'Email marked as verified'),
+                  onError: onError('Could not change the email status'),
+                },
+              )
+            }
+          >
+            {verified ? 'Mark email unverified' : 'Mark email verified'}
           </Button>
         )}
         {!user.bannedAt && (

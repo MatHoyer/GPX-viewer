@@ -29,6 +29,7 @@ func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
 		IsAdmin:         u.IsAdmin,
 		BannedAt:        u.BannedAt,
 		BanReason:       u.BanReason,
+		InvitedAt:       u.InvitedAt,
 		CreatedAt:       u.CreatedAt,
 	}
 	err := r.db.WithContext(ctx).Create(&m).Error
@@ -184,9 +185,17 @@ func (r *UserRepository) SetBan(ctx context.Context, id uuid.UUID, at *time.Time
 	return r.update(ctx, id, map[string]any{"banned_at": at, "ban_reason": reason})
 }
 
+func (r *UserRepository) AcceptInvite(ctx context.Context, id uuid.UUID) error {
+	return r.update(ctx, id, map[string]any{"invited_at": nil})
+}
+
+func (r *UserRepository) SetEmailVerified(ctx context.Context, id uuid.UUID, at *time.Time) error {
+	return r.update(ctx, id, map[string]any{"email_verified_at": at})
+}
+
 func (r *UserRepository) DeletePending(ctx context.Context, id uuid.UUID) error {
 	res := r.db.WithContext(ctx).Exec(`DELETE FROM users u
-		WHERE u.id = ? AND u.email_verified_at IS NULL
+		WHERE u.id = ? AND u.invited_at IS NOT NULL
 		AND NOT EXISTS (SELECT 1 FROM hikes h WHERE h.user_id = u.id)`, id)
 	if res.Error != nil {
 		return res.Error

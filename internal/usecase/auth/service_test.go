@@ -73,6 +73,15 @@ func (f *fakeUsers) CountAdmins(context.Context) (int64, error) {
 	return n, nil
 }
 
+func (f *fakeUsers) AcceptInvite(_ context.Context, id uuid.UUID) error {
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.InvitedAt = nil
+	return nil
+}
+
 func (f *fakeUsers) MarkEmailVerified(_ context.Context, id uuid.UUID, at time.Time) error {
 	u, ok := f.byID[id]
 	if !ok {
@@ -678,7 +687,7 @@ func TestInvite(t *testing.T) {
 	if emailed || len(e.mailer.sent) != sent {
 		t.Error("invite emailed without being asked")
 	}
-	if u.Email != "friend@b.co" || u.Name != "Friend" || u.IsAdmin || u.EmailVerifiedAt != nil {
+	if u.Email != "friend@b.co" || u.Name != "Friend" || u.IsAdmin || u.EmailVerifiedAt != nil || u.InvitedAt == nil {
 		t.Errorf("invited user = %+v", u)
 	}
 	if _, _, _, err := e.svc.Invite(ctx, "friend@b.co", "", false); !errors.Is(err, domain.ErrEmailTaken) {
@@ -686,7 +695,7 @@ func TestInvite(t *testing.T) {
 	}
 
 	// A new link replaces the first one.
-	link2, emailed, err := e.svc.ReissueInvite(ctx, u.ID, true)
+	link2, emailed, err := e.svc.PasswordLink(ctx, u.ID, true)
 	if err != nil || !emailed {
 		t.Fatalf("reissue = %v, %v", emailed, err)
 	}
@@ -699,15 +708,80 @@ func TestInvite(t *testing.T) {
 	if _, _, err := e.svc.ResetPassword(ctx, inviteToken(t, link2), "password456"); err != nil {
 		t.Fatal(err)
 	}
-	if u.EmailVerifiedAt == nil {
-		t.Error("following the invite should verify the email")
+	if u.EmailVerifiedAt == nil || u.InvitedAt != nil {
+		t.Errorf("following the invite should verify the email and accept it: %+v", u)
 	}
 	if _, _, err := e.svc.Login(ctx, "friend@b.co", "password456"); err != nil {
 		t.Errorf("login after invite: %v", err)
 	}
+
+	// Once accepted, an admin's link is a password reset, not an invite.
+	reset, _, err := e.svc.PasswordLink(ctx, u.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, _ := url.Parse(reset)
+	if r.Query().Get("invite") != "" {
+		t.Errorf("reset link %q should not be an invite", reset)
+	}
+	if _, _, err := e.svc.ResetPassword(ctx, r.Query().Get("token"), "password789"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.svc.Login(ctx, "friend@b.co", "password789"); err != nil {
+		t.Errorf("login after admin reset: %v", err)
+	}
+}
+
+// newTestEnvWithoutEmail is a service with no mail server configured.
+func newTestEnvWithoutEmail(t *testing.T) *testEnv {
+	t.Helper()
+	e := newTestEnv(t)
+	svc, err := NewService(e.users, e.sessions, e.verifications, e.resets, plainHasher{}, nil, time.Hour, "https://app.test/", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.svc = svc
+	return e
+}
+
+func TestWithoutEmail(t *testing.T) {
+	ctx := context.Background()
+	e := newTestEnvWithoutEmail(t)
+	if e.svc.EmailEnabled() || e.svc.RequiresVerifiedEmail() {
+		t.Fatal("email should be off")
+	}
+	u, err := e.svc.Register(ctx, "a@b.co", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.EmailVerifiedAt != nil || len(e.verifications.byUser) != 0 {
+		t.Error("no verification without a mail server")
+	}
+	// Unverified accounts sign in when nothing could verify them.
+	if _, _, err := e.svc.Login(ctx, "a@b.co", "password123"); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if err := e.svc.RequestPasswordReset(ctx, "a@b.co"); !errors.Is(err, domain.ErrEmailDisabled) {
+		t.Errorf("reset request err = %v", err)
+	}
+	// Asking to email an invite hands back the link instead.
+	_, link, emailed, err := e.svc.Invite(ctx, "c@d.co", "", true)
+	if err != nil || emailed || link == "" {
+		t.Fatalf("invite = %q, %v, %v", link, emailed, err)
+	}
+	if _, _, err := e.svc.ResetPassword(ctx, inviteToken(t, link), "password456"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPasswordLinkRefusesBanned(t *testing.T) {
+	e := newTestEnv(t)
+	u := e.registerVerified(t, "a@b.co", "password123")
+	now := time.Now()
+	u.BannedAt = &now
 	var ve *domain.ValidationError
-	if _, _, err := e.svc.ReissueInvite(ctx, u.ID, false); !errors.As(err, &ve) {
-		t.Errorf("reissue to verified user err = %v", err)
+	if _, _, err := e.svc.PasswordLink(context.Background(), u.ID, false); !errors.As(err, &ve) {
+		t.Errorf("err = %v", err)
 	}
 }
 

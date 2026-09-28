@@ -13,33 +13,41 @@ import {
 import { FloatingInput } from '@/components/ui/floating-input'
 import { displayName } from '@/features/account/displayName'
 import { MAX_NAME_LENGTH } from '@/features/account/api'
+import { useConfig } from '@/features/auth/useAuth'
 import { ApiError } from '@/lib/api'
 
 import type { AdminUser, Invite } from './api'
 import { InviteLink } from './InviteLink'
-import { useCreateUser, useReissueInvite } from './useAdmin'
+import { useCreateUser, usePasswordLink } from './useAdmin'
 
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Issues a new link for this user instead of creating an account. */
+  /**
+   * Issues a new link for this user instead of creating an account: their
+   * invite while it is pending, otherwise a password reset.
+   */
   user?: AdminUser
 }
 
 /**
- * Creates an account for someone, or a new link for a user who has not signed
- * in yet, then shows the link to copy. It can also be emailed.
+ * Creates an account for someone, or a new password link for a user, then
+ * shows the link to copy. With a mail server, it can also be emailed.
  */
 export function InviteDialog({ open, onOpenChange, user }: Props) {
+  const emailEnabled = useConfig().data?.emailEnabled ?? false
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
-  const [sendEmail, setSendEmail] = useState(true)
+  const [wantsEmail, setWantsEmail] = useState(true)
+  const sendEmail = emailEnabled && wantsEmail
   const [invite, setInvite] = useState<Invite | null>(null)
   const create = useCreateUser()
-  const reissue = useReissueInvite()
+  const reissue = usePasswordLink()
   const mutation = user ? reissue : create
   const error = mutation.error instanceof ApiError ? mutation.error : null
   const recipient = user?.email ?? email.trim()
+  // An accepted user gets a password reset link rather than an invite.
+  const reset = user !== undefined && !user.invitedAt
 
   function changeOpen(next: boolean) {
     if (mutation.isPending) return
@@ -47,7 +55,7 @@ export function InviteDialog({ open, onOpenChange, user }: Props) {
     if (!next) {
       setEmail('')
       setName('')
-      setSendEmail(true)
+      setWantsEmail(true)
       setInvite(null)
       create.reset()
       reissue.reset()
@@ -66,14 +74,14 @@ export function InviteDialog({ open, onOpenChange, user }: Props) {
         {invite ? (
           <>
             <DialogHeader>
-              <DialogTitle>{user ? 'New invite link' : 'Account created'}</DialogTitle>
+              <DialogTitle>{reset ? 'Password link' : user ? 'New invite link' : 'Account created'}</DialogTitle>
               <DialogDescription>
                 {invite.emailSent
                   ? `We emailed this link to ${recipient}. You can also share it yourself.`
                   : sendEmail
                     ? `The email to ${recipient} could not be sent. Share this link with them instead.`
                     : `Share this link with ${recipient} so they can choose a password.`}{' '}
-                It works once and expires in 7 days.
+                It works once and expires in {reset ? '24 hours' : '7 days'}.
               </DialogDescription>
             </DialogHeader>
             <InviteLink link={invite.inviteLink} />
@@ -84,11 +92,15 @@ export function InviteDialog({ open, onOpenChange, user }: Props) {
         ) : (
           <form onSubmit={onSubmit} className="contents">
             <DialogHeader>
-              <DialogTitle>{user ? `Invite ${displayName(user)} again` : 'Invite someone'}</DialogTitle>
+              <DialogTitle>
+                {reset ? `Password link for ${displayName(user)}` : user ? `Invite ${displayName(user)} again` : 'Invite someone'}
+              </DialogTitle>
               <DialogDescription>
-                {user
-                  ? 'Their previous link stops working.'
-                  : 'Creates their account, even when sign-up is closed. They choose a password through the invite link.'}
+                {reset
+                  ? 'A link to choose a new password, for when they forgot theirs. Their current password keeps working until they use it.'
+                  : user
+                    ? 'Their previous link stops working.'
+                    : 'Creates their account, even when sign-up is closed. They choose a password through the invite link.'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -114,15 +126,17 @@ export function InviteDialog({ open, onOpenChange, user }: Props) {
                   />
                 </>
               )}
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="accent-primary size-4"
-                  checked={sendEmail}
-                  onChange={(e) => setSendEmail(e.target.checked)}
-                />
-                Email the link to {recipient || 'them'}
-              </label>
+              {emailEnabled && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="accent-primary size-4"
+                    checked={wantsEmail}
+                    onChange={(e) => setWantsEmail(e.target.checked)}
+                  />
+                  Email the link to {recipient || 'them'}
+                </label>
+              )}
               {mutation.error && (
                 <p role="alert" className="text-destructive text-sm">
                   {error?.message ?? 'Could not create the invite'}
@@ -135,7 +149,7 @@ export function InviteDialog({ open, onOpenChange, user }: Props) {
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
                 {mutation.isPending && <Loader2 className="animate-spin" aria-hidden />}
-                {user ? 'Create new link' : 'Create account'}
+                {user ? 'Create link' : 'Create account'}
               </Button>
             </DialogFooter>
           </form>
