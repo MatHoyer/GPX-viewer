@@ -1,15 +1,11 @@
-import { Monitor, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-const themes = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
-]
+import { themes } from './themes'
 
+/** Compact picker for menus; Settings shows the themes as option cards. */
 export function ThemeSwitcher({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme()
 
@@ -27,7 +23,8 @@ export function ThemeSwitcher({ className }: { className?: string }) {
       {themes.map(({ value, label, icon: Icon }) => (
         <Tooltip key={value}>
           <TooltipTrigger asChild>
-            <ToggleGroupItem value={value} aria-label={label}>
+            {/* The tooltip trigger overwrites data-state, so selection is styled from aria-checked. */}
+            <ToggleGroupItem value={value} aria-label={label} className="aria-checked:bg-muted">
               <Icon />
             </ToggleGroupItem>
           </TooltipTrigger>
