@@ -1,16 +1,18 @@
-import { Crosshair, Pause, Play, SkipBack } from 'lucide-react'
+import { Crosshair, Moon, Pause, Play, SkipBack, Sun, Sunset, type LucideIcon } from 'lucide-react'
 import { useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { Toggle } from '@/components/ui/toggle'
-import { formatClock, formatDistance } from '@/lib/format'
+import { formatClock, formatDistance, formatTime } from '@/lib/format'
 
 import { valueAt, type Profile } from './profile'
 import { replaySpeeds, useReplay, visibleSpan } from './store'
+import { sunAtIndex } from './sun'
 
-export function ReplayControls({ profile }: { profile: Profile }) {
+/** startedAt turns the replay's elapsed time into the time of day. */
+export function ReplayControls({ profile, startedAt = null }: { profile: Profile; startedAt?: string | null }) {
   const playing = useReplay((s) => s.playing)
   const pos = useReplay((s) => s.pos)
   const range = useReplay((s) => s.range)
@@ -67,31 +69,49 @@ export function ReplayControls({ profile }: { profile: Profile }) {
           <Crosshair />
         </Toggle>
       </div>
-      <Readout profile={profile} pos={pos} />
+      <Readout profile={profile} pos={pos} startedAt={startedAt} />
     </div>
   )
 }
 
-function Readout({ profile, pos }: { profile: Profile; pos: number }) {
+type Item = { label: string; value: string; icon?: LucideIcon }
+
+/** Sun up, near the horizon (golden hour and twilight), or night. */
+function sunIcon(altitude: number): LucideIcon {
+  if (altitude > 6) return Sun
+  return altitude > -6 ? Sunset : Moon
+}
+
+function Readout({ profile, pos, startedAt }: { profile: Profile; pos: number; startedAt: string | null }) {
   const t = valueAt(profile.t, pos)
+  const sun = sunAtIndex(profile, startedAt, pos)
   const dist = valueAt(profile.dist, pos) ?? 0
   const ele = valueAt(profile.ele, pos)
   const speed = valueAt(profile.speed, pos)
   const hr = valueAt(profile.hr, pos)
   const items = [
-    t !== null && { label: 'Time', value: formatClock(t) },
+    t !== null &&
+      startedAt && {
+        label: 'Time of day',
+        value: formatTime(new Date(new Date(startedAt).getTime() + t * 1000)),
+        icon: sun ? sunIcon(sun.altitude) : undefined,
+      },
+    t !== null && { label: 'Elapsed', value: formatClock(t) },
     { label: 'Distance', value: formatDistance(dist) },
     ele !== null && { label: 'Altitude', value: `${Math.round(ele)} m` },
     speed !== null && { label: 'Speed', value: `${(speed * 3.6).toFixed(1)} km/h` },
     hr !== null && { label: 'Heart rate', value: `${Math.round(hr)} bpm` },
-  ].filter(Boolean) as { label: string; value: string }[]
+  ].filter(Boolean) as Item[]
 
   return (
-    <dl className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+    <dl className="grid grid-cols-3 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(6rem,1fr))]">
       {items.map((it) => (
         <div key={it.label} className="bg-muted/50 rounded-md px-2 py-1.5">
           <dt className="text-muted-foreground text-[10px] tracking-wide uppercase">{it.label}</dt>
-          <dd className="text-sm font-semibold tabular-nums">{it.value}</dd>
+          <dd className="flex items-center gap-1 text-sm font-semibold tabular-nums">
+            {it.icon && <it.icon className="text-muted-foreground size-3.5" aria-hidden />}
+            {it.value}
+          </dd>
         </div>
       ))}
     </dl>
