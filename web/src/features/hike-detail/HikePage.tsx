@@ -136,7 +136,12 @@ export function HikePage() {
       </header>
 
       <main className="mx-auto max-w-screen-2xl space-y-4 p-4 pb-20">
-        {profile.data ? <HikeStats summary={profile.data.summary} planned={hike.data?.planned} /> : <Skeleton className="h-20 w-full" />}
+        {profile.data ? <HikeStats
+            summary={profile.data.summary}
+            planned={hike.data?.planned}
+            startedAt={hike.data?.startedAt}
+            start={profile.data.lon.length > 0 ? [profile.data.lon[0], profile.data.lat[0]] : undefined}
+          /> : <Skeleton className="h-20 w-full" />}
         {hike.data && (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -166,7 +171,7 @@ export function HikePage() {
 
           <section className="bg-card rounded-xl border p-4">
             {profile.data ? (
-              <ProfileCharts profile={profile.data} />
+              <ProfileCharts profile={profile.data} startedAt={hike.data?.startedAt ?? null} />
             ) : (
               <div className="space-y-4">
                 {Array.from({ length: 3 }, (_, i) => (

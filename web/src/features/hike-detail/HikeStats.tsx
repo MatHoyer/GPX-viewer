@@ -1,12 +1,33 @@
 import { ESTIMATE_NOTE, estimatedDurationS } from '@/features/hikes/estimate'
-import { formatDistance, formatDuration, formatElevation } from '@/lib/format'
+import { formatDistance, formatDuration, formatElevation, formatTime } from '@/lib/format'
 
 import type { ProfileSummary } from './profile'
+import { daylightAt } from './sun'
 
 type Stat = { label: string; value: string; hint?: string }
 
+type Props = {
+  summary: ProfileSummary
+  planned?: boolean
+  startedAt?: string | null
+  /** Where the hike starts, [lon, lat], for its sunrise and sunset. */
+  start?: [number, number]
+}
+
+/** Sunrise and sunset where and when a walked hike started. */
+function daylightStat(startedAt: string, [lon, lat]: [number, number]): Stat {
+  const d = daylightAt(startedAt, lat, lon)
+  if (d.alwaysUp) return { label: 'Daylight', value: 'All day', hint: 'Midnight sun' }
+  if (d.alwaysDown) return { label: 'Daylight', value: 'None', hint: 'Polar night' }
+  return {
+    label: 'Sunrise',
+    value: d.sunrise ? formatTime(d.sunrise) : '—',
+    hint: d.sunset ? `sunset ${formatTime(d.sunset)}` : undefined,
+  }
+}
+
 /** A planned route has no times of its own, so its duration is estimated from its distance. */
-export function HikeStats({ summary, planned = false }: { summary: ProfileSummary; planned?: boolean }) {
+export function HikeStats({ summary, planned = false, startedAt = null, start }: Props) {
   const s = summary
   const stats = [
     { label: 'Distance', value: formatDistance(s.distanceM) },
@@ -25,6 +46,7 @@ export function HikeStats({ summary, planned = false }: { summary: ProfileSummar
       value: formatDuration(s.elapsedS),
       hint: s.movingS !== null ? `${formatDuration(s.movingS)} moving` : undefined,
     },
+    !planned && startedAt && start && daylightStat(startedAt, start),
     s.avgSpeedMS !== null && {
       label: 'Avg speed',
       value: `${(s.avgSpeedMS * 3.6).toFixed(1)} km/h`,
