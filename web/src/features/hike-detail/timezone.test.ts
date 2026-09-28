@@ -5,14 +5,14 @@ import { formatTime } from '@/lib/format'
 import { timeZoneAt } from './timezone'
 
 describe('timeZoneAt', () => {
-  it('finds the zone at a start point', () => {
-    expect(timeZoneAt([6.87, 45.92])).toBe('Europe/Paris')
-    expect(timeZoneAt([-122.42, 37.77])).toBe('America/Los_Angeles')
+  it('finds the zone at a start point', async () => {
+    expect(await timeZoneAt([6.87, 45.92])).toBe('Europe/Paris')
+    expect(await timeZoneAt([-122.42, 37.77])).toBe('America/Los_Angeles')
   })
 
-  it('falls back to the viewer zone without a valid point', () => {
-    expect(timeZoneAt(undefined)).toBeUndefined()
-    expect(timeZoneAt([0, 200])).toBeUndefined()
+  it('falls back to the viewer zone without a valid point', async () => {
+    expect(await timeZoneAt(undefined)).toBeUndefined()
+    expect(await timeZoneAt([0, 200])).toBeUndefined()
   })
 
   it('formats times in the hike zone', () => {

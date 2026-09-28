@@ -28,7 +28,7 @@ import { Participants } from './Participants'
 import { ProfileCharts } from './ProfileCharts'
 import { RecordBadge } from './RecordBadge'
 import { SameRoute } from './SameRoute'
-import { timeZoneAt } from './timezone'
+import { useTimeZone } from './timezone'
 import { ReplayControls } from './ReplayControls'
 import { ReplayMap } from './ReplayMap'
 import { useReplay } from './store'
@@ -60,7 +60,7 @@ export function HikePage() {
     () => (profile.data && profile.data.lon.length > 0 ? [profile.data.lon[0], profile.data.lat[0]] : undefined),
     [profile.data],
   )
-  const timeZone = useMemo(() => timeZoneAt(start), [start])
+  const timeZone = useTimeZone(start)
 
   const notFound = [hike.error, profile.error].some((e) => e instanceof ApiError && e.status === 404)
   if (notFound) {
