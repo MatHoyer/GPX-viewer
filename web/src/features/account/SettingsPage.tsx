@@ -1,4 +1,5 @@
-import { Download, ExternalLink, Globe, Lock, UsersRound } from 'lucide-react'
+import { Download, ExternalLink, Globe, Lock, UsersRound, type LucideIcon } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -17,7 +18,7 @@ import { cn } from '@/lib/utils'
 import { MAX_NAME_LENGTH } from './api'
 import { DeleteAccountDialog } from './DeleteAccountDialog'
 import { useUpdateAccount } from './useAccount'
-import { ThemeSwitcher } from './ThemeSwitcher'
+import { themes } from './themes'
 import { UserAvatar } from './UserAvatar'
 
 export function SettingsPage() {
@@ -175,7 +176,7 @@ function PasswordCard({ user }: { user: User }) {
   )
 }
 
-const visibilityOptions: { value: Visibility; label: string; description: string; icon: typeof Lock }[] = [
+const visibilityOptions: Option<Visibility>[] = [
   { value: 'private', label: 'Private', description: 'Only you can see your hikes.', icon: Lock },
   { value: 'friends', label: 'Friends', description: 'Your friends can see your profile and hikes.', icon: UsersRound },
   { value: 'public', label: 'Public', description: 'Anyone with the link can, even without an account.', icon: Globe },
@@ -202,31 +203,13 @@ function VisibilityCard({ user }: { user: User }) {
         <CardDescription>Anyone with your friend ID can see your name and picture to send you a friend request.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div role="radiogroup" aria-label="Profile visibility" className="grid gap-2 sm:grid-cols-3">
-          {visibilityOptions.map(({ value, label, description, icon: Icon }) => {
-            const checked = user.visibility === value
-            return (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={checked}
-                disabled={update.isPending}
-                onClick={() => select(value)}
-                className={cn(
-                  'hover:bg-muted/50 focus-visible:ring-ring/50 flex flex-col gap-1 rounded-lg border p-3 text-left outline-none focus-visible:ring-3 disabled:opacity-60',
-                  checked && 'border-primary bg-primary/5 ring-primary ring-1',
-                )}
-              >
-                <span className="flex items-center gap-2 text-sm font-medium">
-                  <Icon className="size-4" />
-                  {label}
-                </span>
-                <span className="text-muted-foreground text-xs">{description}</span>
-              </button>
-            )
-          })}
-        </div>
+        <OptionCards
+          label="Profile visibility"
+          options={visibilityOptions}
+          value={user.visibility}
+          onChange={select}
+          disabled={update.isPending}
+        />
       </CardContent>
       <CardFooter className="justify-end">
         <Button asChild variant="outline">
@@ -278,15 +261,61 @@ function DangerZoneCard({ user }: { user: User }) {
 }
 
 function AppearanceCard() {
+  const { theme, setTheme } = useTheme()
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Appearance</CardTitle>
-        <CardDescription>System follows your device setting.</CardDescription>
       </CardHeader>
       <CardContent>
-        <ThemeSwitcher />
+        <OptionCards label="Theme" options={themes} value={theme ?? 'system'} onChange={setTheme} />
       </CardContent>
     </Card>
+  )
+}
+
+type Option<T> = { value: T; label: string; description: string; icon: LucideIcon }
+
+/** A radio group of cards, each with an icon, a label and a description. */
+function OptionCards<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string
+  options: Option<T>[]
+  value: T
+  onChange: (value: T) => void
+  disabled?: boolean
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="grid gap-2 sm:grid-cols-3">
+      {options.map(({ value: v, label, description, icon: Icon }) => {
+        const checked = value === v
+        return (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            disabled={disabled}
+            onClick={() => onChange(v)}
+            className={cn(
+              'hover:bg-muted/50 focus-visible:ring-ring/50 flex flex-col gap-1 rounded-lg border p-3 text-left outline-none focus-visible:ring-3 disabled:opacity-60',
+              checked && 'border-primary bg-primary/5 ring-primary ring-1',
+            )}
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <Icon className="size-4" />
+              {label}
+            </span>
+            <span className="text-muted-foreground text-xs">{description}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
