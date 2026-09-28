@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Profile } from './profile'
-import { daylightAt, lightBands } from './sun'
+import { daylightAt, lightBands, sunAtIndex, sunTint } from './sun'
 
 // On the equator at the March equinox the sun sets around 18:07 UTC and civil dusk ends around 18:28.
 const EQUINOX = '2026-03-20T17:00:00Z'
@@ -55,5 +55,27 @@ describe('daylightAt', () => {
   it('flags polar day', () => {
     const d = daylightAt('2026-06-21T12:00:00Z', 80, 0)
     expect(d).toMatchObject({ sunrise: null, sunset: null, alwaysUp: true, alwaysDown: false })
+  })
+})
+
+describe('sunAtIndex', () => {
+  it('interpolates the time between points', () => {
+    const p = profile([0, 7200])
+    const noonish = sunAtIndex(p, '2026-03-20T11:00:00Z', 0.5)
+    expect(noonish?.altitude).toBeGreaterThan(80)
+    expect(sunAtIndex(p, null, 0)).toBeNull()
+  })
+})
+
+describe('sunTint', () => {
+  it('is clear by day and darkens into the night', () => {
+    expect(sunTint(30).opacity).toBe(0)
+    expect(sunTint(5)).toEqual({ color: '#ff9a3c', opacity: 0.075 })
+    const dusk = sunTint(-3)
+    const night = sunTint(-9)
+    const deep = sunTint(-40)
+    expect(dusk.opacity).toBeCloseTo(0.325)
+    expect(night.opacity).toBeGreaterThan(dusk.opacity)
+    expect(deep.opacity).toBe(0.6)
   })
 })
