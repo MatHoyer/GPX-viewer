@@ -1,5 +1,20 @@
+import {
+  columnSizingFeature,
+  columnVisibilityFeature,
+  createColumnHelper,
+  createSortedRowModel,
+  rowSelectionFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  tableFeatures,
+  useTable,
+  type Column,
+  type Row,
+  type ColumnVisibilityState,
+  Subscribe,
+} from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ChevronsUpDown, Download, Loader2, Trash2, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { createContext, use, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 
@@ -14,14 +29,103 @@ import { cn } from '@/lib/utils'
 
 import type { Hike } from './api'
 import { useHikeColors } from './colors'
+import { fitColumns, optionalColumns } from './columnFit'
 import { DeleteHikesDialog } from './DeleteHikesDialog'
 import { FilterBar } from './FilterBar'
 import { filterHikes, useHikeFilters } from './filters'
 import { HikeActionsMenu } from './HikeActionsMenu'
 import { PlannedBadge } from './PlannedBadge'
-import { sortHikes, type Sort, type SortKey } from './sort'
 import { TaggedBy } from './TaggedBy'
 import { useExportHikes, useHikes } from './useHikes'
+
+// Only what this table uses: sorting, selection, fixed column widths, and
+// hiding columns that do not fit the viewport.
+const features = tableFeatures({
+  rowSortingFeature,
+  rowSelectionFeature,
+  columnSizingFeature,
+  columnVisibilityFeature,
+  sortedRowModel: createSortedRowModel(),
+  sortFns: { alphanumeric: sortFn_alphanumeric },
+})
+
+type HikeColumn = Column<typeof features, Hike>
+type HikeRow = Row<typeof features, Hike>
+
+/** Who is looking and the map colors; cells read them instead of rebuilding the columns. */
+const HikeTableContext = createContext<{ userId: string | undefined; colors: Map<string, string> }>({
+  userId: undefined,
+  colors: new Map(),
+})
+
+const helper = createColumnHelper<typeof features, Hike>()
+
+function sizeOf(id: (typeof optionalColumns)[number]['id']) {
+  return optionalColumns.find((c) => c.id === id)!.size
+}
+
+// Sizes are pixels for a fixed layout; the name column (no size) takes what is left.
+const columns = helper.columns([
+  helper.display({ id: 'select', size: 44, header: SelectAllHeader, cell: SelectCell }),
+  helper.accessor('name', {
+    header: 'Name',
+    sortFn: 'alphanumeric',
+    sortDescFirst: false,
+    cell: NameCell,
+  }),
+  helper.accessor((h) => (h.startedAt ? Date.parse(h.startedAt) : undefined), {
+    id: 'date',
+    header: 'Date',
+    size: sizeOf('date'),
+    sortUndefined: 'last',
+    sortDescFirst: true,
+    cell: ({ row }) => formatDate(row.original.startedAt) ?? '—',
+  }),
+  helper.accessor('distanceM', {
+    id: 'distance',
+    header: 'Distance',
+    size: sizeOf('distance'),
+    sortDescFirst: true,
+    cell: ({ getValue }) => formatDistance(getValue()),
+  }),
+  helper.accessor('elevationGainM', {
+    id: 'elevation',
+    header: 'D+',
+    size: sizeOf('elevation'),
+    sortDescFirst: true,
+    cell: ({ getValue }) => formatElevation(getValue()),
+  }),
+  helper.accessor((h) => (h.durationS > 0 ? h.durationS : undefined), {
+    id: 'duration',
+    header: 'Duration',
+    size: sizeOf('duration'),
+    sortUndefined: 'last',
+    sortDescFirst: true,
+    cell: ({ getValue }) => formatDuration(getValue() ?? 0),
+  }),
+  helper.accessor('labels', { header: 'Labels', size: sizeOf('labels'), enableSorting: false, cell: LabelsCell }),
+  helper.display({ id: 'actions', size: 52, cell: ({ row }) => <HikeActionsMenu hike={row.original} /> }),
+])
+
+const numeric = new Set(['distance', 'elevation', 'duration'])
+const EMPTY: Hike[] = []
+
+/**
+ * The columns that fit the element's width, which the sidebar makes narrower
+ * than the viewport. Without the date column, the name cell carries a summary.
+ */
+function useColumnVisibility(ref: RefObject<HTMLElement | null>): ColumnVisibilityState {
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    setWidth(el.clientWidth)
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+  return useMemo(() => fitColumns(width), [width])
+}
 
 /** Your hikes and those you were tagged on, as a sortable table with bulk export and delete. */
 export function HikesPage() {
@@ -29,44 +133,40 @@ export function HikesPage() {
   const me = useMe()
   const userId = me.data?.id
   const filters = useHikeFilters((s) => s.filters)
-  const [sort, setSort] = useState<Sort>({ key: 'date', desc: true })
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const all = hikes.data ?? EMPTY
+  const colors = useHikeColors(all)
+  const data = useMemo(() => filterHikes(all, filters, userId), [all, filters, userId])
+  const mainRef = useRef<HTMLElement>(null)
+  const columnVisibility = useColumnVisibility(mainRef)
   const [deleting, setDeleting] = useState<Hike[]>([])
   const exportHikes = useExportHikes()
 
-  const all = useMemo(() => hikes.data ?? [], [hikes.data])
-  const colors = useHikeColors(all)
-  const rows = useMemo(() => sortHikes(filterHikes(all, filters, userId), sort), [all, filters, userId, sort])
-  // Only what is shown and yours can be acted on; a filter hides rows from the selection.
-  const selectable = rows.filter((h) => h.userId === userId)
-  const chosen = selectable.filter((h) => selected.has(h.id))
-  const allChosen = selectable.length > 0 && chosen.length === selectable.length
+  // Sorting and selection live in the table's store; visibility follows the available width only.
+  const table = useTable(
+    {
+      features,
+      columns,
+      data,
+      getRowId: (h) => h.id,
+      // Hikes you were tagged on belong to their owner: no export or delete.
+      enableRowSelection: (row) => row.original.userId === userId,
+      initialState: { sorting: [{ id: 'date', desc: true }] },
+      enableSortingRemoval: false,
+      state: { columnVisibility },
+      onColumnVisibilityChange: () => {},
+    },
+    (state) => ({ sorting: state.sorting }),
+  )
+  const context = useMemo(() => ({ userId, colors }), [userId, colors])
 
-  function toggle(id: string, on: boolean) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (on) next.add(id)
-      else next.delete(id)
-      return next
-    })
-  }
-
-  function toggleAll(on: boolean) {
-    setSelected(on ? new Set(selectable.map((h) => h.id)) : new Set())
-  }
-
-  function sortBy(key: SortKey) {
-    // Numbers and dates start from the largest, names from A.
-    setSort((s) => (s.key === key ? { key, desc: !s.desc } : { key, desc: key !== 'name' }))
-  }
-
-  function exportChosen() {
+  function exportSelected(rows: HikeRow[]) {
     exportHikes.mutate(
-      chosen.map((h) => h.id),
+      rows.map((r) => r.original.id),
       { onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not export') },
     )
   }
 
+  const rows = table.getRowModel().rows
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
@@ -76,28 +176,39 @@ export function HikesPage() {
 
       {all.length > 0 && (
         <div className="border-b px-2 py-1.5 sm:px-4">
-          {chosen.length > 0 ? (
-            <div className="flex h-8 items-center gap-1.5">
-              <Button variant="ghost" size="icon-sm" aria-label="Clear selection" onClick={() => toggleAll(false)}>
-                <X />
-              </Button>
-              <span className="flex-1 text-sm font-medium tabular-nums">{chosen.length} selected</span>
-              <Button variant="outline" size="sm" onClick={exportChosen} disabled={exportHikes.isPending}>
-                {exportHikes.isPending ? <Loader2 className="animate-spin" /> : <Download />}
-                Export GPX
-              </Button>
-              <Button variant="destructive" size="sm" onClick={() => setDeleting(chosen)}>
-                <Trash2 />
-                Delete
-              </Button>
-            </div>
-          ) : (
-            <FilterBar hikes={all} userId={userId} matched={rows.length} />
-          )}
+          {/* Selected rows the current filters hide are left out of bulk actions. */}
+          <table.Subscribe source={table.atoms.rowSelection}>
+            {() => {
+              const selected = table.getSelectedRowModel().rows
+              return selected.length > 0 ? (
+                <div className="flex h-8 items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Clear selection"
+                    onClick={() => table.resetRowSelection(true)}
+                  >
+                    <X />
+                  </Button>
+                  <span className="flex-1 text-sm font-medium tabular-nums">{selected.length} selected</span>
+                  <Button variant="outline" size="sm" onClick={() => exportSelected(selected)} disabled={exportHikes.isPending}>
+                    {exportHikes.isPending ? <Loader2 className="animate-spin" /> : <Download />}
+                    Export GPX
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => setDeleting(selected.map((r) => r.original))}>
+                    <Trash2 />
+                    Delete
+                  </Button>
+                </div>
+              ) : (
+                <FilterBar hikes={all} userId={userId} matched={data.length} />
+              )
+            }}
+          </table.Subscribe>
         </div>
       )}
 
-      <main className="flex-1 overflow-auto">
+      <main ref={mainRef} className="flex-1 overflow-y-auto">
         {hikes.isLoading ? (
           <div className="space-y-2 p-4">
             {Array.from({ length: 6 }, (_, i) => (
@@ -113,134 +224,170 @@ export function HikesPage() {
         ) : rows.length === 0 ? (
           <p className="text-muted-foreground p-8 text-center text-sm">No hikes match your filters.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-background sticky top-0 z-10 shadow-[0_1px_0_var(--border)]">
-              <tr className="text-muted-foreground text-left text-xs">
-                <th className="w-10 py-2 pr-1 pl-3 sm:pl-5">
-                  <Checkbox
-                    aria-label="Select all your hikes shown"
-                    checked={allChosen ? true : chosen.length > 0 ? 'indeterminate' : false}
-                    onCheckedChange={(v) => toggleAll(v === true)}
-                    disabled={selectable.length === 0}
-                  />
-                </th>
-                {/* Name takes the room left; the other columns fit their content. */}
-                <SortHeader label="Name" sortKey="name" sort={sort} onSort={sortBy} className="w-full" />
-                <SortHeader label="Date" sortKey="date" sort={sort} onSort={sortBy} className="hidden sm:table-cell" />
-                <SortHeader label="Distance" sortKey="distance" sort={sort} onSort={sortBy} className="hidden text-right sm:table-cell" />
-                <SortHeader label="D+" sortKey="elevation" sort={sort} onSort={sortBy} className="hidden text-right md:table-cell" />
-                <SortHeader label="Duration" sortKey="duration" sort={sort} onSort={sortBy} className="hidden text-right lg:table-cell" />
-                <th className="hidden px-2 py-2 font-medium xl:table-cell">Labels</th>
-                <th className="w-12 py-2 pr-3 sm:pr-5">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((h) => (
-                <HikeRow
-                  key={h.id}
-                  hike={h}
-                  color={colors.get(h.id)}
-                  userId={userId}
-                  checked={selected.has(h.id)}
-                  onCheck={(on) => toggle(h.id, on)}
-                />
-              ))}
-            </tbody>
-          </table>
+          <HikeTableContext value={context}>
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                {table.getVisibleLeafColumns().map((column) => (
+                  <col key={column.id} style={column.id === 'name' ? undefined : { width: column.getSize() }} />
+                ))}
+              </colgroup>
+              <thead className="bg-background sticky top-0 z-10 shadow-[0_1px_0_var(--border)]">
+                {table.getHeaderGroups().map((group) => (
+                  <tr key={group.id} className="text-muted-foreground text-left text-xs">
+                    {group.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className={cn(
+                          'px-2 py-2 font-medium',
+                          numeric.has(header.column.id) && 'text-right',
+                          header.column.id === 'select' && 'pl-3 sm:pl-5',
+                        )}
+                        aria-sort={ariaSort(header.column)}
+                      >
+                        {header.isPlaceholder ? null : header.column.getCanSort() ? (
+                          <SortButton column={header.column}>
+                            <table.FlexRender header={header} />
+                          </SortButton>
+                        ) : (
+                          <table.FlexRender header={header} />
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <table.Subscribe key={row.id} source={table.atoms.rowSelection} selector={(s) => !!s[row.id]}>
+                    {(selected) => (
+                      <tr className={cn('hover:bg-muted/50 border-b transition-colors', selected && 'bg-primary/5 hover:bg-primary/10')}>
+                        {row.getVisibleCells().map((cell) => (
+                          <td
+                            key={cell.id}
+                            className={cn(
+                              'px-2 py-2',
+                              numeric.has(cell.column.id) && 'text-right whitespace-nowrap tabular-nums',
+                              cell.column.id === 'date' && 'text-muted-foreground whitespace-nowrap tabular-nums',
+                              cell.column.id === 'select' && 'pl-3 sm:pl-5',
+                              cell.column.id === 'actions' && 'text-right',
+                            )}
+                          >
+                            <table.FlexRender cell={cell} />
+                          </td>
+                        ))}
+                      </tr>
+                    )}
+                  </table.Subscribe>
+                ))}
+              </tbody>
+            </table>
+          </HikeTableContext>
         )}
       </main>
 
       <DeleteHikesDialog
         hikes={deleting}
         onClose={() => setDeleting([])}
-        onDeleted={() => setSelected(new Set())}
+        onDeleted={() => table.resetRowSelection(true)}
       />
     </div>
   )
 }
 
-type SortHeaderProps = { label: string; sortKey: SortKey; sort: Sort; onSort: (key: SortKey) => void; className?: string }
+function ariaSort(column: HikeColumn) {
+  const dir = column.getIsSorted()
+  return dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : undefined
+}
 
-function SortHeader({ label, sortKey, sort, onSort, className }: SortHeaderProps) {
-  const active = sort.key === sortKey
-  const Icon = !active ? ChevronsUpDown : sort.desc ? ArrowDown : ArrowUp
-  const right = className?.includes('text-right')
+function SortButton({ column, children }: { column: HikeColumn; children: ReactNode }) {
+  const dir = column.getIsSorted()
+  const Icon = dir === 'asc' ? ArrowUp : dir === 'desc' ? ArrowDown : ChevronsUpDown
   return (
-    <th
-      className={cn('px-2 py-2 font-medium', className)}
-      aria-sort={active ? (sort.desc ? 'descending' : 'ascending') : undefined}
+    <button
+      type="button"
+      onClick={column.getToggleSortingHandler()}
+      className={cn(
+        'hover:text-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded-sm transition-colors outline-none focus-visible:ring-2',
+        dir && 'text-foreground',
+        numeric.has(column.id) && 'flex-row-reverse',
+      )}
     >
-      <button
-        type="button"
-        onClick={() => onSort(sortKey)}
-        className={cn(
-          'hover:text-foreground inline-flex items-center gap-1 rounded-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-          active && 'text-foreground',
-          right && 'flex-row-reverse',
-        )}
-      >
-        {label}
-        <Icon className={cn('size-3.5', !active && 'opacity-50')} />
-      </button>
-    </th>
+      {children}
+      <Icon className={cn('size-3.5', !dir && 'opacity-50')} />
+    </button>
   )
 }
 
-type RowProps = {
-  hike: Hike
-  color: string | undefined
-  userId: string | undefined
-  checked: boolean
-  onCheck: (on: boolean) => void
+function SelectAllHeader({ table }: { table: HikeRow['table'] }) {
+  return (
+    <Subscribe source={table.atoms.rowSelection}>
+      {() => {
+        const all = table.getIsAllRowsSelected()
+        const some = table.getIsSomeRowsSelected()
+        return (
+          <Checkbox
+            aria-label="Select all your hikes shown"
+            checked={all ? true : some ? 'indeterminate' : false}
+            onCheckedChange={(v) => table.toggleAllRowsSelected(v === true)}
+            disabled={!table.getRowModel().rows.some((r) => r.getCanSelect())}
+          />
+        )
+      }}
+    </Subscribe>
+  )
 }
 
-function HikeRow({ hike, color, userId, checked, onCheck }: RowProps) {
-  const owned = hike.userId === userId
-  const date = formatDate(hike.startedAt)
-  const phoneDetails = [date, formatDistance(hike.distanceM), `${formatElevation(hike.elevationGainM)} D+`].filter(Boolean)
+function SelectCell({ row }: { row: HikeRow }) {
+  const canSelect = row.getCanSelect()
+  return (
+    <Subscribe source={row.table.atoms.rowSelection} selector={(s) => !!s[row.id]}>
+      {(selected) => (
+        <Checkbox
+          aria-label={`Select ${row.original.name}`}
+          checked={selected}
+          disabled={!canSelect}
+          title={canSelect ? undefined : 'Only its owner can export or delete this hike'}
+          // Through the table's handler so Shift+click selects a range. The
+          // checkbox is a button, so its next state is passed as target.checked.
+          onClick={(e) => row.getToggleSelectedHandler()({ shiftKey: e.shiftKey, target: { checked: !selected } })}
+          onMouseDown={(e) => e.shiftKey && e.preventDefault()}
+        />
+      )}
+    </Subscribe>
+  )
+}
+
+function NameCell({ row }: { row: HikeRow }) {
+  const { userId, colors } = use(HikeTableContext)
+  const hike = row.original
+  // Shown when the date and distance columns are hidden, on phones.
+  const summary = !row.table.getColumn('date')?.getIsVisible()
+    ? [formatDate(hike.startedAt), formatDistance(hike.distanceM), `${formatElevation(hike.elevationGainM)} D+`].filter(Boolean)
+    : null
 
   return (
-    <tr className={cn('hover:bg-muted/50 border-b transition-colors', checked && 'bg-primary/5 hover:bg-primary/10')}>
-      <td className="py-2 pr-1 pl-3 sm:pl-5">
-        <Checkbox
-          aria-label={`Select ${hike.name}`}
-          checked={checked}
-          onCheckedChange={(v) => onCheck(v === true)}
-          disabled={!owned}
-          title={owned ? undefined : 'Only its owner can export or delete this hike'}
-        />
-      </td>
-      <td className="max-w-0 px-2 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden />
-          <Link to={`/hikes/${hike.id}`} className="min-w-0 truncate font-medium hover:underline">
-            {hike.name}
-          </Link>
-          {hike.planned && <PlannedBadge />}
-        </div>
-        <TaggedBy hike={hike} userId={userId} className="mt-0.5 pl-4.5" />
-        <p className="text-muted-foreground mt-0.5 truncate pl-4.5 text-xs tabular-nums sm:hidden">{phoneDetails.join(' · ')}</p>
-      </td>
-      <td className="text-muted-foreground hidden px-2 py-2 whitespace-nowrap tabular-nums sm:table-cell">{date ?? '—'}</td>
-      <td className="hidden px-2 py-2 text-right whitespace-nowrap tabular-nums sm:table-cell">{formatDistance(hike.distanceM)}</td>
-      <td className="hidden px-2 py-2 text-right whitespace-nowrap tabular-nums md:table-cell">
-        {formatElevation(hike.elevationGainM)}
-      </td>
-      <td className="hidden px-2 py-2 text-right whitespace-nowrap tabular-nums lg:table-cell">{formatDuration(hike.durationS)}</td>
-      <td className="hidden max-w-48 px-2 py-2 xl:table-cell">
-        <div className="flex flex-wrap gap-1">
-          {hike.labels.map((l) => (
-            <span key={l} className="bg-muted rounded-full px-2 py-0.5 text-xs">
-              {l}
-            </span>
-          ))}
-        </div>
-      </td>
-      <td className="py-2 pr-3 text-right sm:pr-5">
-        <HikeActionsMenu hike={hike} />
-      </td>
-    </tr>
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors.get(hike.id) }} aria-hidden />
+        <Link to={`/hikes/${hike.id}`} className="min-w-0 truncate font-medium hover:underline">
+          {hike.name}
+        </Link>
+        {hike.planned && <PlannedBadge />}
+      </div>
+      <TaggedBy hike={hike} userId={userId} className="mt-0.5 pl-4.5" />
+      {summary && <p className="text-muted-foreground mt-0.5 truncate pl-4.5 text-xs tabular-nums">{summary.join(' · ')}</p>}
+    </div>
+  )
+}
+
+function LabelsCell({ row }: { row: HikeRow }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {row.original.labels.map((l) => (
+        <span key={l} className="bg-muted rounded-full px-2 py-0.5 text-xs">
+          {l}
+        </span>
+      ))}
+    </div>
   )
 }
