@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -56,6 +57,24 @@ func (s *Service) Invite(ctx context.Context, email, name string, send bool) (*d
 // ReissueInvite replaces the invite link of a user who has not signed in yet.
 func (s *Service) ReissueInvite(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error) {
 	return s.inviter.ReissueInvite(ctx, userID, send)
+}
+
+// RevokeInvite cancels the invite of a user who has not accepted it yet by
+// deleting their account, which also voids the link. The email can be
+// invited again. Accounts that own hikes are kept.
+func (s *Service) RevokeInvite(ctx context.Context, targetID uuid.UUID) error {
+	u, err := s.users.GetByID(ctx, targetID)
+	if err != nil {
+		return err
+	}
+	if u.EmailVerifiedAt != nil {
+		return &domain.ValidationError{Field: "user", Message: "they already accepted; ban them instead"}
+	}
+	err = s.users.DeletePending(ctx, u.ID)
+	if errors.Is(err, domain.ErrConflict) {
+		return &domain.ValidationError{Field: "user", Message: "this account has hikes; ban it instead"}
+	}
+	return err
 }
 
 // Ban bars target from signing in and signs them out everywhere. They see

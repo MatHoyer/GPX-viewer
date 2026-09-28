@@ -94,6 +94,7 @@ func NewRouter(d Deps) http.Handler {
 				r.Get("/users", d.Admin.Users)
 				r.Post("/users", d.Admin.CreateUser)
 				r.Post("/users/{id}/invite", d.Admin.Invite)
+				r.Delete("/users/{id}/invite", d.Admin.RevokeInvite)
 				r.Put("/users/{id}/ban", d.Admin.Ban)
 				r.Delete("/users/{id}/ban", d.Admin.Unban)
 				r.Put("/users/{id}/admin", d.Admin.Promote)

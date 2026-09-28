@@ -114,6 +114,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/admin/users` | admins only: every user with `isAdmin`, `emailVerifiedAt`, `bannedAt`, `banReason`, `hikes`, `lastSeenAt` |
 | POST | `/api/admin/users` | `{email, name, sendEmail}`: creates the account and returns `{user, inviteLink, emailSent}`; the `/reset-password?invite=1&token=` link is valid 7 days |
 | POST | `/api/admin/users/{id}/invite` | `{sendEmail}`: new invite link for a user who has not signed in yet |
+| DELETE | `/api/admin/users/{id}/invite` | revoke the invite: deletes the account if it never signed in and owns no hikes, voiding its link |
 | PUT / DELETE | `/api/admin/users/{id}/ban` | `{reason}` bans and signs them out everywhere / lifts the ban; admins must be demoted first |
 | PUT / DELETE | `/api/admin/users/{id}/admin` | make admin / remove the role; not on yourself |
 

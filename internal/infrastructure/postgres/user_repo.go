@@ -150,6 +150,22 @@ func (r *UserRepository) SetBan(ctx context.Context, id uuid.UUID, at *time.Time
 	return r.update(ctx, id, map[string]any{"banned_at": at, "ban_reason": reason})
 }
 
+func (r *UserRepository) DeletePending(ctx context.Context, id uuid.UUID) error {
+	res := r.db.WithContext(ctx).Exec(`DELETE FROM users u
+		WHERE u.id = ? AND u.email_verified_at IS NULL
+		AND NOT EXISTS (SELECT 1 FROM hikes h WHERE h.user_id = u.id)`, id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		if _, err := r.GetByID(ctx, id); err != nil {
+			return err
+		}
+		return domain.ErrConflict
+	}
+	return nil
+}
+
 func (r *UserRepository) update(ctx context.Context, id uuid.UUID, fields map[string]any) error {
 	res := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ?", id).Updates(fields)
 	if res.Error != nil {

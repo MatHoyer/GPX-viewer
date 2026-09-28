@@ -15,6 +15,7 @@ type AdminService interface {
 	ListUsers(ctx context.Context) ([]domain.AdminUser, error)
 	Invite(ctx context.Context, email, name string, send bool) (*domain.User, string, bool, error)
 	ReissueInvite(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error)
+	RevokeInvite(ctx context.Context, targetID uuid.UUID) error
 	Ban(ctx context.Context, actorID, targetID uuid.UUID, reason string) error
 	Unban(ctx context.Context, targetID uuid.UUID) error
 	SetAdmin(ctx context.Context, actorID, targetID uuid.UUID, admin bool) error
@@ -87,6 +88,15 @@ func (h *AdminHandler) Invite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, dto.Invite{Link: link, EmailSent: sent})
+}
+
+// RevokeInvite deletes the account of a user who has not accepted their invite.
+func (h *AdminHandler) RevokeInvite(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	h.respond(w, r, h.svc.RevokeInvite(r.Context(), id))
 }
 
 func (h *AdminHandler) Ban(w http.ResponseWriter, r *http.Request) {
