@@ -40,6 +40,18 @@ func (f *fakeUsers) SetBan(_ context.Context, id uuid.UUID, at *time.Time, reaso
 	return nil
 }
 
+func (f *fakeUsers) DeletePending(_ context.Context, id uuid.UUID) error {
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	if u.EmailVerifiedAt != nil || u.Name == "has hikes" {
+		return domain.ErrConflict
+	}
+	delete(f.byID, id)
+	return nil
+}
+
 type fakeSessions struct{ revoked []uuid.UUID }
 
 func (f *fakeSessions) DeleteByUserID(_ context.Context, id uuid.UUID) error {
@@ -123,5 +135,28 @@ func TestSetAdmin(t *testing.T) {
 	}
 	if err := svc.SetAdmin(ctx, user.ID, uuid.New(), true); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("unknown user err = %v", err)
+	}
+}
+
+func TestRevokeInvite(t *testing.T) {
+	ctx := context.Background()
+	svc, _, admin, user := setup()
+	var ve *domain.ValidationError
+
+	now := time.Now()
+	admin.EmailVerifiedAt = &now
+	if err := svc.RevokeInvite(ctx, admin.ID); !errors.As(err, &ve) {
+		t.Errorf("verified user err = %v", err)
+	}
+	user.Name = "has hikes"
+	if err := svc.RevokeInvite(ctx, user.ID); !errors.As(err, &ve) {
+		t.Errorf("user with hikes err = %v", err)
+	}
+	user.Name = ""
+	if err := svc.RevokeInvite(ctx, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.RevokeInvite(ctx, user.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("revoked twice err = %v", err)
 	}
 }

@@ -72,6 +72,9 @@ type AdminRepository interface {
 	SetAdmin(ctx context.Context, id uuid.UUID, admin bool) error
 	// SetBan bans the user when at is set, and lifts the ban when it is nil.
 	SetBan(ctx context.Context, id uuid.UUID, at *time.Time, reason string) error
+	// DeletePending deletes a user whose email is not verified and who owns
+	// no hikes. It returns ErrConflict when the user no longer qualifies.
+	DeletePending(ctx context.Context, id uuid.UUID) error
 }
 
 // UserDirectory looks users up on behalf of other users.

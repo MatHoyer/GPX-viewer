@@ -211,3 +211,47 @@ func TestUserRepositoryAdmin(t *testing.T) {
 		t.Errorf("after unban = %+v, %v", g, err)
 	}
 }
+
+func TestUserRepositoryDeletePending(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	db, err := Open(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(db); err != nil {
+		t.Fatal(err)
+	}
+	users := NewUserRepository(db)
+	newUser := func(verified *time.Time) uuid.UUID {
+		u := &domain.User{ID: uuid.New(), Email: uuid.NewString() + "@test.local", PasswordHash: "x", EmailVerifiedAt: verified, CreatedAt: time.Now()}
+		if err := users.Create(ctx, u); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { db.Delete(&UserModel{}, "id = ?", u.ID) })
+		return u.ID
+	}
+	now := time.Now()
+	pending, verified, withHike := newUser(nil), newUser(&now), newUser(nil)
+	h := &domain.Hike{ID: uuid.New(), UserID: withHike, Name: "Hike", CreatedAt: time.Now(),
+		Segments: []domain.Segment{{{Lon: 6, Lat: 45}, {Lon: 6.01, Lat: 45.01}}}}
+	if err := NewHikeRepository(db).Create(ctx, h); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := users.DeletePending(ctx, verified); !errors.Is(err, domain.ErrConflict) {
+		t.Errorf("verified err = %v", err)
+	}
+	if err := users.DeletePending(ctx, withHike); !errors.Is(err, domain.ErrConflict) {
+		t.Errorf("with hike err = %v", err)
+	}
+	if err := users.DeletePending(ctx, pending); err != nil {
+		t.Fatal(err)
+	}
+	if err := users.DeletePending(ctx, pending); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("deleted twice err = %v", err)
+	}
+}

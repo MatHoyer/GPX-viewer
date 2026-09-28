@@ -42,6 +42,11 @@ export function reissueInvite(input: { id: string; sendEmail: boolean }) {
   })
 }
 
+/** Deletes the account of a user who has not accepted their invite, voiding the link. */
+export function revokeInvite(id: string) {
+  return api<void>(`/admin/users/${id}/invite`, { method: 'DELETE' })
+}
+
 /** Signs the user out everywhere; they see the reason when they try to sign in. */
 export function banUser(input: { id: string; reason: string }) {
   return api<void>(`/admin/users/${input.id}/ban`, { method: 'PUT', body: JSON.stringify({ reason: input.reason }) })

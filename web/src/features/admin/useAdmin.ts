@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { banUser, createUser, fetchUsers, reissueInvite, setAdmin, unbanUser } from './api'
+import { banUser, createUser, fetchUsers, reissueInvite, revokeInvite, setAdmin, unbanUser } from './api'
 
 const usersQueryKey = ['admin', 'users'] as const
 
@@ -19,6 +19,7 @@ function useUsersMutation<T, R>(fn: (input: T) => Promise<R>) {
 
 export const useCreateUser = () => useUsersMutation(createUser)
 export const useReissueInvite = () => useUsersMutation(reissueInvite)
+export const useRevokeInvite = () => useUsersMutation(revokeInvite)
 export const useBanUser = () => useUsersMutation(banUser)
 export const useUnbanUser = () => useUsersMutation(unbanUser)
 export const useSetAdmin = () => useUsersMutation(setAdmin)

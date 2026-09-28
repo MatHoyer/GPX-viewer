@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils'
 import type { AdminUser } from './api'
 import { BanDialog } from './BanDialog'
 import { InviteDialog } from './InviteDialog'
+import { RevokeInviteDialog } from './RevokeInviteDialog'
 import { useSetAdmin, useUnbanUser, useUsers } from './useAdmin'
 
 export function AdminPage() {
@@ -72,7 +73,10 @@ function RegistrationCard() {
   )
 }
 
-type DialogState = { kind: 'invite' } | { kind: 'reinvite'; user: AdminUser } | { kind: 'ban'; user: AdminUser } | null
+type DialogState =
+  | { kind: 'invite' }
+  | { kind: 'reinvite' | 'revoke' | 'ban'; user: AdminUser }
+  | null
 
 function UsersCard() {
   const users = useUsers()
@@ -97,6 +101,7 @@ function UsersCard() {
                 key={u.id}
                 user={u}
                 onReinvite={() => setDialog({ kind: 'reinvite', user: u })}
+                onRevoke={() => setDialog({ kind: 'revoke', user: u })}
                 onBan={() => setDialog({ kind: 'ban', user: u })}
               />
             ))}
@@ -117,12 +122,15 @@ function UsersCard() {
         user={dialog?.kind === 'reinvite' ? dialog.user : undefined}
         onOpenChange={(open) => !open && setDialog(null)}
       />
+      <RevokeInviteDialog user={dialog?.kind === 'revoke' ? dialog.user : null} onClose={() => setDialog(null)} />
       <BanDialog user={dialog?.kind === 'ban' ? dialog.user : null} onClose={() => setDialog(null)} />
     </Card>
   )
 }
 
-function UserRow({ user, onReinvite, onBan }: { user: AdminUser; onReinvite: () => void; onBan: () => void }) {
+type RowProps = { user: AdminUser; onReinvite: () => void; onRevoke: () => void; onBan: () => void }
+
+function UserRow({ user, onReinvite, onRevoke, onBan }: RowProps) {
   const me = useMe()
   const self = me.data?.id === user.id
   const unban = useUnbanUser()
@@ -168,7 +176,16 @@ function UserRow({ user, onReinvite, onBan }: { user: AdminUser; onReinvite: () 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {!user.emailVerifiedAt && <DropdownMenuItem onSelect={onReinvite}>New invite link…</DropdownMenuItem>}
+            {!user.emailVerifiedAt && (
+              <>
+                <DropdownMenuItem onSelect={onReinvite}>New invite link…</DropdownMenuItem>
+                {user.hikes === 0 && (
+                  <DropdownMenuItem variant="destructive" onSelect={onRevoke}>
+                    Revoke invite…
+                  </DropdownMenuItem>
+                )}
+              </>
+            )}
             {!user.bannedAt && (
               <DropdownMenuItem
                 onSelect={() =>
