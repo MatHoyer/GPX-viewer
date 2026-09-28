@@ -14,6 +14,9 @@ type Config struct {
 	CookieSecure bool
 	SessionTTL   time.Duration
 	MaxUploadMB  int64
+	// RegistrationEnabled lets anyone create an account. When false, only
+	// the first account can sign up and admins invite the others.
+	RegistrationEnabled bool
 	// AppURL is the public base URL, used in links sent by email.
 	AppURL string
 	SMTP   SMTP
@@ -29,10 +32,11 @@ type SMTP struct {
 
 func Load() (*Config, error) {
 	c := &Config{
-		Port:        getenv("PORT", "8080"),
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-		SessionTTL:  30 * 24 * time.Hour,
-		MaxUploadMB: 20,
+		Port:                getenv("PORT", "8080"),
+		DatabaseURL:         os.Getenv("DATABASE_URL"),
+		SessionTTL:          30 * 24 * time.Hour,
+		MaxUploadMB:         20,
+		RegistrationEnabled: true,
 	}
 	if c.DatabaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")
@@ -64,6 +68,13 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("COOKIE_SECURE: %w", err)
 		}
 		c.CookieSecure = b
+	}
+	if v := os.Getenv("REGISTRATION_ENABLED"); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return nil, fmt.Errorf("REGISTRATION_ENABLED: %w", err)
+		}
+		c.RegistrationEnabled = b
 	}
 	if v := os.Getenv("MAX_UPLOAD_MB"); v != "" {
 		n, err := strconv.ParseInt(v, 10, 64)

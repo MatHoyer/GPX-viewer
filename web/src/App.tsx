@@ -6,6 +6,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SettingsPage } from '@/features/account/SettingsPage'
+import { AdminPage } from '@/features/admin/AdminPage'
 import { AuthPage } from '@/features/auth/AuthPage'
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
@@ -51,6 +52,7 @@ export default function App() {
                 <Route path="/feed" element={<FeedPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/friends" element={<FriendsPage />} />
+                <Route path="/admin" element={<AdminOnly><AdminPage /></AdminOnly>} />
               </Route>
               {/* Shared with signed-out visitors when the owner's profile is public. */}
               <Route element={<AnyLayout />}>
@@ -71,6 +73,13 @@ function RequireAuth({ children }: { children: ReactNode }) {
   const me = useMe()
   if (me.isPending) return null
   if (!me.data) return <Navigate to="/login" replace />
+  return children
+}
+
+/** Nested in RequireAuth, so the user is known. */
+function AdminOnly({ children }: { children: ReactNode }) {
+  const me = useMe()
+  if (!me.data?.isAdmin) return <Navigate to="/" replace />
   return children
 }
 

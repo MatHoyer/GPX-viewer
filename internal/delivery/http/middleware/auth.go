@@ -69,6 +69,20 @@ func OptionalAuth(auth Authenticator) func(http.Handler) http.Handler {
 	}
 }
 
+// RequireAdmin rejects users who are not admins. It must run behind
+// RequireAuth.
+func RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !UserFrom(r.Context()).IsAdmin {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "admins only"})
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // UserFrom returns the authenticated user. Only non-nil behind RequireAuth,
 // or behind OptionalAuth for signed-in users.
 func UserFrom(ctx context.Context) *domain.User {

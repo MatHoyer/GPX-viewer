@@ -20,15 +20,20 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	var ve *domain.ValidationError
+	var be *domain.BannedError
 	switch {
 	case errors.As(err, &ve):
 		writeJSON(w, http.StatusBadRequest, dto.Error{Error: ve.Message, Field: ve.Field})
+	case errors.As(err, &be):
+		writeJSON(w, http.StatusForbidden, dto.Error{Error: "your account was suspended: " + be.Reason, Code: "banned", Reason: be.Reason})
+	case errors.Is(err, domain.ErrRegistrationClosed):
+		writeJSON(w, http.StatusForbidden, dto.Error{Error: "sign-up is closed; ask the admin for an invite", Code: "registration_closed"})
 	case errors.Is(err, domain.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, dto.Error{Error: "not found"})
 	case errors.Is(err, domain.ErrInvalidCredentials):
 		writeJSON(w, http.StatusUnauthorized, dto.Error{Error: "invalid email or password"})
 	case errors.Is(err, domain.ErrEmailNotVerified):
-		writeJSON(w, http.StatusForbidden, dto.Error{Error: "email not verified", Field: "email"})
+		writeJSON(w, http.StatusForbidden, dto.Error{Error: "email not verified", Field: "email", Code: "email_not_verified"})
 	case errors.Is(err, domain.ErrInvalidToken):
 		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "this link is invalid or has expired"})
 	case errors.Is(err, domain.ErrUnauthorized):

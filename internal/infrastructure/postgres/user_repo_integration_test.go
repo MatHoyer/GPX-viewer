@@ -137,3 +137,77 @@ func TestUserRepositoryDelete(t *testing.T) {
 		t.Error("bob's hike was deleted")
 	}
 }
+
+func TestUserRepositoryAdmin(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	db, err := Open(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(db); err != nil {
+		t.Fatal(err)
+	}
+	users := NewUserRepository(db)
+
+	u := &domain.User{ID: uuid.New(), Email: uuid.NewString() + "@test.local", PasswordHash: "x", CreatedAt: time.Now()}
+	if err := users.Create(ctx, u); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Delete(&UserModel{}, "id = ?", u.ID) })
+	seen := time.Now().Add(-time.Minute).Truncate(time.Microsecond)
+	if err := NewSessionRepository(db).Create(ctx, &domain.Session{TokenHash: uuid.NewString(), UserID: u.ID, ExpiresAt: time.Now().Add(time.Hour), CreatedAt: seen}); err != nil {
+		t.Fatal(err)
+	}
+
+	if n, err := users.CountAdmins(ctx); err != nil || n == 0 {
+		t.Errorf("admins = %d, %v; Migrate should promote the oldest user", n, err)
+	}
+	before, err := users.CountAdmins(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := users.SetAdmin(ctx, u.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := users.CountAdmins(ctx); err != nil || n != before+1 {
+		t.Errorf("admins after promote = %d, %v", n, err)
+	}
+	banned := time.Now().Truncate(time.Microsecond)
+	if err := users.SetBan(ctx, u.ID, &banned, "spam"); err != nil {
+		t.Fatal(err)
+	}
+	if err := users.SetBan(ctx, uuid.New(), nil, ""); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("unknown user err = %v", err)
+	}
+
+	list, err := users.ListUsers(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *domain.AdminUser
+	for i := range list {
+		if list[i].ID == u.ID {
+			got = &list[i]
+		}
+	}
+	if got == nil {
+		t.Fatal("user not listed")
+	}
+	if !got.IsAdmin || got.BannedAt == nil || !got.BannedAt.Equal(banned) || got.BanReason != "spam" || got.Email != u.Email {
+		t.Errorf("listed user = %+v", got)
+	}
+	if got.Hikes != 0 || got.LastSeenAt == nil || !got.LastSeenAt.Equal(seen) {
+		t.Errorf("hikes = %d, last seen = %v, want 0, %v", got.Hikes, got.LastSeenAt, seen)
+	}
+
+	if err := users.SetBan(ctx, u.ID, nil, ""); err != nil {
+		t.Fatal(err)
+	}
+	if g, err := users.GetByID(ctx, u.ID); err != nil || g.BannedAt != nil || g.BanReason != "" {
+		t.Errorf("after unban = %+v, %v", g, err)
+	}
+}

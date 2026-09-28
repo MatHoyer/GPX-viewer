@@ -11,7 +11,17 @@ var (
 	ErrConflict           = errors.New("conflict")
 	ErrEmailNotVerified   = errors.New("email not verified")
 	ErrInvalidToken       = errors.New("invalid or expired token")
+	ErrRegistrationClosed = errors.New("registration closed")
 )
+
+// BannedError refuses to sign in a user an admin banned.
+type BannedError struct {
+	Reason string
+}
+
+func (e *BannedError) Error() string {
+	return "account banned: " + e.Reason
+}
 
 // ValidationError reports invalid user input.
 type ValidationError struct {

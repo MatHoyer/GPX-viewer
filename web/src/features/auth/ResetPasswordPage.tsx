@@ -11,11 +11,15 @@ import { ApiError } from '@/lib/api'
 import { AuthShell } from './AuthShell'
 import { useResetPassword } from './useAuth'
 
-/** Landing page of the emailed reset link: sets a new password and signs in. */
+/**
+ * Landing page of the emailed reset link, and of invite links (invite=1) from
+ * an admin: sets a password and signs in.
+ */
 export function ResetPasswordPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
+  const invite = params.get('invite') === '1'
   const [password, setPassword] = useState('')
   const reset = useResetPassword()
 
@@ -30,7 +34,7 @@ export function ResetPasswordPage() {
       { token, password },
       {
         onSuccess: () => {
-          toast.success('Password updated')
+          toast.success(invite ? 'Welcome aboard!' : 'Password updated')
           navigate('/', { replace: true })
         },
       },
@@ -41,18 +45,21 @@ export function ResetPasswordPage() {
     return (
       <AuthShell>
         <CardHeader>
-          <CardTitle>Could not reset your password</CardTitle>
+          <CardTitle>{invite ? 'Could not accept the invite' : 'Could not reset your password'}</CardTitle>
           <CardDescription role="alert">
-            {token ? error?.message : 'This link is incomplete.'} Ask for a new link.
+            {token ? error?.message : 'This link is incomplete.'}{' '}
+            {invite ? 'Ask whoever invited you for a new link.' : 'Ask for a new link.'}
           </CardDescription>
         </CardHeader>
-        <CardFooter className="mt-6">
-          <Button asChild size="lg" className="h-11 w-full rounded-xl">
-            <Link to="/forgot-password" replace>
-              Send a new link
-            </Link>
-          </Button>
-        </CardFooter>
+        {!invite && (
+          <CardFooter className="mt-6">
+            <Button asChild size="lg" className="h-11 w-full rounded-xl">
+              <Link to="/forgot-password" replace>
+                Send a new link
+              </Link>
+            </Button>
+          </CardFooter>
+        )}
       </AuthShell>
     )
   }
@@ -60,14 +67,16 @@ export function ResetPasswordPage() {
   return (
     <AuthShell>
       <CardHeader>
-        <CardTitle>Choose a new password</CardTitle>
-        <CardDescription>You will be signed out everywhere else.</CardDescription>
+        <CardTitle>{invite ? 'Welcome to GPX Viewer' : 'Choose a new password'}</CardTitle>
+        <CardDescription>
+          {invite ? 'Choose a password to finish creating your account.' : 'You will be signed out everywhere else.'}
+        </CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
           <FloatingInput
             id="password"
-            label="New password"
+            label={invite ? 'Password' : 'New password'}
             type="password"
             autoComplete="new-password"
             required

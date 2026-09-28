@@ -19,6 +19,7 @@ type Deps struct {
 	Social        *handler.SocialHandler
 	Summits       *handler.SummitHandler
 	Interactions  *handler.InteractionHandler
+	Admin         *handler.AdminHandler
 	Authenticator middleware.Authenticator
 	// Static is the built frontend (index.html at its root). Optional.
 	Static fs.FS
@@ -49,6 +50,7 @@ func NewRouter(d Deps) http.Handler {
 		changePassword := middleware.NewLimiter(5, time.Minute, "password change attempts")
 		deleteAccount := middleware.NewLimiter(5, time.Minute, "account deletion attempts")
 
+		r.Get("/config", d.Admin.Config)
 		r.With(register.ByIP).Post("/auth/register", d.Auth.Register)
 		r.With(loginByIP.ByIP, loginByEmail.ByEmail).Post("/auth/login", d.Auth.Login)
 		r.Post("/auth/logout", d.Auth.Logout)
@@ -86,6 +88,17 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/friends", d.Social.Friends)
 			r.Put("/friends/{id}", d.Social.AddFriend)
 			r.Delete("/friends/{id}", d.Social.RemoveFriend)
+
+			r.Route("/admin", func(r chi.Router) {
+				r.Use(middleware.RequireAdmin)
+				r.Get("/users", d.Admin.Users)
+				r.Post("/users", d.Admin.CreateUser)
+				r.Post("/users/{id}/invite", d.Admin.Invite)
+				r.Put("/users/{id}/ban", d.Admin.Ban)
+				r.Delete("/users/{id}/ban", d.Admin.Unban)
+				r.Put("/users/{id}/admin", d.Admin.Promote)
+				r.Delete("/users/{id}/admin", d.Admin.Demote)
+			})
 		})
 
 		// Readable by anyone the owner's visibility allows, signed in or not.
