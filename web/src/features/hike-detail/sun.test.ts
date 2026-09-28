@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Profile } from './profile'
-import { daylightAt, lightBands, sunAtIndex, sunTint } from './sun'
+import { daylightAt, lightBands, plannedFinish, sunAtIndex, sunTint } from './sun'
 
 // On the equator at the March equinox the sun sets around 18:07 UTC and civil dusk ends around 18:28.
 const EQUINOX = '2026-03-20T17:00:00Z'
@@ -90,5 +90,27 @@ describe('sunTint', () => {
     for (let alt = 12; alt > -14; alt -= 0.1) {
       expect(Math.abs(at(alt).opacity - at(alt - 0.1).opacity)).toBeLessThan(0.01)
     }
+  })
+})
+
+describe('plannedFinish', () => {
+  // Civil dusk on the equator at the equinox ends around 18:28 UTC.
+  const start = new Date('2026-03-20T12:00:00Z')
+
+  it('finishes before dusk', () => {
+    const f = plannedFinish(start, 4 * 3600, 0, 0)
+    expect(f.finish.toISOString()).toBe('2026-03-20T16:00:00.000Z')
+    expect(f.afterDusk).toBe(false)
+  })
+
+  it('warns when finishing after dusk', () => {
+    expect(plannedFinish(start, 7 * 3600, 0, 0).afterDusk).toBe(true)
+  })
+
+  it('handles polar day and night', () => {
+    const summer = plannedFinish(new Date('2026-06-21T12:00:00Z'), 20 * 3600, 80, 0)
+    expect(summer).toMatchObject({ alwaysUp: true, afterDusk: false })
+    const winter = plannedFinish(new Date('2026-12-21T12:00:00Z'), 3600, 80, 0)
+    expect(winter).toMatchObject({ alwaysDown: true, afterDusk: true })
   })
 })

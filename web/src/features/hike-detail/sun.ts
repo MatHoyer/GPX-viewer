@@ -64,6 +64,27 @@ export function daylightAt(startedAt: string, lat: number, lon: number): Dayligh
   return { sunrise: times.sunrise, sunset: times.sunset, alwaysUp: !!times.alwaysUp, alwaysDown: !!times.alwaysDown }
 }
 
+export type PlannedFinish = {
+  finish: Date
+  /** End of civil twilight on the start day; null when it never gets that dark. */
+  dusk: Date | null
+  alwaysUp: boolean
+  alwaysDown: boolean
+  /** Whether the estimated finish comes after civil dusk, or the day has no daylight at all. */
+  afterDusk: boolean
+}
+
+/** When a planned hike starting at start would end, against civil dusk where it starts. */
+export function plannedFinish(start: Date, durationS: number, lat: number, lon: number): PlannedFinish {
+  const times = getTimes(start, lat, lon)
+  const finish = new Date(start.getTime() + durationS * 1000)
+  const alwaysUp = !!times.alwaysUp
+  const alwaysDown = !!times.alwaysDown
+  const dusk = times.dusk
+  const afterDusk = alwaysDown || (!alwaysUp && dusk !== null && finish > dusk)
+  return { finish, dusk, alwaysUp, alwaysDown, afterDusk }
+}
+
 export type SunPosition = { azimuth: number; altitude: number; rising: boolean }
 
 /** Where the sun stands, in degrees, at a fractional profile index; null without a time there. */
