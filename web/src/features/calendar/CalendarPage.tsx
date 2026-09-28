@@ -256,13 +256,12 @@ function HikeChip({ hike, color, muted }: DatedHike & { muted: boolean }) {
   const owner = taggedBy(hike, useMe().data?.id)
 
   return (
-    // The menu shows on hover, or always where there is no hover.
-    <div className="group/chip relative min-w-0">
+    <div className="flex min-w-0 items-center">
       <Link
         to={`/hikes/${hike.id}`}
         title={`${hike.name}${owner ? ` (tagged by ${owner})` : ''} — ${hikeDetails(hike).join(' · ')}`}
         className={cn(
-          'hover:bg-accent flex min-w-0 items-center gap-1.5 rounded-sm px-1 py-0.5 text-xs transition-colors',
+          'hover:bg-accent flex min-w-0 flex-1 items-center gap-1.5 rounded-sm px-1 py-0.5 text-xs transition-colors',
           muted && 'opacity-60',
         )}
       >
@@ -272,11 +271,7 @@ function HikeChip({ hike, color, muted }: DatedHike & { muted: boolean }) {
           <span className="text-muted-foreground truncate tabular-nums">{formatDistance(hike.distanceM)}</span>
         </span>
       </Link>
-      <HikeActionsMenu
-        hike={hike}
-        size="icon-xs"
-        className="bg-background/90 absolute top-1/2 right-0.5 -translate-y-1/2 opacity-0 group-hover/chip:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
-      />
+      <HikeActionsMenu hike={hike} size="icon-xs" className={cn(muted && 'opacity-60')} />
     </div>
   )
 }
