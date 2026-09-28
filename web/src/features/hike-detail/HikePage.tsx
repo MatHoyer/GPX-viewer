@@ -1,5 +1,5 @@
 import { ArrowLeft, Download, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
@@ -28,6 +28,7 @@ import { Participants } from './Participants'
 import { ProfileCharts } from './ProfileCharts'
 import { RecordBadge } from './RecordBadge'
 import { SameRoute } from './SameRoute'
+import { timeZoneAt } from './timezone'
 import { ReplayControls } from './ReplayControls'
 import { ReplayMap } from './ReplayMap'
 import { useReplay } from './store'
@@ -54,6 +55,13 @@ export function HikePage() {
 
   useReplayClock(profile.data)
 
+  // Times read as on the trail, in the zone where the hike starts.
+  const start = useMemo<[number, number] | undefined>(
+    () => (profile.data && profile.data.lon.length > 0 ? [profile.data.lon[0], profile.data.lat[0]] : undefined),
+    [profile.data],
+  )
+  const timeZone = useMemo(() => timeZoneAt(start), [start])
+
   const notFound = [hike.error, profile.error].some((e) => e instanceof ApiError && e.status === 404)
   if (notFound) {
     return (
@@ -68,7 +76,7 @@ export function HikePage() {
     )
   }
 
-  const date = formatDate(hike.data?.startedAt ?? null)
+  const date = formatDate(hike.data?.startedAt ?? null, timeZone)
 
   return (
     // The layout fixes the page height, so the page scrolls itself and the header sticks to its top.
@@ -140,7 +148,8 @@ export function HikePage() {
             summary={profile.data.summary}
             planned={hike.data?.planned}
             startedAt={hike.data?.startedAt}
-            start={profile.data.lon.length > 0 ? [profile.data.lon[0], profile.data.lat[0]] : undefined}
+            start={start}
+            timeZone={timeZone}
           /> : <Skeleton className="h-20 w-full" />}
         {hike.data && (
           <div className="space-y-2">
@@ -166,7 +175,7 @@ export function HikePage() {
             <div className="h-[45vh] overflow-hidden rounded-lg lg:h-[calc(100svh-17rem)]">
               {profile.data ? <ReplayMap profile={profile.data} peaks={summits.data} startedAt={hike.data?.planned ? null : hike.data?.startedAt} /> : <Skeleton className="size-full" />}
             </div>
-            {profile.data && <ReplayControls profile={profile.data} startedAt={hike.data?.planned ? null : hike.data?.startedAt} />}
+            {profile.data && <ReplayControls profile={profile.data} startedAt={hike.data?.planned ? null : hike.data?.startedAt} timeZone={timeZone} />}
           </section>
 
           <section className="bg-card rounded-xl border p-4">
