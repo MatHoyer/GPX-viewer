@@ -66,13 +66,27 @@ export function sunAtIndex(p: Profile, startedAt: string | null, f: number): Sun
 
 export type SunTint = { color: string; opacity: number }
 
-const GOLDEN = '#ff9a3c'
-const DUSK = '#1d2352'
+/** Wash by sun altitude, from high to low; colors and opacity blend linearly between stops. */
+const TINT_STOPS: { alt: number; rgb: [number, number, number]; opacity: number }[] = [
+  { alt: 10, rgb: [255, 154, 60], opacity: 0 },
+  { alt: 2, rgb: [255, 154, 60], opacity: 0.12 },
+  { alt: -2, rgb: [29, 35, 82], opacity: 0.25 },
+  { alt: CIVIL_DUSK_ALT, rgb: [29, 35, 82], opacity: 0.45 },
+  { alt: -12, rgb: [29, 35, 82], opacity: 0.6 },
+]
 
 /** A wash over the map for the sun's altitude: warm near the horizon, then darker blue through twilight into night. */
 export function sunTint(altitude: number): SunTint {
-  if (altitude >= 10) return { color: GOLDEN, opacity: 0 }
-  if (altitude > 0) return { color: GOLDEN, opacity: 0.15 * (1 - altitude / 10) }
-  if (altitude > CIVIL_DUSK_ALT) return { color: DUSK, opacity: 0.2 + (0.25 * altitude) / CIVIL_DUSK_ALT }
-  return { color: DUSK, opacity: Math.min(0.6, 0.45 + (0.15 * (altitude - CIVIL_DUSK_ALT)) / CIVIL_DUSK_ALT) }
+  const first = TINT_STOPS[0]
+  const last = TINT_STOPS[TINT_STOPS.length - 1]
+  const rgb = (c: number[]) => `rgb(${c.map(Math.round).join(', ')})`
+  if (altitude >= first.alt) return { color: rgb(first.rgb), opacity: first.opacity }
+  if (altitude <= last.alt) return { color: rgb(last.rgb), opacity: last.opacity }
+  const i = TINT_STOPS.findIndex((s) => altitude > s.alt)
+  const [hi, lo] = [TINT_STOPS[i - 1], TINT_STOPS[i]]
+  const r = (hi.alt - altitude) / (hi.alt - lo.alt)
+  return {
+    color: rgb(hi.rgb.map((c, k) => c + (lo.rgb[k] - c) * r)),
+    opacity: hi.opacity + (lo.opacity - hi.opacity) * r,
+  }
 }

@@ -4,7 +4,7 @@ import { MapControls, MapMarker, MapRoute, MarkerContent, useMap } from '@/compo
 import { FitBounds } from '@/features/hikes/FitBounds'
 import type { Peak } from '@/features/stats/summits'
 import { formatElevation } from '@/lib/format'
-import { DEM_SOURCE_ID, demSource } from '@/features/map/basemaps'
+import { basemapStyles, DEM_SOURCE_ID, demSource, useMapView } from '@/features/map/basemaps'
 import { LayeredMap } from '@/features/map/LayeredMap'
 
 import { boundsBetween, linesBetween, positionAt, type Profile } from './profile'
@@ -146,7 +146,10 @@ const SHADE_EXAGGERATION = 0.25
  * under the tracks, so the route and markers keep their colors.
  */
 function SunLighting({ profile, startedAt }: { profile: Profile; startedAt: string | null }) {
-  const { map, isLoaded } = useMap()
+  const { map, isLoaded, resolvedTheme } = useMap()
+  const basemap = useMapView((s) => s.basemap)
+  // Only the default street map has a dark variant; it needs a lighter touch.
+  const darkMap = resolvedTheme === 'dark' && basemapStyles[basemap] === undefined
   const pos = useReplay((s) => s.pos)
   const sun = sunAtIndex(profile, startedAt, pos)
   // Rounded so replay frames only repaint when the light visibly changes.
@@ -181,10 +184,12 @@ function SunLighting({ profile, startedAt }: { profile: Profile; startedAt: stri
     map.setPaintProperty(SUN_SHADE_ID, 'hillshade-illumination-direction', azimuth)
     map.setPaintProperty(SUN_SHADE_ID, 'hillshade-illumination-altitude', Math.max(0, altitude))
     map.setPaintProperty(SUN_SHADE_ID, 'hillshade-exaggeration', shade)
+    // White highlights would grey out a dark map.
+    map.setPaintProperty(SUN_SHADE_ID, 'hillshade-highlight-color', darkMap ? 'rgba(255, 255, 255, 0.12)' : '#ffffff')
     const tint = sunTint(altitude)
     map.setPaintProperty(SUN_TINT_ID, 'background-color', tint.color)
-    map.setPaintProperty(SUN_TINT_ID, 'background-opacity', tint.opacity)
-  }, [map, isLoaded, azimuth, altitude])
+    map.setPaintProperty(SUN_TINT_ID, 'background-opacity', darkMap ? tint.opacity / 2 : tint.opacity)
+  }, [map, isLoaded, azimuth, altitude, darkMap])
 
   return null
 }

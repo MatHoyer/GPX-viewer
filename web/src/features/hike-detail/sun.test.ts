@@ -70,12 +70,16 @@ describe('sunAtIndex', () => {
 describe('sunTint', () => {
   it('is clear by day and darkens into the night', () => {
     expect(sunTint(30).opacity).toBe(0)
-    expect(sunTint(5)).toEqual({ color: '#ff9a3c', opacity: 0.075 })
-    const dusk = sunTint(-3)
-    const night = sunTint(-9)
-    const deep = sunTint(-40)
-    expect(dusk.opacity).toBeCloseTo(0.325)
-    expect(night.opacity).toBeGreaterThan(dusk.opacity)
-    expect(deep.opacity).toBe(0.6)
+    expect(sunTint(6)).toEqual({ color: 'rgb(255, 154, 60)', opacity: 0.06 })
+    expect(sunTint(-4).opacity).toBeCloseTo(0.35)
+    expect(sunTint(-40)).toEqual({ color: 'rgb(29, 35, 82)', opacity: 0.6 })
+  })
+
+  it('blends across the horizon without jumps', () => {
+    const at = (alt: number) => sunTint(alt)
+    expect(at(0)).toEqual({ color: 'rgb(142, 95, 71)', opacity: 0.185 })
+    for (let alt = 12; alt > -14; alt -= 0.1) {
+      expect(Math.abs(at(alt).opacity - at(alt - 0.1).opacity)).toBeLessThan(0.01)
+    }
   })
 })
