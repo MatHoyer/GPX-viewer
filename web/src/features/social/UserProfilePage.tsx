@@ -11,6 +11,7 @@ import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import { doneHikes, type Hike } from '@/features/hikes/api'
+import { ESTIMATE_NOTE, estimatedDurationS } from '@/features/hikes/estimate'
 import { HikesMapView } from '@/features/hikes/HikesMapView'
 import { TaggedBy } from '@/features/hikes/TaggedBy'
 import { ApiError } from '@/lib/api'
@@ -196,10 +197,16 @@ function HikeList({ hikes, userId }: { hikes: Hike[] | undefined; userId: string
                         <MoveUpRight className="size-3" />
                         {formatElevation(h.elevationGainM)}
                       </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="size-3" />
-                        {formatDuration(h.durationS)}
-                      </span>
+                      {h.planned ? (
+                        <span className="inline-flex items-center gap-1" title={ESTIMATE_NOTE}>
+                          <Clock className="size-3" />~{formatDuration(estimatedDurationS(h.distanceM))}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="size-3" />
+                          {formatDuration(h.durationS)}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <ChevronRight className="text-muted-foreground size-4 shrink-0" />

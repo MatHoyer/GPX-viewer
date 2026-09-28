@@ -6,6 +6,7 @@ import { MapPopup } from '@/components/ui/map'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 
 import type { Hike } from './api'
+import { ESTIMATE_NOTE, estimatedDurationS } from './estimate'
 import { PlannedBadge } from './PlannedBadge'
 import { TaggedBy } from './TaggedBy'
 
@@ -48,7 +49,11 @@ export function HikePopup({ hike, userId, popup, color, onClose }: Props) {
         <dl className="grid grid-cols-3 gap-2 text-center">
           <Stat label="Distance" value={formatDistance(hike.distanceM)} />
           <Stat label="D+" value={formatElevation(hike.elevationGainM)} />
-          <Stat label="Duration" value={formatDuration(hike.durationS)} />
+          {hike.planned ? (
+            <Stat label="Est. time" value={`~${formatDuration(estimatedDurationS(hike.distanceM))}`} title={ESTIMATE_NOTE} />
+          ) : (
+            <Stat label="Duration" value={formatDuration(hike.durationS)} />
+          )}
         </dl>
         <Button asChild size="sm" className="w-full">
           <Link to={`/hikes/${hike.id}`}>
@@ -61,9 +66,9 @@ export function HikePopup({ hike, userId, popup, color, onClose }: Props) {
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div className="bg-muted/60 rounded-md px-1 py-1.5">
+    <div className="bg-muted/60 rounded-md px-1 py-1.5" title={title}>
       <dt className="text-muted-foreground text-[10px] tracking-wide uppercase">{label}</dt>
       <dd className="text-sm font-medium tabular-nums">{value}</dd>
     </div>
