@@ -20,7 +20,17 @@ func (f *fakeUsers) GetByID(_ context.Context, id uuid.UUID) (*domain.User, erro
 	return nil, domain.ErrNotFound
 }
 
-func (f *fakeUsers) ListUsers(context.Context) ([]domain.AdminUser, error) { return nil, nil }
+func (f *fakeUsers) ListUsers(context.Context, string, int, int) ([]domain.AdminUser, int64, error) {
+	return nil, 0, nil
+}
+
+func (f *fakeUsers) GetAdminUser(_ context.Context, id uuid.UUID) (*domain.AdminUser, error) {
+	u, err := f.GetByID(context.Background(), id)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.AdminUser{User: *u}, nil
+}
 
 func (f *fakeUsers) SetAdmin(_ context.Context, id uuid.UUID, admin bool) error {
 	u, ok := f.byID[id]
@@ -53,6 +63,12 @@ func (f *fakeUsers) DeletePending(_ context.Context, id uuid.UUID) error {
 }
 
 type fakeSessions struct{ revoked []uuid.UUID }
+
+func (f *fakeSessions) ListByUserID(context.Context, uuid.UUID, time.Time) ([]domain.Session, error) {
+	return nil, nil
+}
+
+func (f *fakeSessions) DeleteByID(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 
 func (f *fakeSessions) DeleteByUserID(_ context.Context, id uuid.UUID) error {
 	f.revoked = append(f.revoked, id)

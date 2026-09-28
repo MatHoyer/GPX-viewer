@@ -3,16 +3,22 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 
 	"github.com/MatHoyer/gpx-viewer/internal/delivery/http/dto"
 	"github.com/MatHoyer/gpx-viewer/internal/delivery/http/middleware"
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
+	"github.com/MatHoyer/gpx-viewer/internal/usecase/admin"
 )
 
 type AdminService interface {
-	ListUsers(ctx context.Context) ([]domain.AdminUser, error)
+	ListUsers(ctx context.Context, query string, page int) (*admin.UserPage, error)
+	GetUser(ctx context.Context, id uuid.UUID) (*domain.AdminUser, error)
+	Sessions(ctx context.Context, userID uuid.UUID) ([]domain.Session, error)
+	RevokeSession(ctx context.Context, userID, id uuid.UUID) error
+	RevokeSessions(ctx context.Context, userID uuid.UUID) error
 	Invite(ctx context.Context, email, name string, send bool) (*domain.User, string, bool, error)
 	ReissueInvite(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error)
 	RevokeInvite(ctx context.Context, targetID uuid.UUID) error
@@ -46,13 +52,64 @@ func (h *AdminHandler) Config(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dto.Config{RegistrationEnabled: h.registration.RegistrationEnabled(), RegistrationOpen: open})
 }
 
+// Users lists a page of users; ?q= searches emails and names, ?page= starts at 1.
 func (h *AdminHandler) Users(w http.ResponseWriter, r *http.Request) {
-	us, err := h.svc.ListUsers(r.Context())
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	page = max(page, 1)
+	p, err := h.svc.ListUsers(r.Context(), r.URL.Query().Get("q"), page)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, dto.NewAdminUsers(us))
+	writeJSON(w, http.StatusOK, dto.UserPage{Users: dto.NewAdminUsers(p.Users), Total: p.Total, Page: page, PageSize: admin.PageSize})
+}
+
+func (h *AdminHandler) User(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	u, err := h.svc.GetUser(r.Context(), id)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dto.NewAdminUser(u))
+}
+
+func (h *AdminHandler) Sessions(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	ss, err := h.svc.Sessions(r.Context(), id)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dto.NewSessions(ss, uuid.Nil))
+}
+
+// RevokeSession signs the user out of one device.
+func (h *AdminHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	sessionID, ok := parseParam(w, r, "sessionId")
+	if !ok {
+		return
+	}
+	h.respond(w, r, h.svc.RevokeSession(r.Context(), id, sessionID))
+}
+
+// RevokeSessions signs the user out everywhere; they can sign in again.
+func (h *AdminHandler) RevokeSessions(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	h.respond(w, r, h.svc.RevokeSessions(r.Context(), id))
 }
 
 // CreateUser invites someone, whether or not registration is enabled.

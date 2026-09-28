@@ -110,6 +110,42 @@ func (f *fakeSessions) DeleteByUserID(_ context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (f *fakeSessions) ListByUserID(_ context.Context, id uuid.UUID, now time.Time) ([]domain.Session, error) {
+	var out []domain.Session
+	for _, s := range f.byHash {
+		if s.UserID == id && now.Before(s.ExpiresAt) {
+			out = append(out, *s)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeSessions) Touch(_ context.Context, h string, at time.Time, ip string) error {
+	if s, ok := f.byHash[h]; ok {
+		s.LastUsedAt, s.IP = at, ip
+	}
+	return nil
+}
+
+func (f *fakeSessions) DeleteByID(_ context.Context, userID, id uuid.UUID) error {
+	for h, s := range f.byHash {
+		if s.UserID == userID && s.ID == id {
+			delete(f.byHash, h)
+			return nil
+		}
+	}
+	return domain.ErrNotFound
+}
+
+func (f *fakeSessions) DeleteOthers(_ context.Context, userID uuid.UUID, keep string) error {
+	for h, s := range f.byHash {
+		if s.UserID == userID && h != keep {
+			delete(f.byHash, h)
+		}
+	}
+	return nil
+}
+
 func (f *fakeSessions) DeleteExpired(_ context.Context, now time.Time) error {
 	for h, s := range f.byHash {
 		if !now.Before(s.ExpiresAt) {
@@ -697,5 +733,91 @@ func TestLastAdminCannotDeleteAccount(t *testing.T) {
 	other.IsAdmin = true
 	if err := e.svc.DeleteAccount(ctx, admin.ID, "password123"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSessions(t *testing.T) {
+	e := newTestEnv(t)
+	e.registerVerified(t, "a@b.co", "password123")
+	laptop := domain.WithClient(context.Background(), domain.Client{UserAgent: "Firefox", IP: "10.0.0.1"})
+	phone := domain.WithClient(context.Background(), domain.Client{UserAgent: "Safari", IP: "10.0.0.2"})
+	lt, _, err := e.svc.Login(laptop, "a@b.co", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pt, _, err := e.svc.Login(phone, "a@b.co", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := e.svc.Authenticate(laptop, lt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, current, err := e.svc.Sessions(laptop, u.ID, lt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The verification link started a session too.
+	if len(list) != 3 {
+		t.Fatalf("sessions = %d, want 3", len(list))
+	}
+	var laptopID, phoneID uuid.UUID
+	for _, s := range list {
+		switch s.UserAgent {
+		case "Firefox":
+			laptopID = s.ID
+			if s.IP != "10.0.0.1" {
+				t.Errorf("laptop ip = %q", s.IP)
+			}
+		case "Safari":
+			phoneID = s.ID
+		}
+	}
+	if current != laptopID || laptopID == uuid.Nil {
+		t.Errorf("current = %v, laptop = %v", current, laptopID)
+	}
+
+	var ve *domain.ValidationError
+	if err := e.svc.RevokeSession(laptop, u.ID, laptopID, lt); !errors.As(err, &ve) {
+		t.Errorf("revoke current err = %v", err)
+	}
+	if err := e.svc.RevokeSession(laptop, u.ID, phoneID, lt); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.Authenticate(phone, pt); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Errorf("revoked session err = %v", err)
+	}
+	if err := e.svc.RevokeOtherSessions(laptop, u.ID, lt); err != nil {
+		t.Fatal(err)
+	}
+	if list, _, _ := e.svc.Sessions(laptop, u.ID, lt); len(list) != 1 || list[0].ID != laptopID {
+		t.Errorf("after revoking others = %+v", list)
+	}
+}
+
+func TestAuthenticateTouchesStaleSession(t *testing.T) {
+	e := newTestEnv(t)
+	e.registerVerified(t, "a@b.co", "password123")
+	token, sess, err := e.svc.Login(context.Background(), "a@b.co", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := sess.LastUsedAt
+	later := domain.WithClient(context.Background(), domain.Client{IP: "10.0.0.9"})
+
+	e.svc.now = func() time.Time { return start.Add(time.Minute) }
+	if _, err := e.svc.Authenticate(later, token); err != nil {
+		t.Fatal(err)
+	}
+	if sess.LastUsedAt != start {
+		t.Error("touched a fresh session")
+	}
+	e.svc.now = func() time.Time { return start.Add(10 * time.Minute) }
+	if _, err := e.svc.Authenticate(later, token); err != nil {
+		t.Fatal(err)
+	}
+	if !sess.LastUsedAt.Equal(start.Add(10*time.Minute)) || sess.IP != "10.0.0.9" {
+		t.Errorf("session = %+v", sess)
 	}
 }

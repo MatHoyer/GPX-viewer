@@ -31,7 +31,7 @@ type Deps struct {
 
 func NewRouter(d Deps) http.Handler {
 	r := chi.NewRouter()
-	r.Use(chimw.RequestID, middleware.CloudflareIP, chimw.Logger, chimw.Recoverer)
+	r.Use(chimw.RequestID, middleware.CloudflareIP, middleware.ClientInfo, chimw.Logger, chimw.Recoverer)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(middleware.RejectCrossSite)
@@ -65,6 +65,9 @@ func NewRouter(d Deps) http.Handler {
 
 			r.Patch("/me", d.Account.Update)
 			r.With(deleteAccount.ByUser).Delete("/me", d.Auth.DeleteAccount)
+			r.Get("/me/sessions", d.Auth.Sessions)
+			r.Delete("/me/sessions", d.Auth.RevokeOtherSessions)
+			r.Delete("/me/sessions/{id}", d.Auth.RevokeSession)
 
 			r.Get("/hikes", d.Hikes.List)
 			r.Post("/hikes", d.Hikes.Upload)
@@ -92,6 +95,10 @@ func NewRouter(d Deps) http.Handler {
 			r.Route("/admin", func(r chi.Router) {
 				r.Use(middleware.RequireAdmin)
 				r.Get("/users", d.Admin.Users)
+				r.Get("/users/{id}", d.Admin.User)
+				r.Get("/users/{id}/sessions", d.Admin.Sessions)
+				r.Delete("/users/{id}/sessions", d.Admin.RevokeSessions)
+				r.Delete("/users/{id}/sessions/{sessionId}", d.Admin.RevokeSession)
 				r.Post("/users", d.Admin.CreateUser)
 				r.Post("/users/{id}/invite", d.Admin.Invite)
 				r.Delete("/users/{id}/invite", d.Admin.RevokeInvite)

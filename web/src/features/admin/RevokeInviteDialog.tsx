@@ -18,10 +18,12 @@ import { useRevokeInvite } from './useAdmin'
 type Props = {
   user: AdminUser | null
   onClose: () => void
+  /** Called once the account is gone. */
+  onRevoked?: () => void
 }
 
 /** Confirms deleting a pending account, which voids its invite link. */
-export function RevokeInviteDialog({ user, onClose }: Props) {
+export function RevokeInviteDialog({ user, onClose, onRevoked }: Props) {
   const revoke = useRevokeInvite()
 
   function onOpenChange(open: boolean) {
@@ -35,7 +37,8 @@ export function RevokeInviteDialog({ user, onClose }: Props) {
     revoke.mutate(user.id, {
       onSuccess: () => {
         toast.success(`Invite for ${user.email} revoked`)
-        onOpenChange(false)
+        onClose()
+        onRevoked?.()
       },
     })
   }

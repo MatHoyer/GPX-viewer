@@ -61,14 +61,17 @@ type AdminUser struct {
 	User
 	// Hikes counts the hikes they own.
 	Hikes int64
-	// LastSeenAt is when their most recent live session started.
+	// LastSeenAt is when they last used any live session.
 	LastSeenAt *time.Time
 }
 
 // AdminRepository manages accounts on behalf of admins.
 type AdminRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
-	ListUsers(ctx context.Context) ([]AdminUser, error)
+	// ListUsers returns a page of users matching query (in email or name, all
+	// when empty), oldest first, and how many match in total.
+	ListUsers(ctx context.Context, query string, limit, offset int) ([]AdminUser, int64, error)
+	GetAdminUser(ctx context.Context, id uuid.UUID) (*AdminUser, error)
 	SetAdmin(ctx context.Context, id uuid.UUID, admin bool) error
 	// SetBan bans the user when at is set, and lifts the ban when it is nil.
 	SetBan(ctx context.Context, id uuid.UUID, at *time.Time, reason string) error

@@ -16,7 +16,7 @@ docker compose up --build
 
 Open http://localhost:8080, create an account and import `.gpx` files. The email verification link lands in Mailpit at http://localhost:8025.
 
-The first account becomes the admin. The admin panel (`/admin`, from the account menu) lists users, invites people, bans them with a reason they see when they try to sign in, and makes other users admins. Set `REGISTRATION_ENABLED=false` to make the instance invite-only: the first account can still sign up, then only admins add people, by invite link (copied or emailed).
+The first account becomes the admin. The admin panel (`/admin`, from the account menu) lists users (paginated and searchable, each with a page showing their sessions), invites people, bans them with a reason they see when they try to sign in, and makes other users admins. Set `REGISTRATION_ENABLED=false` to make the instance invite-only: the first account can still sign up, then only admins add people, by invite link (copied or emailed).
 
 ## Development
 
@@ -61,7 +61,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 ### Data
 
-- `users` (with a `visibility`: `private`, `friends` or `public`, `email_verified_at`, `is_admin`, and `banned_at`/`ban_reason`; on startup the oldest user is made admin if there is none), `sessions` (server-side, only the SHA-256 of the token is stored), `email_verifications` (one pending link per user, hashed like sessions, valid 24h), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike), `hike_labels` (the owner's free-form labels; "labels" because tagging means adding a friend).
+- `users` (with a `visibility`: `private`, `friends` or `public`, `email_verified_at`, `is_admin`, and `banned_at`/`ban_reason`; on startup the oldest user is made admin if there is none), `sessions` (server-side, only the SHA-256 of the token is stored, with a public `id`, the user agent and IP of the sign-in, and `last_used_at`, refreshed with the IP at most every 5 minutes), `email_verifications` (one pending link per user, hashed like sessions, valid 24h), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike), `hike_labels` (the owner's free-form labels; "labels" because tagging means adding a friend).
 - Avatars are [blobatars](https://github.com/Alain00/blobatar) generated from the user id; there is no picture upload.
 - A hike is visible to whoever may see its owner's hikes or those of a tagged participant; anything else answers 404.
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.
@@ -81,6 +81,9 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | POST | `/api/auth/logout` | |
 | GET | `/api/auth/me` | current user (`name`, `visibility`, `createdAt`) |
 | PATCH | `/api/me` | `{name}` to set the display name (empty clears it), `{visibility}` to set who sees your hikes |
+| GET | `/api/me/sessions` | your live sessions (`id`, `userAgent`, `ip`, `createdAt`, `lastUsedAt`, `expiresAt`, `current`), most recently used first |
+| DELETE | `/api/me/sessions/{id}` | sign out one of your other devices; the current session is refused |
+| DELETE | `/api/me/sessions` | sign out every device but this one |
 | DELETE | `/api/me` | `{password}`; permanently deletes the account with its hikes, tags, friendships, kudos and comments, and signs out |
 | GET | `/api/hikes` | your hikes and those you are tagged on, with stats, bounds, `owner` and `participants` |
 | POST | `/api/hikes` | multipart `files` (one or more GPX), per-file results; `?planned=true` stores them as planned routes, without times or sensor data |
@@ -111,7 +114,10 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/friends` | `{friends, incoming, outgoing}` |
 | PUT | `/api/friends/{id}` | send a friend request, or accept theirs |
 | DELETE | `/api/friends/{id}` | unfriend, cancel or decline |
-| GET | `/api/admin/users` | admins only: every user with `isAdmin`, `emailVerifiedAt`, `bannedAt`, `banReason`, `hikes`, `lastSeenAt` |
+| GET | `/api/admin/users` | admins only: `{users, total, page, pageSize}`, 20 users a page (`?page=`, from 1), oldest first, `?q=` searches emails and names; each with `isAdmin`, `emailVerifiedAt`, `bannedAt`, `banReason`, `hikes`, `lastSeenAt` |
+| GET | `/api/admin/users/{id}` | one user, same fields |
+| GET | `/api/admin/users/{id}/sessions` | their live sessions |
+| DELETE | `/api/admin/users/{id}/sessions/{sessionId}` / `/sessions` | sign them out of one device / everywhere; unlike a ban, they can sign in again |
 | POST | `/api/admin/users` | `{email, name, sendEmail}`: creates the account and returns `{user, inviteLink, emailSent}`; the `/reset-password?invite=1&token=` link is valid 7 days |
 | POST | `/api/admin/users/{id}/invite` | `{sendEmail}`: new invite link for a user who has not signed in yet |
 | DELETE | `/api/admin/users/{id}/invite` | revoke the invite: deletes the account if it never signed in and owns no hikes, voiding its link |

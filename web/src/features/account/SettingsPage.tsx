@@ -9,6 +9,7 @@ import { FloatingInput } from '@/components/ui/floating-input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import type { User, Visibility } from '@/features/auth/api'
 import { useChangePassword, useMe, useRequestPasswordReset } from '@/features/auth/useAuth'
+import { SessionsCard } from '@/features/sessions/SessionsCard'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -34,6 +35,7 @@ export function SettingsPage() {
             {/* Keyed so the form resets if the saved name changes elsewhere. */}
             <DetailsCard key={me.data.name} user={me.data} />
             <PasswordCard user={me.data} />
+            <SessionsCard />
             <VisibilityCard user={me.data} />
             <ExportCard />
             <AppearanceCard />
