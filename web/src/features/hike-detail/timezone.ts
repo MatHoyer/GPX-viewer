@@ -27,3 +27,43 @@ export function useTimeZone(start: [number, number] | undefined): string | undef
   })
   return data ?? undefined
 }
+
+/** Local wall-clock parts of date in timeZone (the viewer's when undefined). */
+function wallClock(date: Date, timeZone?: string): Record<string, number> {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(date)
+  return Object.fromEntries(parts.filter((p) => p.type !== 'literal').map((p) => [p.type, Number(p.value)]))
+}
+
+/** How far timeZone is ahead of UTC at date, in ms. */
+function offsetMs(date: Date, timeZone?: string): number {
+  const c = wallClock(date, timeZone)
+  return Date.UTC(c.year, c.month - 1, c.day, c.hour, c.minute, c.second) - Math.floor(date.getTime() / 1000) * 1000
+}
+
+/** A datetime-local input value ("2026-07-01T08:00") for date as read in timeZone. */
+export function toLocalInput(date: Date, timeZone?: string): string {
+  const c = wallClock(date, timeZone)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${c.year}-${pad(c.month)}-${pad(c.day)}T${pad(c.hour)}:${pad(c.minute)}`
+}
+
+/** The instant a datetime-local input value names in timeZone; null when the value is empty or malformed. */
+export function fromLocalInput(value: string, timeZone?: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value)
+  if (!m) return null
+  const [y, mo, d, h, mi] = m.slice(1).map(Number)
+  const asUtc = Date.UTC(y, mo - 1, d, h, mi)
+  // Correct by the zone's offset, twice so a guess on the far side of a DST change settles.
+  let t = asUtc - offsetMs(new Date(asUtc), timeZone)
+  t = asUtc - offsetMs(new Date(t), timeZone)
+  return new Date(t)
+}

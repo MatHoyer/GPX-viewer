@@ -25,6 +25,7 @@ import { MarkDoneDialog } from './MarkDoneDialog'
 import { NotesBlock } from './NotesBlock'
 import { HikeStats } from './HikeStats'
 import { Participants } from './Participants'
+import { PlannedStart } from './PlannedStart'
 import { ProfileCharts } from './ProfileCharts'
 import { RecordBadge } from './RecordBadge'
 import { SameRoute } from './SameRoute'
@@ -151,6 +152,9 @@ export function HikePage() {
             start={start}
             timeZone={timeZone}
           /> : <Skeleton className="h-20 w-full" />}
+        {hike.data?.planned && profile.data && start && (
+          <PlannedStart distanceM={profile.data.summary.distanceM} start={start} timeZone={timeZone} />
+        )}
         {hike.data && (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
