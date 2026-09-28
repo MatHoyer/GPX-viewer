@@ -23,14 +23,14 @@ describe('lightBands', () => {
     // 17:00, 17:30, 18:15, 19:00, 19:30
     const p = profile([0, 1800, 4500, 7200, 9000])
     expect(lightBands(p, EQUINOX)).toEqual([
-      { from: 1.5, to: 2.5, light: 'twilight' },
-      { from: 2.5, to: 4, light: 'night' },
+      { from: 1.5, to: 2.5, light: 'twilight', rising: false },
+      { from: 2.5, to: 4, light: 'night', rising: false },
     ])
   })
 
   it('keeps the previous light across missing times', () => {
     const p = profile([0, 7200, null, 9000])
-    expect(lightBands(p, EQUINOX)).toEqual([{ from: 0.5, to: 3, light: 'night' }])
+    expect(lightBands(p, EQUINOX)).toEqual([{ from: 0.5, to: 3, light: 'night', rising: false }])
   })
 
   it('has no bands in daylight, without times or without a start', () => {
@@ -41,7 +41,16 @@ describe('lightBands', () => {
 
   it('shades the whole hike during polar night', () => {
     const p = profile([0, 3600], 80)
-    expect(lightBands(p, '2026-12-21T12:00:00Z')).toEqual([{ from: 0, to: 1, light: 'night' }])
+    expect(lightBands(p, '2026-12-21T12:00:00Z')).toMatchObject([{ from: 0, to: 1, light: 'night' }])
+  })
+
+  it('tells dawn from dusk', () => {
+    // 05:30 and 05:55 UTC: night, then civil twilight before the ~06:04 sunrise.
+    const p = profile([0, 1500])
+    expect(lightBands(p, '2026-03-20T05:30:00Z')).toEqual([
+      { from: 0, to: 0.5, light: 'night', rising: true },
+      { from: 0.5, to: 1, light: 'twilight', rising: true },
+    ])
   })
 })
 

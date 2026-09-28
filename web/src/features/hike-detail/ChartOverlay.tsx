@@ -1,3 +1,4 @@
+import { Moon, Sunrise, Sunset } from 'lucide-react'
 import { useRef, useState, type PointerEvent } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -13,6 +14,8 @@ type Props = {
   showXAxis: boolean
   /** Stretches walked in twilight or at night, shaded under the lines. */
   bands?: LightBand[]
+  /** Mark bands with a twilight or night icon; one chart is enough. */
+  bandIcons?: boolean
 }
 
 type Drag = { mode: 'seek' } | { mode: 'brush'; start: number }
@@ -24,7 +27,7 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
  * replay-store updates (hover, seek, shift-drag range) and draws the synced
  * head and hover lines, so Recharts never re-renders during interaction.
  */
-export function ChartOverlay({ xs, domain, showXAxis, bands = [] }: Props) {
+export function ChartOverlay({ xs, domain, showXAxis, bands = [], bandIcons = false }: Props) {
   const pos = useReplay((s) => s.pos)
   const hover = useReplay((s) => s.hover)
   const drag = useRef<Drag | null>(null)
@@ -92,12 +95,19 @@ export function ChartOverlay({ xs, domain, showXAxis, bands = [] }: Props) {
         const from = clamp01(toFrac(b.from))
         const to = clamp01(toFrac(b.to))
         if (to <= from) return null
+        const night = b.light === 'night'
+        const Icon = night ? Moon : b.rising ? Sunrise : Sunset
         return (
           <div
             key={b.from}
-            className={cn('pointer-events-none absolute inset-y-0', b.light === 'night' ? 'bg-foreground/15' : 'bg-foreground/[0.07]')}
+            className={cn('pointer-events-none absolute inset-y-0 flex justify-center', night ? 'bg-foreground/15' : 'bg-foreground/[0.07]')}
             style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%` }}
-          />
+          >
+            {/* Too narrow a band would clip its icon. */}
+            {bandIcons && to - from > 0.04 && (
+              <Icon className="text-muted-foreground mt-1 size-3.5" role="img" aria-label={night ? 'Night' : b.rising ? 'Dawn' : 'Dusk'} />
+            )}
+          </div>
         )
       })}
       {brush && (

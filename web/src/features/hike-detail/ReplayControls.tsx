@@ -1,4 +1,4 @@
-import { Crosshair, Moon, Pause, Play, SkipBack, Sun, Sunset, type LucideIcon } from 'lucide-react'
+import { Crosshair, Moon, Pause, Play, SkipBack, Sun, Sunrise, Sunset, type LucideIcon } from 'lucide-react'
 import { useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { formatClock, formatDistance, formatTime } from '@/lib/format'
 
 import { valueAt, type Profile } from './profile'
 import { replaySpeeds, useReplay, visibleSpan } from './store'
-import { sunAtIndex } from './sun'
+import { sunAtIndex, type SunPosition } from './sun'
 
 /** startedAt turns the replay's elapsed time into the time of day. */
 export function ReplayControls({ profile, startedAt = null }: { profile: Profile; startedAt?: string | null }) {
@@ -76,10 +76,11 @@ export function ReplayControls({ profile, startedAt = null }: { profile: Profile
 
 type Item = { label: string; value: string; icon?: LucideIcon }
 
-/** Sun up, near the horizon (golden hour and twilight), or night. */
-function sunIcon(altitude: number): LucideIcon {
+/** Sun up, near the horizon (golden hour and twilight, rising or setting), or night. */
+function sunIcon({ altitude, rising }: SunPosition): LucideIcon {
   if (altitude > 6) return Sun
-  return altitude > -6 ? Sunset : Moon
+  if (altitude <= -6) return Moon
+  return rising ? Sunrise : Sunset
 }
 
 function Readout({ profile, pos, startedAt }: { profile: Profile; pos: number; startedAt: string | null }) {
@@ -94,7 +95,7 @@ function Readout({ profile, pos, startedAt }: { profile: Profile; pos: number; s
       startedAt && {
         label: 'Time of day',
         value: formatTime(new Date(new Date(startedAt).getTime() + t * 1000)),
-        icon: sun ? sunIcon(sun.altitude) : undefined,
+        icon: sun ? sunIcon(sun) : undefined,
       },
     t !== null && { label: 'Elapsed', value: formatClock(t) },
     { label: 'Distance', value: formatDistance(dist) },

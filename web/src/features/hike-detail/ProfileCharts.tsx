@@ -42,18 +42,6 @@ export function ProfileCharts({ profile, startedAt }: { profile: Profile; starte
             Time
           </ToggleGroupItem>
         </ToggleGroup>
-        {bands.length > 0 && (
-          <div className="text-muted-foreground flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1.5">
-              <span className="bg-foreground/[0.07] size-3 rounded-sm border" />
-              Twilight
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="bg-foreground/15 size-3 rounded-sm border" />
-              Night
-            </span>
-          </div>
-        )}
         <Button variant="ghost" size="sm" disabled={!range} onClick={() => useReplay.getState().setRange(null)}>
           <ZoomOut />
           Reset zoom
@@ -92,7 +80,7 @@ export function ProfileCharts({ profile, startedAt }: { profile: Profile; starte
           </div>
           <div className="relative">
             <ProfileChart series={s} xs={xs} domain={domain} axis={axis} showXAxis={i === series.length - 1} />
-            <ChartOverlay xs={xs} domain={domain} showXAxis={i === series.length - 1} bands={bands} />
+            <ChartOverlay xs={xs} domain={domain} showXAxis={i === series.length - 1} bands={bands} bandIcons={i === 0} />
           </div>
         </section>
       ))}

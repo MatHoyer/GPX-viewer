@@ -8,13 +8,20 @@ const CIVIL_DUSK_ALT = -6
 
 export type Light = 'twilight' | 'night'
 
-/** A run of profile points, by fractional index, walked in twilight or at night. */
-export type LightBand = { from: number; to: number; light: Light }
+/**
+ * A run of profile points, by fractional index, walked in twilight or at
+ * night; rising tells dawn from dusk.
+ */
+export type LightBand = { from: number; to: number; light: Light; rising: boolean }
 
-function lightAt(date: Date, lat: number, lon: number): Light | null {
-  const alt = getPosition(date, lat, lon).altitude
-  if (alt > SUNSET_ALT) return null
-  return alt > CIVIL_DUSK_ALT ? 'twilight' : 'night'
+function lightOf(altitude: number): Light | null {
+  if (altitude > SUNSET_ALT) return null
+  return altitude > CIVIL_DUSK_ALT ? 'twilight' : 'night'
+}
+
+/** Whether the sun is climbing, judged over the next ten minutes. */
+function isRising(date: Date, lat: number, lon: number, altitude: number): boolean {
+  return getPosition(new Date(date.getTime() + 600_000), lat, lon).altitude > altitude
 }
 
 /**
@@ -29,15 +36,20 @@ export function lightBands(p: Profile, startedAt: string | null): LightBand[] {
   let prev: Light | null = null
   for (let i = 0; i < p.t.length; i++) {
     const t = p.t[i]
+    const date = t === null ? null : new Date(t0 + t * 1000)
+    const altitude = date && getPosition(date, p.lat[i], p.lon[i]).altitude
     // Points without a time keep the light of the previous one.
-    const light: Light | null = t === null ? prev : lightAt(new Date(t0 + t * 1000), p.lat[i], p.lon[i])
+    const light: Light | null = altitude === null ? prev : lightOf(altitude)
     const last = bands.at(-1)
     if (light !== null && light === prev && last) {
       last.to = i
     } else {
       const edge = Math.max(0, i - 0.5)
       if (prev !== null && last) last.to = edge
-      if (light !== null) bands.push({ from: edge, to: i, light })
+      if (light !== null) {
+        const rising = date !== null && altitude !== null && isRising(date, p.lat[i], p.lon[i], altitude)
+        bands.push({ from: edge, to: i, light, rising })
+      }
     }
     prev = light
   }
@@ -52,7 +64,7 @@ export function daylightAt(startedAt: string, lat: number, lon: number): Dayligh
   return { sunrise: times.sunrise, sunset: times.sunset, alwaysUp: !!times.alwaysUp, alwaysDown: !!times.alwaysDown }
 }
 
-export type SunPosition = { azimuth: number; altitude: number }
+export type SunPosition = { azimuth: number; altitude: number; rising: boolean }
 
 /** Where the sun stands, in degrees, at a fractional profile index; null without a time there. */
 export function sunAtIndex(p: Profile, startedAt: string | null, f: number): SunPosition | null {
@@ -60,8 +72,9 @@ export function sunAtIndex(p: Profile, startedAt: string | null, f: number): Sun
   const t = valueAt(p.t, f)
   if (t === null) return null
   const [lon, lat] = positionAt(p, f)
-  const { azimuth, altitude } = getPosition(new Date(new Date(startedAt).getTime() + t * 1000), lat, lon)
-  return { azimuth, altitude }
+  const date = new Date(new Date(startedAt).getTime() + t * 1000)
+  const { azimuth, altitude } = getPosition(date, lat, lon)
+  return { azimuth, altitude, rising: isRising(date, lat, lon, altitude) }
 }
 
 export type SunTint = { color: string; opacity: number }
