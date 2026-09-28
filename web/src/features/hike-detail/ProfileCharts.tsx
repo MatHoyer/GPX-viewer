@@ -11,8 +11,10 @@ import { xAt, xValues, type Axis, type Profile } from './profile'
 import { RangeBrush } from './RangeBrush'
 import { buildSeries, type SpeedUnit } from './series'
 import { useReplay, visibleSpan } from './store'
+import { lightBands } from './sun'
 
-export function ProfileCharts({ profile }: { profile: Profile }) {
+/** startedAt places the profile's relative times in the day, to shade night. */
+export function ProfileCharts({ profile, startedAt }: { profile: Profile; startedAt: string | null }) {
   const axis = useReplay((s) => s.axis)
   const range = useReplay((s) => s.range)
   const count = useReplay((s) => s.count)
@@ -20,6 +22,7 @@ export function ProfileCharts({ profile }: { profile: Profile }) {
 
   const xs = useMemo(() => xValues(profile, axis), [profile, axis])
   const series = useMemo(() => buildSeries(profile, speedUnit), [profile, speedUnit])
+  const bands = useMemo(() => lightBands(profile, startedAt), [profile, startedAt])
   const [lo, hi] = visibleSpan({ range, count })
   const domain = useMemo<[number, number]>(() => [xAt(xs, lo), xAt(xs, hi)], [xs, lo, hi])
 
@@ -39,6 +42,18 @@ export function ProfileCharts({ profile }: { profile: Profile }) {
             Time
           </ToggleGroupItem>
         </ToggleGroup>
+        {bands.length > 0 && (
+          <div className="text-muted-foreground flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1.5">
+              <span className="bg-foreground/[0.07] size-3 rounded-sm border" />
+              Twilight
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="bg-foreground/15 size-3 rounded-sm border" />
+              Night
+            </span>
+          </div>
+        )}
         <Button variant="ghost" size="sm" disabled={!range} onClick={() => useReplay.getState().setRange(null)}>
           <ZoomOut />
           Reset zoom
@@ -77,7 +92,7 @@ export function ProfileCharts({ profile }: { profile: Profile }) {
           </div>
           <div className="relative">
             <ProfileChart series={s} xs={xs} domain={domain} axis={axis} showXAxis={i === series.length - 1} />
-            <ChartOverlay xs={xs} domain={domain} showXAxis={i === series.length - 1} />
+            <ChartOverlay xs={xs} domain={domain} showXAxis={i === series.length - 1} bands={bands} />
           </div>
         </section>
       ))}

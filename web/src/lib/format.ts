@@ -20,6 +20,12 @@ export function formatDate(iso: string | null): string | null {
   return iso ? dateFormatter.format(new Date(iso)) : null
 }
 
+const timeFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
+
+export function formatTime(date: Date): string {
+  return timeFormatter.format(date)
+}
+
 export function formatClock(seconds: number): string {
   const s = Math.max(0, Math.round(seconds))
   const h = Math.floor(s / 3600)

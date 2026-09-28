@@ -1,0 +1,53 @@
+import { getPosition, getTimes } from 'suncalc'
+
+import type { Profile } from './profile'
+
+/** Sun altitudes (degrees) below which it is twilight, then night (civil twilight). */
+const SUNSET_ALT = -0.833
+const CIVIL_DUSK_ALT = -6
+
+export type Light = 'twilight' | 'night'
+
+/** A run of profile points, by fractional index, walked in twilight or at night. */
+export type LightBand = { from: number; to: number; light: Light }
+
+function lightAt(date: Date, lat: number, lon: number): Light | null {
+  const alt = getPosition(date, lat, lon).altitude
+  if (alt > SUNSET_ALT) return null
+  return alt > CIVIL_DUSK_ALT ? 'twilight' : 'night'
+}
+
+/**
+ * Stretches of a timed hike walked outside daylight. The profile's times are
+ * seconds since startedAt; each band ends halfway to the next point so bands
+ * meet without gaps.
+ */
+export function lightBands(p: Profile, startedAt: string | null): LightBand[] {
+  if (!startedAt || !p.has.time || !p.t) return []
+  const t0 = new Date(startedAt).getTime()
+  const bands: LightBand[] = []
+  let prev: Light | null = null
+  for (let i = 0; i < p.t.length; i++) {
+    const t = p.t[i]
+    // Points without a time keep the light of the previous one.
+    const light: Light | null = t === null ? prev : lightAt(new Date(t0 + t * 1000), p.lat[i], p.lon[i])
+    const last = bands.at(-1)
+    if (light !== null && light === prev && last) {
+      last.to = i
+    } else {
+      const edge = Math.max(0, i - 0.5)
+      if (prev !== null && last) last.to = edge
+      if (light !== null) bands.push({ from: edge, to: i, light })
+    }
+    prev = light
+  }
+  return bands
+}
+
+export type DaylightTimes = { sunrise: Date | null; sunset: Date | null; alwaysUp: boolean; alwaysDown: boolean }
+
+/** Sunrise and sunset at the start of a hike, on the day it started. */
+export function daylightAt(startedAt: string, lat: number, lon: number): DaylightTimes {
+  const times = getTimes(new Date(startedAt), lat, lon)
+  return { sunrise: times.sunrise, sunset: times.sunset, alwaysUp: !!times.alwaysUp, alwaysDown: !!times.alwaysDown }
+}

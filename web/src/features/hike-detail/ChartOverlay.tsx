@@ -1,13 +1,18 @@
 import { useRef, useState, type PointerEvent } from 'react'
 
+import { cn } from '@/lib/utils'
+
 import { CHART } from './layout'
 import { indexAt, xAt } from './profile'
 import { useReplay } from './store'
+import type { LightBand } from './sun'
 
 type Props = {
   xs: number[]
   domain: [number, number]
   showXAxis: boolean
+  /** Stretches walked in twilight or at night, shaded under the lines. */
+  bands?: LightBand[]
 }
 
 type Drag = { mode: 'seek' } | { mode: 'brush'; start: number }
@@ -19,7 +24,7 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
  * replay-store updates (hover, seek, shift-drag range) and draws the synced
  * head and hover lines, so Recharts never re-renders during interaction.
  */
-export function ChartOverlay({ xs, domain, showXAxis }: Props) {
+export function ChartOverlay({ xs, domain, showXAxis, bands = [] }: Props) {
   const pos = useReplay((s) => s.pos)
   const hover = useReplay((s) => s.hover)
   const drag = useRef<Drag | null>(null)
@@ -83,6 +88,18 @@ export function ChartOverlay({ xs, domain, showXAxis }: Props) {
       onPointerLeave={() => !drag.current && useReplay.getState().setHover(null)}
       onDoubleClick={() => useReplay.getState().setRange(null)}
     >
+      {bands.map((b) => {
+        const from = clamp01(toFrac(b.from))
+        const to = clamp01(toFrac(b.to))
+        if (to <= from) return null
+        return (
+          <div
+            key={b.from}
+            className={cn('pointer-events-none absolute inset-y-0', b.light === 'night' ? 'bg-foreground/15' : 'bg-foreground/[0.07]')}
+            style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%` }}
+          />
+        )
+      })}
       {brush && (
         <div
           className="bg-primary/15 border-primary/40 absolute inset-y-0 border-x"
