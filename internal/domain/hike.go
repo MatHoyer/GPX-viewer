@@ -107,6 +107,8 @@ type HikeRepository interface {
 	// Find returns a hike whoever owns it, without geometry or raw GPX.
 	Find(ctx context.Context, id uuid.UUID) (*Hike, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
+	// DeleteMany deletes those of ids the user owns and returns how many.
+	DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) (int64, error)
 	Update(ctx context.Context, userID, id uuid.UUID, u HikeUpdate) error
 	// ListLabels returns the labels on a user's own hikes, most used first.
 	ListLabels(ctx context.Context, userID uuid.UUID) ([]string, error)

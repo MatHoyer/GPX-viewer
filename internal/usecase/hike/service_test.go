@@ -62,6 +62,16 @@ func (f *fakeRepo) Delete(_ context.Context, userID, id uuid.UUID) error {
 	return domain.ErrNotFound
 }
 
+func (f *fakeRepo) DeleteMany(_ context.Context, userID uuid.UUID, ids []uuid.UUID) (int64, error) {
+	var n int64
+	for _, id := range ids {
+		if f.Delete(context.Background(), userID, id) == nil {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (f *fakeRepo) Update(ctx context.Context, userID, id uuid.UUID, u domain.HikeUpdate) error {
 	h, err := f.GetByID(ctx, userID, id)
 	if err != nil {
@@ -454,7 +464,7 @@ func TestExportOwnedOnly(t *testing.T) {
 	}
 
 	var got []string
-	err = svc.Export(ctx, alice, func(h *domain.Hike, raw []byte) error {
+	err = svc.Export(ctx, alice, nil, func(h *domain.Hike, raw []byte) error {
 		got = append(got, h.ID.String()+":"+string(raw))
 		return nil
 	})
@@ -612,5 +622,52 @@ func TestCardNeedsAccess(t *testing.T) {
 	}
 	if _, _, err := svc.Card(ctx, uuid.Nil, h.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("anonymous card err = %v", err)
+	}
+}
+
+func TestBulkExportAndDelete(t *testing.T) {
+	ctx := context.Background()
+	repo := &fakeRepo{}
+	alice, bob := uuid.New(), uuid.New()
+	svc := NewService(repo, fakeParser{res: &domain.ParsedTrack{Segments: twoPoints}},
+		ownerOnly{friends: map[uuid.UUID]bool{alice: true, bob: true}})
+	var mine []uuid.UUID
+	for _, name := range []string{"a", "b", "c"} {
+		h, err := svc.Import(ctx, alice, name+".gpx", []byte(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		mine = append(mine, h.ID)
+	}
+	theirs, err := svc.Import(ctx, bob, "theirs.gpx", []byte("theirs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got []uuid.UUID
+	collect := func(h *domain.Hike, _ []byte) error { got = append(got, h.ID); return nil }
+	if err := svc.Export(ctx, alice, []uuid.UUID{mine[0], mine[2], theirs.ID}, collect); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Errorf("exported %v, want the 2 selected hikes alice owns", got)
+	}
+	var ve *domain.ValidationError
+	if err := svc.Export(ctx, alice, []uuid.UUID{}, collect); !errors.As(err, &ve) {
+		t.Errorf("empty selection err = %v", err)
+	}
+
+	n, err := svc.DeleteMany(ctx, alice, []uuid.UUID{mine[0], mine[1], theirs.ID})
+	if err != nil || n != 2 {
+		t.Fatalf("deleted %d, %v; want 2", n, err)
+	}
+	if _, err := repo.Find(ctx, theirs.ID); err != nil {
+		t.Error("deleted a hike alice does not own")
+	}
+	if _, err := repo.Find(ctx, mine[2]); err != nil {
+		t.Error("deleted an unselected hike")
+	}
+	if _, err := svc.DeleteMany(ctx, alice, make([]uuid.UUID, MaxBulk+1)); !errors.As(err, &ve) {
+		t.Errorf("too many err = %v", err)
 	}
 }

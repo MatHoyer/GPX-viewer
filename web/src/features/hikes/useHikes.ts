@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { hikeSummits, listSummits } from '@/features/stats/summits'
 
-import { deleteHike, getTiles, getTracks, listHikes, listLabels, markHikeDone, updateHike, uploadHikes } from './api'
+import { deleteHikes, exportHikes, getTiles, getTracks, listHikes, listLabels, markHikeDone, updateHike, uploadHikes } from './api'
 
 const keys = {
   all: ['hikes'] as const,
@@ -64,10 +64,14 @@ export function useMarkHikeDone() {
   })
 }
 
-export function useDeleteHike() {
+export function useDeleteHikes() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: deleteHike,
+    mutationFn: deleteHikes,
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
   })
+}
+
+export function useExportHikes() {
+  return useMutation({ mutationFn: exportHikes })
 }

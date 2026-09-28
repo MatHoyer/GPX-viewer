@@ -9,6 +9,7 @@ import type { Hike } from '@/features/hikes/api'
 import { hikeColor } from '@/features/hikes/colors'
 import { useMe } from '@/features/auth/useAuth'
 import { FilterBar } from '@/features/hikes/FilterBar'
+import { HikeActionsMenu } from '@/features/hikes/HikeActionsMenu'
 import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
 import { taggedBy } from '@/features/hikes/owner'
 import { useHikes } from '@/features/hikes/useHikes'
@@ -226,20 +227,22 @@ function MonthAgenda({ byDay, days, loading, summary }: AgendaProps) {
 function AgendaItem({ hike, color }: DatedHike) {
   const owner = taggedBy(hike, useMe().data?.id)
   return (
-    <Link
-      to={`/hikes/${hike.id}`}
-      className="hover:bg-accent active:bg-accent -mx-2 flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors"
-    >
-      <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{hike.name}</span>
-        <span className="text-muted-foreground block truncate text-xs tabular-nums">
-          {hikeDetails(hike).join(' · ')}
-          {owner && ` · tagged by ${owner}`}
+    <div className="-mx-2 flex items-center gap-1">
+      <Link
+        to={`/hikes/${hike.id}`}
+        className="hover:bg-accent active:bg-accent flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors"
+      >
+        <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{hike.name}</span>
+          <span className="text-muted-foreground block truncate text-xs tabular-nums">
+            {hikeDetails(hike).join(' · ')}
+            {owner && ` · tagged by ${owner}`}
+          </span>
         </span>
-      </span>
-      <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-    </Link>
+      </Link>
+      <HikeActionsMenu hike={hike} />
+    </div>
   )
 }
 
@@ -253,19 +256,27 @@ function HikeChip({ hike, color, muted }: DatedHike & { muted: boolean }) {
   const owner = taggedBy(hike, useMe().data?.id)
 
   return (
-    <Link
-      to={`/hikes/${hike.id}`}
-      title={`${hike.name}${owner ? ` (tagged by ${owner})` : ''} — ${hikeDetails(hike).join(' · ')}`}
-      className={cn(
-        'hover:bg-accent flex min-w-0 items-center gap-1.5 rounded-sm px-1 py-0.5 text-xs transition-colors',
-        muted && 'opacity-60',
-      )}
-    >
-      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate font-medium">{hike.name}</span>
-        <span className="text-muted-foreground truncate tabular-nums">{formatDistance(hike.distanceM)}</span>
-      </span>
-    </Link>
+    // The menu shows on hover, or always where there is no hover.
+    <div className="group/chip relative min-w-0">
+      <Link
+        to={`/hikes/${hike.id}`}
+        title={`${hike.name}${owner ? ` (tagged by ${owner})` : ''} — ${hikeDetails(hike).join(' · ')}`}
+        className={cn(
+          'hover:bg-accent flex min-w-0 items-center gap-1.5 rounded-sm px-1 py-0.5 text-xs transition-colors',
+          muted && 'opacity-60',
+        )}
+      >
+        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate font-medium">{hike.name}</span>
+          <span className="text-muted-foreground truncate tabular-nums">{formatDistance(hike.distanceM)}</span>
+        </span>
+      </Link>
+      <HikeActionsMenu
+        hike={hike}
+        size="icon-xs"
+        className="bg-background/90 absolute top-1/2 right-0.5 -translate-y-1/2 opacity-0 group-hover/chip:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
+      />
+    </div>
   )
 }

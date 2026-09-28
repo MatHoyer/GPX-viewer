@@ -248,6 +248,14 @@ func (r *HikeRepository) Delete(ctx context.Context, userID, id uuid.UUID) error
 	return nil
 }
 
+func (r *HikeRepository) DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	res := r.db.WithContext(ctx).Where("user_id = ? AND id IN ?", userID, ids).Delete(&HikeModel{})
+	return res.RowsAffected, res.Error
+}
+
 func (r *HikeRepository) GetTrack(ctx context.Context, id uuid.UUID, tolerance float64) ([]domain.Segment, error) {
 	var row struct{ Geom []byte }
 	err := r.db.WithContext(ctx).

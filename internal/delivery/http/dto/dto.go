@@ -220,6 +220,15 @@ func NewHikeTiles(tiles map[uuid.UUID][]domain.Tile) HikeTiles {
 	return out
 }
 
+// HikeIDs names hikes for a bulk action.
+type HikeIDs struct {
+	IDs []string `json:"ids"`
+}
+
+type Deleted struct {
+	Deleted int64 `json:"deleted"`
+}
+
 // UpdateHike is a partial update; nil fields are left unchanged.
 type UpdateHike struct {
 	Name   *string   `json:"name"`

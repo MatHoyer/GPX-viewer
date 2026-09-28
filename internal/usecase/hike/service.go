@@ -285,6 +285,28 @@ func (s *Service) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	return s.hikes.Delete(ctx, userID, id)
 }
 
+// MaxBulk bounds how many hikes one bulk action names.
+const MaxBulk = 1000
+
+// DeleteMany deletes those of ids the user owns, skipping the rest, and
+// returns how many went.
+func (s *Service) DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) (int64, error) {
+	if err := validateBulk(ids); err != nil {
+		return 0, err
+	}
+	return s.hikes.DeleteMany(ctx, userID, ids)
+}
+
+func validateBulk(ids []uuid.UUID) error {
+	if len(ids) == 0 {
+		return &domain.ValidationError{Field: "ids", Message: "select at least one hike"}
+	}
+	if len(ids) > MaxBulk {
+		return &domain.ValidationError{Field: "ids", Message: fmt.Sprintf("select at most %d hikes", MaxBulk)}
+	}
+	return nil
+}
+
 // Profile builds the detailed time/distance series of a hike from its original GPX.
 func (s *Service) Profile(ctx context.Context, viewer, id uuid.UUID) (*domain.Profile, error) {
 	h, err := s.Get(ctx, viewer, id)
@@ -317,15 +339,26 @@ func (s *Service) GPX(ctx context.Context, viewer, id uuid.UUID) (*domain.Hike, 
 }
 
 // Export calls fn with each hike userID owns and its original GPX, newest
-// first. Hikes they are only tagged on belong to their owner and are skipped.
-func (s *Service) Export(ctx context.Context, userID uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error {
+// first, limited to ids unless nil. Hikes they are only tagged on belong to
+// their owner and are skipped.
+func (s *Service) Export(ctx context.Context, userID uuid.UUID, ids []uuid.UUID, fn func(h *domain.Hike, raw []byte) error) error {
+	var only map[uuid.UUID]bool
+	if ids != nil {
+		if err := validateBulk(ids); err != nil {
+			return err
+		}
+		only = make(map[uuid.UUID]bool, len(ids))
+		for _, id := range ids {
+			only[id] = true
+		}
+	}
 	hikes, err := s.hikes.ListByUser(ctx, userID)
 	if err != nil {
 		return err
 	}
 	for i := range hikes {
 		h := &hikes[i]
-		if h.UserID != userID {
+		if h.UserID != userID || (only != nil && !only[h.ID]) {
 			continue
 		}
 		raw, err := s.hikes.GetRawGPX(ctx, userID, h.ID)
