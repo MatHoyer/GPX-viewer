@@ -41,6 +41,9 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	MarkEmailVerified(ctx context.Context, id uuid.UUID, at time.Time) error
 	UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error
+	// Delete removes the user and, through cascading foreign keys, everything
+	// tied to them: hikes, tags, friendships, kudos, comments and sessions.
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 // UserDirectory looks users up on behalf of other users.

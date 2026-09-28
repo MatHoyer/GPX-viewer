@@ -31,6 +31,10 @@ type ChangePassword struct {
 	Password        string `json:"password"`
 }
 
+type DeleteAccount struct {
+	Password string `json:"password"`
+}
+
 type User struct {
 	ID         string    `json:"id"`
 	Email      string    `json:"email"`

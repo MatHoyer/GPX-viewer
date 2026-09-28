@@ -14,6 +14,7 @@ import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import { MAX_NAME_LENGTH } from './api'
+import { DeleteAccountDialog } from './DeleteAccountDialog'
 import { useUpdateAccount } from './useAccount'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { UserAvatar } from './UserAvatar'
@@ -36,6 +37,7 @@ export function SettingsPage() {
             <VisibilityCard user={me.data} />
             <ExportCard />
             <AppearanceCard />
+            <DangerZoneCard user={me.data} />
           </div>
         )}
       </main>
@@ -252,6 +254,22 @@ function ExportCard() {
             Download my hikes
           </a>
         </Button>
+      </CardFooter>
+    </Card>
+  )
+}
+
+function DangerZoneCard({ user }: { user: User }) {
+  return (
+    <Card className="ring-destructive/40">
+      <CardHeader>
+        <CardTitle className="text-destructive">Danger zone</CardTitle>
+        <CardDescription>
+          Deleting your account removes your hikes, tags, friends, kudos and comments for good. It cannot be undone.
+        </CardDescription>
+      </CardHeader>
+      <CardFooter className="justify-end">
+        <DeleteAccountDialog user={user} />
       </CardFooter>
     </Card>
   )

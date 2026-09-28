@@ -58,6 +58,11 @@ export function changePassword(input: { currentPassword: string; password: strin
   return api<void>('/auth/password', { method: 'POST', body: JSON.stringify(input) })
 }
 
+/** Permanently deletes the account and everything tied to it, then signs out. */
+export function deleteAccount(password: string) {
+  return api<void>('/me', { method: 'DELETE', body: JSON.stringify({ password }) })
+}
+
 export function logout() {
   return api<void>('/auth/logout', { method: 'POST' })
 }

@@ -47,6 +47,7 @@ func NewRouter(d Deps) http.Handler {
 		verify := middleware.NewLimiter(10, time.Minute, "attempts")
 		reset := middleware.NewLimiter(10, time.Minute, "attempts")
 		changePassword := middleware.NewLimiter(5, time.Minute, "password change attempts")
+		deleteAccount := middleware.NewLimiter(5, time.Minute, "account deletion attempts")
 
 		r.With(register.ByIP).Post("/auth/register", d.Auth.Register)
 		r.With(loginByIP.ByIP, loginByEmail.ByEmail).Post("/auth/login", d.Auth.Login)
@@ -61,6 +62,7 @@ func NewRouter(d Deps) http.Handler {
 			r.With(changePassword.ByUser).Post("/auth/password", d.Auth.ChangePassword)
 
 			r.Patch("/me", d.Account.Update)
+			r.With(deleteAccount.ByUser).Delete("/me", d.Auth.DeleteAccount)
 
 			r.Get("/hikes", d.Hikes.List)
 			r.Post("/hikes", d.Hikes.Upload)
