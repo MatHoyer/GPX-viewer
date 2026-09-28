@@ -1,11 +1,17 @@
 export class ApiError extends Error {
   readonly status: number
   readonly field?: string
+  /** Tells apart errors the UI reacts to, e.g. 'banned' or 'email_not_verified'. */
+  readonly code?: string
+  /** Why an admin suspended the account, with code 'banned'. */
+  readonly reason?: string
 
-  constructor(status: number, message: string, field?: string) {
+  constructor(status: number, message: string, details: { field?: string; code?: string; reason?: string } = {}) {
     super(message)
     this.status = status
-    this.field = field
+    this.field = details.field
+    this.code = details.code
+    this.reason = details.reason
   }
 }
 
@@ -18,15 +24,15 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, { ...init, headers, credentials: 'same-origin' })
   if (!res.ok) {
     let message = res.statusText
-    let field: string | undefined
+    let details = {}
     try {
-      const body = (await res.json()) as { error?: string; field?: string }
+      const body = (await res.json()) as { error?: string; field?: string; code?: string; reason?: string }
       message = body.error ?? message
-      field = body.field
+      details = { field: body.field, code: body.code, reason: body.reason }
     } catch {
       // Non-JSON error body.
     }
-    throw new ApiError(res.status, message, field)
+    throw new ApiError(res.status, message, details)
   }
   if (res.status === 204) {
     return undefined as T

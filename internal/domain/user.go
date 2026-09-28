@@ -32,7 +32,13 @@ type User struct {
 	Visibility   Visibility
 	// EmailVerifiedAt is nil until the user follows the link sent to Email.
 	EmailVerifiedAt *time.Time
-	CreatedAt       time.Time
+	// IsAdmin grants access to the admin panel. The first account is an admin.
+	IsAdmin bool
+	// BannedAt is set while an admin bars the user from signing in, for
+	// BanReason, which the user sees when they try.
+	BannedAt  *time.Time
+	BanReason string
+	CreatedAt time.Time
 }
 
 type UserRepository interface {
@@ -44,6 +50,28 @@ type UserRepository interface {
 	// Delete removes the user and, through cascading foreign keys, everything
 	// tied to them: hikes, tags, friendships, kudos, comments and sessions.
 	Delete(ctx context.Context, id uuid.UUID) error
+	// Count returns how many accounts exist.
+	Count(ctx context.Context) (int64, error)
+	// CountAdmins returns how many accounts are admins.
+	CountAdmins(ctx context.Context) (int64, error)
+}
+
+// AdminUser is a user as listed in the admin panel.
+type AdminUser struct {
+	User
+	// Hikes counts the hikes they own.
+	Hikes int64
+	// LastSeenAt is when their most recent live session started.
+	LastSeenAt *time.Time
+}
+
+// AdminRepository manages accounts on behalf of admins.
+type AdminRepository interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
+	ListUsers(ctx context.Context) ([]AdminUser, error)
+	SetAdmin(ctx context.Context, id uuid.UUID, admin bool) error
+	// SetBan bans the user when at is set, and lifts the ban when it is nil.
+	SetBan(ctx context.Context, id uuid.UUID, at *time.Time, reason string) error
 }
 
 // UserDirectory looks users up on behalf of other users.

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import {
   changePassword,
   deleteAccount,
+  fetchConfig,
   fetchMe,
   login,
   logout,
@@ -19,6 +20,12 @@ export function useMe() {
   return useQuery({ queryKey: meQueryKey, queryFn: fetchMe, staleTime: Infinity, retry: false })
 }
 
+export const configQueryKey = ['config'] as const
+
+export function useConfig() {
+  return useQuery({ queryKey: configQueryKey, queryFn: fetchConfig, staleTime: 5 * 60_000 })
+}
+
 export function useLogin() {
   const qc = useQueryClient()
   return useMutation({
@@ -28,7 +35,12 @@ export function useLogin() {
 }
 
 export function useRegister() {
-  return useMutation({ mutationFn: register })
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: register,
+    // The first account closes sign-up when registration is disabled.
+    onSettled: () => qc.invalidateQueries({ queryKey: configQueryKey }),
+  })
 }
 
 export function useVerifyEmail() {

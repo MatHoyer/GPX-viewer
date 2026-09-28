@@ -29,6 +29,9 @@ const (
 	// PasswordResetCooldown is the minimum delay between two reset emails to
 	// the same account, so the form cannot be used to flood an inbox.
 	PasswordResetCooldown = time.Minute
+	// InviteTTL is how long the link of an account created by an admin stays
+	// valid.
+	InviteTTL = 7 * 24 * time.Hour
 )
 
 type Service struct {
@@ -40,12 +43,14 @@ type Service struct {
 	mailer        domain.Mailer
 	ttl           time.Duration
 	appURL        string
+	registration  bool
 	now           func() time.Time
 	dummyHash     string
 }
 
 // NewService builds the auth service. appURL is the public base URL of the
-// app, used in the links it emails.
+// app, used in the links it emails. Unless registration is enabled, only the
+// first account can sign up; admins invite the others.
 func NewService(
 	users domain.UserRepository,
 	sessions domain.SessionRepository,
@@ -55,6 +60,7 @@ func NewService(
 	mailer domain.Mailer,
 	ttl time.Duration,
 	appURL string,
+	registration bool,
 ) (*Service, error) {
 	// Used to keep login timing constant when the email is unknown.
 	dummy, err := hasher.Hash("dummy-password-for-timing")
@@ -70,6 +76,7 @@ func NewService(
 		mailer:        mailer,
 		ttl:           ttl,
 		appURL:        strings.TrimRight(appURL, "/"),
+		registration:  registration,
 		now:           time.Now,
 		dummyHash:     dummy,
 	}, nil
@@ -79,15 +86,38 @@ func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
+// RegistrationEnabled reports whether REGISTRATION_ENABLED lets anyone sign up.
+func (s *Service) RegistrationEnabled() bool {
+	return s.registration
+}
+
+// RegistrationOpen reports whether the sign-up form accepts new accounts:
+// when registration is enabled, or to create the first account.
+func (s *Service) RegistrationOpen(ctx context.Context) (bool, error) {
+	if s.registration {
+		return true, nil
+	}
+	n, err := s.users.Count(ctx)
+	return n == 0, err
+}
+
 // Register creates an unverified account and emails it a verification link.
-// The account cannot sign in until the link is followed.
+// The account cannot sign in until the link is followed. The first account
+// becomes the admin.
 func (s *Service) Register(ctx context.Context, email, password string) (*domain.User, error) {
 	email = normalizeEmail(email)
-	if addr, err := mail.ParseAddress(email); err != nil || addr.Address != email {
-		return nil, &domain.ValidationError{Field: "email", Message: "invalid email address"}
+	if err := validateEmail(email); err != nil {
+		return nil, err
 	}
 	if err := validatePassword("password", password); err != nil {
 		return nil, err
+	}
+	n, err := s.users.Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if n > 0 && !s.registration {
+		return nil, domain.ErrRegistrationClosed
 	}
 	if _, err := s.users.GetByEmail(ctx, email); err == nil {
 		return nil, domain.ErrEmailTaken
@@ -99,7 +129,7 @@ func (s *Service) Register(ctx context.Context, email, password string) (*domain
 	if err != nil {
 		return nil, err
 	}
-	u := &domain.User{ID: uuid.New(), Email: email, PasswordHash: hash, Visibility: domain.VisibilityPrivate, CreatedAt: s.now()}
+	u := &domain.User{ID: uuid.New(), Email: email, PasswordHash: hash, Visibility: domain.VisibilityPrivate, IsAdmin: n == 0, CreatedAt: s.now()}
 	if err := s.users.Create(ctx, u); err != nil {
 		return nil, err
 	}
@@ -108,6 +138,83 @@ func (s *Service) Register(ctx context.Context, email, password string) (*domain
 		slog.Error("send verification email", "user", u.ID, "err", err)
 	}
 	return u, nil
+}
+
+// Invite creates an account for email on behalf of an admin, whatever the
+// registration setting, and returns a link where its owner chooses a
+// password. Following the link also verifies the email. The link is emailed
+// when send is set; a failed delivery is logged and reported by emailed, and
+// the link still works.
+func (s *Service) Invite(ctx context.Context, email, name string, send bool) (u *domain.User, link string, emailed bool, err error) {
+	email = normalizeEmail(email)
+	if err := validateEmail(email); err != nil {
+		return nil, "", false, err
+	}
+	if _, err := s.users.GetByEmail(ctx, email); err == nil {
+		return nil, "", false, domain.ErrEmailTaken
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		return nil, "", false, err
+	}
+	// Nobody knows this password, so the account is unusable until the link
+	// is followed.
+	secret, err := newToken()
+	if err != nil {
+		return nil, "", false, err
+	}
+	hash, err := s.hasher.Hash(secret)
+	if err != nil {
+		return nil, "", false, err
+	}
+	u = &domain.User{ID: uuid.New(), Email: email, Name: name, PasswordHash: hash, Visibility: domain.VisibilityPrivate, CreatedAt: s.now()}
+	if err := s.users.Create(ctx, u); err != nil {
+		return nil, "", false, err
+	}
+	link, emailed, err = s.sendInvite(ctx, u, send)
+	return u, link, emailed, err
+}
+
+// ReissueInvite replaces the invite link of an account whose email is not
+// verified yet, and emails it when send is set.
+func (s *Service) ReissueInvite(ctx context.Context, userID uuid.UUID, send bool) (link string, emailed bool, err error) {
+	u, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return "", false, err
+	}
+	if u.EmailVerifiedAt != nil {
+		return "", false, &domain.ValidationError{Field: "user", Message: "this user already signed in; they can reset their password"}
+	}
+	return s.sendInvite(ctx, u, send)
+}
+
+func (s *Service) sendInvite(ctx context.Context, u *domain.User, send bool) (link string, emailed bool, err error) {
+	token, err := s.issueReset(ctx, u.ID, InviteTTL)
+	if err != nil {
+		return "", false, err
+	}
+	link = s.appURL + "/reset-password?invite=1&token=" + url.QueryEscape(token)
+	if !send {
+		return link, false, nil
+	}
+	body := fmt.Sprintf(`You have been invited to GPX Viewer!
+
+Choose a password to finish creating your account:
+
+%s
+
+The link expires in 7 days.
+`, link)
+	if err := s.mailer.Send(ctx, u.Email, "You're invited to GPX Viewer", body); err != nil {
+		slog.Error("send invite email", "user", u.ID, "err", err)
+		return link, false, nil
+	}
+	return link, true, nil
+}
+
+func validateEmail(email string) error {
+	if addr, err := mail.ParseAddress(email); err != nil || addr.Address != email {
+		return &domain.ValidationError{Field: "email", Message: "invalid email address"}
+	}
+	return nil
 }
 
 func validatePassword(field, password string) error {
@@ -133,6 +240,9 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, *d
 	}
 	if err := s.hasher.Compare(u.PasswordHash, password); err != nil {
 		return "", nil, domain.ErrInvalidCredentials
+	}
+	if u.BannedAt != nil {
+		return "", nil, &domain.BannedError{Reason: u.BanReason}
 	}
 	if u.EmailVerifiedAt == nil {
 		if err := s.ensureVerificationSent(ctx, u); err != nil {
@@ -160,13 +270,20 @@ func (s *Service) VerifyEmail(ctx context.Context, token string) (string, *domai
 	if !now.Before(v.ExpiresAt) {
 		return "", nil, domain.ErrInvalidToken
 	}
-	if err := s.users.MarkEmailVerified(ctx, v.UserID, now); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			return "", nil, domain.ErrInvalidToken
-		}
+	u, err := s.users.GetByID(ctx, v.UserID)
+	if errors.Is(err, domain.ErrNotFound) {
+		return "", nil, domain.ErrInvalidToken
+	}
+	if err != nil {
 		return "", nil, err
 	}
-	return s.startSession(ctx, v.UserID)
+	if err := s.users.MarkEmailVerified(ctx, u.ID, now); err != nil {
+		return "", nil, err
+	}
+	if u.BannedAt != nil {
+		return "", nil, &domain.BannedError{Reason: u.BanReason}
+	}
+	return s.startSession(ctx, u.ID)
 }
 
 // ensureVerificationSent emails a verification link unless a valid one was
@@ -230,14 +347,24 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email string) error 
 	return s.sendPasswordReset(ctx, u)
 }
 
-func (s *Service) sendPasswordReset(ctx context.Context, u *domain.User) (err error) {
+// issueReset stores a new password reset token for the user, replacing any
+// previous one, and returns it.
+func (s *Service) issueReset(ctx context.Context, userID uuid.UUID, ttl time.Duration) (string, error) {
 	token, err := newToken()
 	if err != nil {
-		return err
+		return "", err
 	}
 	now := s.now()
-	p := &domain.PasswordReset{TokenHash: hashToken(token), UserID: u.ID, ExpiresAt: now.Add(PasswordResetTTL), CreatedAt: now}
+	p := &domain.PasswordReset{TokenHash: hashToken(token), UserID: userID, ExpiresAt: now.Add(ttl), CreatedAt: now}
 	if err := s.resets.Replace(ctx, p); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func (s *Service) sendPasswordReset(ctx context.Context, u *domain.User) (err error) {
+	token, err := s.issueReset(ctx, u.ID, PasswordResetTTL)
+	if err != nil {
 		return err
 	}
 	link := s.appURL + "/reset-password?token=" + url.QueryEscape(token)
@@ -286,6 +413,9 @@ func (s *Service) ResetPassword(ctx context.Context, token, password string) (st
 	if err != nil {
 		return "", nil, err
 	}
+	if u.BannedAt != nil {
+		return "", nil, &domain.BannedError{Reason: u.BanReason}
+	}
 	if err := s.setPassword(ctx, u.ID, password); err != nil {
 		return "", nil, err
 	}
@@ -327,7 +457,29 @@ func (s *Service) DeleteAccount(ctx context.Context, userID uuid.UUID, password 
 	if err := s.hasher.Compare(u.PasswordHash, password); err != nil {
 		return &domain.ValidationError{Field: "password", Message: "password is incorrect"}
 	}
+	if u.IsAdmin {
+		if err := s.ensureOtherAdmin(ctx); err != nil {
+			return err
+		}
+	}
 	return s.users.Delete(ctx, u.ID)
+}
+
+// ensureOtherAdmin refuses to remove the last admin while other accounts
+// remain, so the instance always has someone to manage it.
+func (s *Service) ensureOtherAdmin(ctx context.Context) error {
+	admins, err := s.users.CountAdmins(ctx)
+	if err != nil {
+		return err
+	}
+	users, err := s.users.Count(ctx)
+	if err != nil {
+		return err
+	}
+	if admins <= 1 && users > 1 {
+		return &domain.ValidationError{Field: "account", Message: "you are the only admin; make someone else an admin first"}
+	}
+	return nil
 }
 
 // setPassword stores a new password and revokes every session, so whoever
@@ -386,7 +538,14 @@ func (s *Service) Authenticate(ctx context.Context, token string) (*domain.User,
 	if errors.Is(err, domain.ErrNotFound) {
 		return nil, domain.ErrUnauthorized
 	}
-	return u, err
+	if err != nil {
+		return nil, err
+	}
+	// Banning revokes sessions; this covers a ban racing a sign-in.
+	if u.BannedAt != nil {
+		return nil, domain.ErrUnauthorized
+	}
+	return u, nil
 }
 
 // PurgeExpired deletes expired sessions, verification and reset links.

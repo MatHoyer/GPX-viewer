@@ -25,6 +25,9 @@ func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
 		PasswordHash:    u.PasswordHash,
 		Visibility:      string(u.Visibility),
 		EmailVerifiedAt: u.EmailVerifiedAt,
+		IsAdmin:         u.IsAdmin,
+		BannedAt:        u.BannedAt,
+		BanReason:       u.BanReason,
 		CreatedAt:       u.CreatedAt,
 	}
 	err := r.db.WithContext(ctx).Create(&m).Error
@@ -96,6 +99,59 @@ func (r *UserRepository) UpdateName(ctx context.Context, id uuid.UUID, name stri
 
 func (r *UserRepository) UpdateVisibility(ctx context.Context, id uuid.UUID, v domain.Visibility) error {
 	res := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ?", id).Update("visibility", string(v))
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) Count(ctx context.Context) (int64, error) {
+	var n int64
+	err := r.db.WithContext(ctx).Model(&UserModel{}).Count(&n).Error
+	return n, err
+}
+
+func (r *UserRepository) CountAdmins(ctx context.Context) (int64, error) {
+	var n int64
+	err := r.db.WithContext(ctx).Model(&UserModel{}).Where("is_admin").Count(&n).Error
+	return n, err
+}
+
+func (r *UserRepository) ListUsers(ctx context.Context) ([]domain.AdminUser, error) {
+	var rows []struct {
+		UserModel
+		Hikes      int64
+		LastSeenAt *time.Time
+	}
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT u.*,
+			(SELECT COUNT(*) FROM hikes h WHERE h.user_id = u.id) AS hikes,
+			(SELECT MAX(s.created_at) FROM sessions s WHERE s.user_id = u.id) AS last_seen_at
+		FROM users u
+		ORDER BY u.created_at, u.id`).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.AdminUser, len(rows))
+	for i, row := range rows {
+		out[i] = domain.AdminUser{User: *row.toDomain(), Hikes: row.Hikes, LastSeenAt: row.LastSeenAt}
+	}
+	return out, nil
+}
+
+func (r *UserRepository) SetAdmin(ctx context.Context, id uuid.UUID, admin bool) error {
+	return r.update(ctx, id, map[string]any{"is_admin": admin})
+}
+
+func (r *UserRepository) SetBan(ctx context.Context, id uuid.UUID, at *time.Time, reason string) error {
+	return r.update(ctx, id, map[string]any{"banned_at": at, "ban_reason": reason})
+}
+
+func (r *UserRepository) update(ctx context.Context, id uuid.UUID, fields map[string]any) error {
+	res := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ?", id).Updates(fields)
 	if res.Error != nil {
 		return res.Error
 	}

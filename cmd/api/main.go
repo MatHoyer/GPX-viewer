@@ -20,6 +20,7 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/security"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/smtp"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/account"
+	"github.com/MatHoyer/gpx-viewer/internal/usecase/admin"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/auth"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/hike"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/interaction"
@@ -62,19 +63,22 @@ func run() error {
 	}
 
 	users := postgres.NewUserRepository(db)
+	sessions := postgres.NewSessionRepository(db)
 	authSvc, err := auth.NewService(
 		users,
-		postgres.NewSessionRepository(db),
+		sessions,
 		postgres.NewEmailVerificationRepository(db),
 		postgres.NewPasswordResetRepository(db),
 		security.NewBcryptHasher(0),
 		mailer,
 		cfg.SessionTTL,
 		cfg.AppURL,
+		cfg.RegistrationEnabled,
 	)
 	if err != nil {
 		return err
 	}
+	adminSvc := admin.NewService(users, sessions, authSvc)
 	accountSvc := account.NewService(users)
 	socialSvc := social.NewService(users, postgres.NewFriendshipRepository(db))
 	hikeSvc := hike.NewService(postgres.NewHikeRepository(db), gpx.NewParser(), socialSvc)
@@ -91,6 +95,7 @@ func run() error {
 		Social:        handler.NewSocialHandler(socialSvc),
 		Summits:       handler.NewSummitHandler(summitSvc),
 		Interactions:  handler.NewInteractionHandler(interactionSvc),
+		Admin:         handler.NewAdminHandler(adminSvc, authSvc),
 		Authenticator: authSvc,
 		Static:        web.Dist(),
 		AppURL:        cfg.AppURL,

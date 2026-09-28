@@ -1,4 +1,4 @@
-import { ChevronsUpDown, LogOut, Settings, SunMoon, UserRound } from 'lucide-react'
+import { ChevronsUpDown, LogOut, Settings, Shield, SunMoon, UserRound } from 'lucide-react'
 import { Link } from 'react-router'
 
 import {
@@ -68,6 +68,14 @@ export function NavUser() {
                   Settings
                 </Link>
               </DropdownMenuItem>
+              {user.isAdmin && (
+                <DropdownMenuItem asChild className={itemClass}>
+                  <Link to="/admin" onClick={() => setOpenMobile(false)}>
+                    <Shield />
+                    Admin
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <div className="flex items-center gap-2 px-2 py-1 text-sm">
                 <SunMoon className="text-muted-foreground size-4" />
                 Theme

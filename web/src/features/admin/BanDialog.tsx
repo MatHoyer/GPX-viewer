@@ -1,0 +1,95 @@
+import { Loader2 } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
+import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { displayName } from '@/features/account/displayName'
+import { ApiError } from '@/lib/api'
+
+import { MAX_BAN_REASON_LENGTH, type AdminUser } from './api'
+import { useBanUser } from './useAdmin'
+
+type Props = {
+  user: AdminUser | null
+  onClose: () => void
+}
+
+/** Asks for the reason the banned user will see when they try to sign in. */
+export function BanDialog({ user, onClose }: Props) {
+  const [reason, setReason] = useState('')
+  const ban = useBanUser()
+  const error = ban.error instanceof ApiError ? ban.error : null
+
+  function onOpenChange(open: boolean) {
+    if (open || ban.isPending) return
+    setReason('')
+    ban.reset()
+    onClose()
+  }
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!user || !reason.trim()) return
+    ban.mutate(
+      { id: user.id, reason },
+      {
+        onSuccess: () => {
+          toast.success(`${displayName(user)} is banned`)
+          onOpenChange(false)
+        },
+      },
+    )
+  }
+
+  return (
+    <Dialog open={user !== null} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={onSubmit} className="contents">
+          <DialogHeader>
+            <DialogTitle>Ban {user && displayName(user)}?</DialogTitle>
+            <DialogDescription>
+              They are signed out everywhere and cannot sign in until you lift the ban. Their hikes stay as they are.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="ban-reason" className="text-sm font-medium">
+              Reason, shown to them when they try to sign in
+            </label>
+            <Textarea
+              id="ban-reason"
+              required
+              autoFocus
+              maxLength={MAX_BAN_REASON_LENGTH}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              aria-invalid={error?.field === 'reason' || undefined}
+            />
+            {ban.error && (
+              <p role="alert" className="text-destructive text-sm">
+                {error?.message ?? 'Could not ban this user'}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={ban.isPending}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="destructive" disabled={!reason.trim() || ban.isPending}>
+              {ban.isPending && <Loader2 className="animate-spin" aria-hidden />}
+              Ban
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}

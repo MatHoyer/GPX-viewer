@@ -54,6 +54,13 @@ func Migrate(db *gorm.DB) error {
 		ON friendships (LEAST(requester_id, addressee_id), GREATEST(requester_id, addressee_id))`).Error; err != nil {
 		return err
 	}
+	// The oldest account administers the instance until someone else is
+	// promoted; this also covers databases from before admins existed.
+	if err := db.Exec(`UPDATE users SET is_admin = true
+		WHERE id = (SELECT id FROM users ORDER BY created_at, id LIMIT 1)
+		AND NOT EXISTS (SELECT 1 FROM users WHERE is_admin)`).Error; err != nil {
+		return err
+	}
 	// Leftovers from uploaded profile pictures, replaced by generated blobatars.
 	if err := db.Exec("DROP TABLE IF EXISTS user_avatars").Error; err != nil {
 		return err

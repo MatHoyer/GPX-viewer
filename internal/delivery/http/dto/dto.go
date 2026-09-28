@@ -40,6 +40,7 @@ type User struct {
 	Email      string    `json:"email"`
 	Name       string    `json:"name"`
 	Visibility string    `json:"visibility"`
+	IsAdmin    bool      `json:"isAdmin"`
 	CreatedAt  time.Time `json:"createdAt"`
 }
 
@@ -49,6 +50,7 @@ func NewUser(u *domain.User) User {
 		Email:      u.Email,
 		Name:       u.Name,
 		Visibility: string(u.Visibility),
+		IsAdmin:    u.IsAdmin,
 		CreatedAt:  u.CreatedAt,
 	}
 }
@@ -121,6 +123,10 @@ type UpdateAccount struct {
 type Error struct {
 	Error string `json:"error"`
 	Field string `json:"field,omitempty"`
+	// Code tells apart errors the client reacts to, e.g. "banned".
+	Code string `json:"code,omitempty"`
+	// Reason is why an admin banned the account.
+	Reason string `json:"reason,omitempty"`
 }
 
 type Hike struct {

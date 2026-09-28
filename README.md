@@ -16,6 +16,8 @@ docker compose up --build
 
 Open http://localhost:8080, create an account and import `.gpx` files. The email verification link lands in Mailpit at http://localhost:8025.
 
+The first account becomes the admin. The admin panel (`/admin`, from the account menu) lists users, invites people, bans them with a reason they see when they try to sign in, and makes other users admins. Set `REGISTRATION_ENABLED=false` to make the instance invite-only: the first account can still sign up, then only admins add people, by invite link (copied or emailed).
+
 ## Development
 
 Requires Go 1.26+, Node 24+, pnpm and Docker.
@@ -59,7 +61,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 ### Data
 
-- `users` (with a `visibility`: `private`, `friends` or `public`, and `email_verified_at`), `sessions` (server-side, only the SHA-256 of the token is stored), `email_verifications` (one pending link per user, hashed like sessions, valid 24h), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike), `hike_labels` (the owner's free-form labels; "labels" because tagging means adding a friend).
+- `users` (with a `visibility`: `private`, `friends` or `public`, `email_verified_at`, `is_admin`, and `banned_at`/`ban_reason`; on startup the oldest user is made admin if there is none), `sessions` (server-side, only the SHA-256 of the token is stored), `email_verifications` (one pending link per user, hashed like sessions, valid 24h), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike), `hike_labels` (the owner's free-form labels; "labels" because tagging means adding a friend).
 - Avatars are [blobatars](https://github.com/Alain00/blobatar) generated from the user id; there is no picture upload.
 - A hike is visible to whoever may see its owner's hikes or those of a tagged participant; anything else answers 404.
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.
@@ -72,8 +74,9 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 | Method | Path | Description |
 | --- | --- | --- |
-| POST | `/api/auth/register` | `{email, password}`, emails a verification link; no session until verified |
-| POST | `/api/auth/login` | `{email, password}`, sets the `session` cookie; `403` while the email is unverified, emailing a new link if the last one expired |
+| GET | `/api/config` | `{registrationEnabled, registrationOpen}`; open when enabled or before the first account exists |
+| POST | `/api/auth/register` | `{email, password}`, emails a verification link; no session until verified; `403` `code: registration_closed` when invite-only. The first account is admin |
+| POST | `/api/auth/login` | `{email, password}`, sets the `session` cookie; `403` `code: email_not_verified` while the email is unverified, emailing a new link if the last one expired; `403` `code: banned` with `reason` for a banned account |
 | POST | `/api/auth/verify` | `{token}` from the emailed `/verify?token=` link, verifies and sets the `session` cookie |
 | POST | `/api/auth/logout` | |
 | GET | `/api/auth/me` | current user (`name`, `visibility`, `createdAt`) |
@@ -108,6 +111,11 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | GET | `/api/friends` | `{friends, incoming, outgoing}` |
 | PUT | `/api/friends/{id}` | send a friend request, or accept theirs |
 | DELETE | `/api/friends/{id}` | unfriend, cancel or decline |
+| GET | `/api/admin/users` | admins only: every user with `isAdmin`, `emailVerifiedAt`, `bannedAt`, `banReason`, `hikes`, `lastSeenAt` |
+| POST | `/api/admin/users` | `{email, name, sendEmail}`: creates the account and returns `{user, inviteLink, emailSent}`; the `/reset-password?invite=1&token=` link is valid 7 days |
+| POST | `/api/admin/users/{id}/invite` | `{sendEmail}`: new invite link for a user who has not signed in yet |
+| PUT / DELETE | `/api/admin/users/{id}/ban` | `{reason}` bans and signs them out everywhere / lifts the ban; admins must be demoted first |
+| PUT / DELETE | `/api/admin/users/{id}/admin` | make admin / remove the role; not on yourself |
 
 ### Configuration
 
@@ -117,6 +125,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | `PORT` | `8080` | |
 | `COOKIE_SECURE` | `false` | set `true` behind HTTPS |
 | `MAX_UPLOAD_MB` | `20` | per file |
+| `REGISTRATION_ENABLED` | `true` | `false` makes the instance invite-only; shown read-only in the admin panel |
 | `APP_URL` | `http://localhost:$PORT` | public URL, used in emailed links, canonical and Open Graph links, and the sitemap |
 | `SMTP_HOST` | required | |
 | `SMTP_PORT` | `587` | `465` uses implicit TLS, other ports STARTTLS when offered |

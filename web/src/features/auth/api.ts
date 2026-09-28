@@ -9,7 +9,21 @@ export type User = {
   /** Empty when the user has not set a display name. */
   name: string
   visibility: Visibility
+  /** Can open the admin panel. */
+  isAdmin: boolean
   createdAt: string
+}
+
+/** How the instance is set up, as anyone may see it. */
+export type AppConfig = {
+  /** Mirrors REGISTRATION_ENABLED on the server. */
+  registrationEnabled: boolean
+  /** Whether the sign-up form accepts accounts; also true before the first account exists. */
+  registrationOpen: boolean
+}
+
+export function fetchConfig() {
+  return api<AppConfig>('/config')
 }
 
 export type Credentials = {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,6 +57,20 @@ func (f *fakeUsers) Delete(_ context.Context, id uuid.UUID) error {
 	}
 	delete(f.byID, id)
 	return nil
+}
+
+func (f *fakeUsers) Count(context.Context) (int64, error) {
+	return int64(len(f.byID)), nil
+}
+
+func (f *fakeUsers) CountAdmins(context.Context) (int64, error) {
+	var n int64
+	for _, u := range f.byID {
+		if u.IsAdmin {
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (f *fakeUsers) MarkEmailVerified(_ context.Context, id uuid.UUID, at time.Time) error {
@@ -231,6 +246,7 @@ func (plainHasher) Compare(h, p string) error {
 
 type testEnv struct {
 	svc           *Service
+	users         *fakeUsers
 	sessions      *fakeSessions
 	verifications *fakeVerifications
 	resets        *fakeResets
@@ -240,12 +256,13 @@ type testEnv struct {
 func newTestEnv(t *testing.T) *testEnv {
 	t.Helper()
 	e := &testEnv{
+		users:         &fakeUsers{byID: map[uuid.UUID]*domain.User{}},
 		sessions:      &fakeSessions{byHash: map[string]*domain.Session{}},
 		verifications: &fakeVerifications{byUser: map[uuid.UUID]*domain.EmailVerification{}},
 		resets:        &fakeResets{byUser: map[uuid.UUID]*domain.PasswordReset{}},
 		mailer:        &fakeMailer{},
 	}
-	svc, err := NewService(&fakeUsers{byID: map[uuid.UUID]*domain.User{}}, e.sessions, e.verifications, e.resets, plainHasher{}, e.mailer, time.Hour, "https://app.test/")
+	svc, err := NewService(e.users, e.sessions, e.verifications, e.resets, plainHasher{}, e.mailer, time.Hour, "https://app.test/", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,5 +540,162 @@ func TestFailedSendIsRetriedOnNextLogin(t *testing.T) {
 	}
 	if len(e.mailer.sent) != 1 {
 		t.Fatalf("sent %d emails, want 1", len(e.mailer.sent))
+	}
+}
+
+func TestFirstAccountIsAdmin(t *testing.T) {
+	e := newTestEnv(t)
+	first := e.registerVerified(t, "a@b.co", "password123")
+	second := e.registerVerified(t, "c@d.co", "password123")
+	if !first.IsAdmin || second.IsAdmin {
+		t.Errorf("admins: first %v, second %v", first.IsAdmin, second.IsAdmin)
+	}
+}
+
+func TestRegistrationClosed(t *testing.T) {
+	ctx := context.Background()
+	e := newTestEnv(t)
+	e.svc.registration = false
+
+	if open, err := e.svc.RegistrationOpen(ctx); err != nil || !open {
+		t.Fatalf("open before first account = %v, %v", open, err)
+	}
+	// The first account can always sign up, so the instance gets an admin.
+	u, err := e.svc.Register(ctx, "a@b.co", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !u.IsAdmin {
+		t.Error("first account should be admin")
+	}
+	if open, err := e.svc.RegistrationOpen(ctx); err != nil || open {
+		t.Fatalf("open after first account = %v, %v", open, err)
+	}
+	if _, err := e.svc.Register(ctx, "c@d.co", "password123"); !errors.Is(err, domain.ErrRegistrationClosed) {
+		t.Errorf("second register err = %v", err)
+	}
+}
+
+func TestBannedCannotSignIn(t *testing.T) {
+	ctx := context.Background()
+	e := newTestEnv(t)
+	u := e.registerVerified(t, "a@b.co", "password123")
+	token, _, err := e.svc.Login(ctx, "a@b.co", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	u.BannedAt, u.BanReason = &now, "spam"
+
+	var be *domain.BannedError
+	if _, _, err := e.svc.Login(ctx, "a@b.co", "password123"); !errors.As(err, &be) || be.Reason != "spam" {
+		t.Errorf("login err = %v", err)
+	}
+	// The reason is only shown to whoever knows the password.
+	if _, _, err := e.svc.Login(ctx, "a@b.co", "wrong-password"); !errors.Is(err, domain.ErrInvalidCredentials) {
+		t.Errorf("wrong password err = %v", err)
+	}
+	if _, err := e.svc.Authenticate(ctx, token); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Errorf("authenticate err = %v", err)
+	}
+
+	if err := e.svc.RequestPasswordReset(ctx, "a@b.co"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.svc.ResetPassword(ctx, e.mailer.lastToken(t), "password456"); !errors.As(err, &be) {
+		t.Errorf("reset err = %v", err)
+	}
+	if u.PasswordHash != "h:password123" {
+		t.Error("banned user changed their password")
+	}
+}
+
+func TestBannedCannotVerify(t *testing.T) {
+	ctx := context.Background()
+	e := newTestEnv(t)
+	u, err := e.svc.Register(ctx, "a@b.co", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	u.BannedAt, u.BanReason = &now, "spam"
+	var be *domain.BannedError
+	if _, _, err := e.svc.VerifyEmail(ctx, e.mailer.lastToken(t)); !errors.As(err, &be) {
+		t.Errorf("verify err = %v", err)
+	}
+	if len(e.sessions.byHash) != 0 {
+		t.Error("banned user got a session")
+	}
+}
+
+func TestInvite(t *testing.T) {
+	ctx := context.Background()
+	e := newTestEnv(t)
+	e.registerVerified(t, "admin@b.co", "password123")
+	e.svc.registration = false
+	sent := len(e.mailer.sent)
+
+	u, link, emailed, err := e.svc.Invite(ctx, " Friend@B.co ", "Friend", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if emailed || len(e.mailer.sent) != sent {
+		t.Error("invite emailed without being asked")
+	}
+	if u.Email != "friend@b.co" || u.Name != "Friend" || u.IsAdmin || u.EmailVerifiedAt != nil {
+		t.Errorf("invited user = %+v", u)
+	}
+	if _, _, _, err := e.svc.Invite(ctx, "friend@b.co", "", false); !errors.Is(err, domain.ErrEmailTaken) {
+		t.Errorf("duplicate invite err = %v", err)
+	}
+
+	// A new link replaces the first one.
+	link2, emailed, err := e.svc.ReissueInvite(ctx, u.ID, true)
+	if err != nil || !emailed {
+		t.Fatalf("reissue = %v, %v", emailed, err)
+	}
+	if !strings.Contains(e.mailer.sent[len(e.mailer.sent)-1].body, link2) {
+		t.Error("emailed invite lacks the link")
+	}
+	if _, _, err := e.svc.ResetPassword(ctx, inviteToken(t, link), "password456"); !errors.Is(err, domain.ErrInvalidToken) {
+		t.Errorf("replaced link err = %v", err)
+	}
+	if _, _, err := e.svc.ResetPassword(ctx, inviteToken(t, link2), "password456"); err != nil {
+		t.Fatal(err)
+	}
+	if u.EmailVerifiedAt == nil {
+		t.Error("following the invite should verify the email")
+	}
+	if _, _, err := e.svc.Login(ctx, "friend@b.co", "password456"); err != nil {
+		t.Errorf("login after invite: %v", err)
+	}
+	var ve *domain.ValidationError
+	if _, _, err := e.svc.ReissueInvite(ctx, u.ID, false); !errors.As(err, &ve) {
+		t.Errorf("reissue to verified user err = %v", err)
+	}
+}
+
+func inviteToken(t *testing.T, link string) string {
+	t.Helper()
+	u, err := url.Parse(link)
+	if err != nil || u.Query().Get("invite") != "1" {
+		t.Fatalf("bad invite link %q", link)
+	}
+	return u.Query().Get("token")
+}
+
+func TestLastAdminCannotDeleteAccount(t *testing.T) {
+	ctx := context.Background()
+	e := newTestEnv(t)
+	admin := e.registerVerified(t, "a@b.co", "password123")
+	other := e.registerVerified(t, "c@d.co", "password123")
+
+	var ve *domain.ValidationError
+	if err := e.svc.DeleteAccount(ctx, admin.ID, "password123"); !errors.As(err, &ve) || ve.Field != "account" {
+		t.Fatalf("err = %v", err)
+	}
+	other.IsAdmin = true
+	if err := e.svc.DeleteAccount(ctx, admin.ID, "password123"); err != nil {
+		t.Fatal(err)
 	}
 }
