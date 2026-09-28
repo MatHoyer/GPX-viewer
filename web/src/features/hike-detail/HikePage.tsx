@@ -146,7 +146,7 @@ export function HikePage() {
       </header>
 
       <main className="mx-auto max-w-screen-2xl space-y-4 p-4 pb-20">
-        {profile.data ? <HikeStats summary={profile.data.summary} /> : <Skeleton className="h-20 w-full" />}
+        {profile.data ? <HikeStats summary={profile.data.summary} planned={hike.data?.planned} /> : <Skeleton className="h-20 w-full" />}
         {hike.data && (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

@@ -1,10 +1,12 @@
+import { ESTIMATE_NOTE, estimatedDurationS } from '@/features/hikes/estimate'
 import { formatDistance, formatDuration, formatElevation } from '@/lib/format'
 
 import type { ProfileSummary } from './profile'
 
 type Stat = { label: string; value: string; hint?: string }
 
-export function HikeStats({ summary }: { summary: ProfileSummary }) {
+/** A planned route has no times of its own, so its duration is estimated from its distance. */
+export function HikeStats({ summary, planned = false }: { summary: ProfileSummary; planned?: boolean }) {
   const s = summary
   const stats = [
     { label: 'Distance', value: formatDistance(s.distanceM) },
@@ -12,6 +14,11 @@ export function HikeStats({ summary }: { summary: ProfileSummary }) {
       label: 'Elevation',
       value: `+${formatElevation(s.elevationGainM)}`,
       hint: `−${formatElevation(s.elevationLossM)}`,
+    },
+    planned && {
+      label: 'Est. duration',
+      value: `~${formatDuration(estimatedDurationS(s.distanceM))}`,
+      hint: ESTIMATE_NOTE,
     },
     s.elapsedS !== null && {
       label: 'Duration',
