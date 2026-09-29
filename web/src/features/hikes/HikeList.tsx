@@ -20,12 +20,12 @@ type Props = {
   onHover: (id: string | null) => void
 }
 
-/** Floating list of the hikes on the map, by default only those in view. */
+/** Floating list of the hikes on the map, all of them unless narrowed to those in view. */
 export function HikeList({ hikes, colors, view, selectedId, onSelect, onHover }: Props) {
   const { t } = useTranslation()
   // Open by default where there is room for it next to the map.
   const [open, setOpen] = useState(() => window.matchMedia('(min-width: 768px)').matches)
-  const [inViewOnly, setInViewOnly] = useState(true)
+  const [inViewOnly, setInViewOnly] = useState(false)
   const inView = view ? hikes.filter((h) => intersects(h.bounds, view)) : hikes
   const shown = inViewOnly ? inView : hikes
 
@@ -33,7 +33,7 @@ export function HikeList({ hikes, colors, view, selectedId, onSelect, onHover }:
     return (
       <Button variant="outline" size="sm" className="bg-background absolute bottom-2 left-2 z-10 shadow-sm" onClick={() => setOpen(true)}>
         <List />
-        {t('mapList.inView', { count: inView.length })}
+        {inViewOnly ? t('mapList.inView', { count: inView.length }) : t('admin.hikeCount', { count: hikes.length })}
       </Button>
     )
   }
