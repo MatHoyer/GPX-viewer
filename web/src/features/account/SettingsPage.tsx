@@ -8,9 +8,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { FloatingInput } from '@/components/ui/floating-input'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import type { User, Visibility } from '@/features/auth/api'
 import { useChangePassword, useConfig, useMe, useRequestPasswordReset } from '@/features/auth/useAuth'
+import { PageHeader } from '@/features/layout/PageHeader'
 import { SessionsCard } from '@/features/sessions/SessionsCard'
 import { isLanguage } from '@/i18n'
 import { languageOptions } from '@/i18n/languages'
@@ -36,16 +36,16 @@ export function SettingsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
-        <SidebarTrigger />
-        <h1 className="text-lg font-semibold">{t('settings.title')}</h1>
-      </header>
-      <div className="flex min-h-0 flex-1 flex-col">
+      <PageHeader
+        crumbs={[{ label: t('settings.title'), to: '/settings' }, { label: t(`settings.sections.${current.value}`) }]}
+      >
         <SectionNav />
+      </PageHeader>
+      <div className="flex min-h-0 flex-1 flex-col">
         <main className="flex-1 overflow-y-auto">
           {me.data && (
             <div className="mx-auto max-w-2xl space-y-4 p-4">
-              <h2 className="sr-only">{t(`settings.sections.${current.value}`)}</h2>
+              <h1 className="sr-only">{t(`settings.sections.${current.value}`)}</h1>
               {current.value === 'profile' && (
                 <>
                   {/* Keyed so the form resets if the saved name changes elsewhere. */}
@@ -83,7 +83,7 @@ export function SettingsPage() {
 function SectionNav() {
   const { t } = useTranslation()
   return (
-    <nav aria-label={t('settings.title')} className="shrink-0 border-b">
+    <nav aria-label={t('settings.title')}>
       <div className="mx-auto flex max-w-2xl px-2 sm:gap-1 sm:px-4">
         {settingsSections.map(({ value, path, icon: Icon }) => (
           <NavLink

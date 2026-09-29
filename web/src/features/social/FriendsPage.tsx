@@ -7,12 +7,12 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FloatingInput } from '@/components/ui/floating-input'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import { ApiError } from '@/lib/api'
+import { PageHeader } from '@/features/layout/PageHeader'
 
 import type { PublicUser, Relation } from './api'
 import { FriendButton } from './FriendButton'
@@ -25,10 +25,7 @@ export function FriendsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
-        <SidebarTrigger />
-        <h1 className="text-lg font-semibold">{t('nav.friends')}</h1>
-      </header>
+      <PageHeader crumbs={[{ label: t('nav.friends') }]} />
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-4 p-4">
           <MyIdCard />

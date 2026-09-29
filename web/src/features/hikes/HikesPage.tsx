@@ -21,13 +21,13 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMe } from '@/features/auth/useAuth'
 import i18n from '@/i18n'
 import { errorMessage } from '@/lib/errors'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/features/layout/PageHeader'
 
 import type { Hike } from './api'
 import { useHikeColors } from './colors'
@@ -177,44 +177,43 @@ export function HikesPage() {
   const rows = table.getRowModel().rows
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
-        <SidebarTrigger />
-        <h1 className="text-lg font-semibold">{t('nav.hikes')}</h1>
-      </header>
-
-      {all.length > 0 && (
-        <div className="border-b px-2 py-1.5 sm:px-4">
-          {/* Selected rows the current filters hide are left out of bulk actions. */}
-          <table.Subscribe source={table.atoms.rowSelection}>
-            {() => {
-              const selected = table.getSelectedRowModel().rows
-              return selected.length > 0 ? (
-                <div className="flex h-10 items-center gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t('hikes.clearSelection')}
-                    onClick={() => table.resetRowSelection(true)}
-                  >
-                    <X />
-                  </Button>
-                  <span className="flex-1 text-sm font-medium tabular-nums">{t('hikes.selected', { count: selected.length })}</span>
-                  <Button variant="outline" size="sm" onClick={() => exportSelected(selected)} disabled={exportHikes.isPending}>
-                    {exportHikes.isPending ? <Loader2 className="animate-spin" /> : <Download />}
-                    {t('hikes.exportGpx')}
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => setDeleting(selected.map((r) => r.original))}>
-                    <Trash2 />
-                    {t('common.delete')}
-                  </Button>
-                </div>
-              ) : (
-                <FilterBar hikes={all} userId={userId} matched={data.length} />
-              )
-            }}
-          </table.Subscribe>
-        </div>
-      )}
+      <PageHeader
+        crumbs={[{ label: t('nav.hikes') }]}
+      >
+        {all.length > 0 && (
+          <div className="px-2 pb-2 sm:px-4">
+            {/* Selected rows the current filters hide are left out of bulk actions. */}
+            <table.Subscribe source={table.atoms.rowSelection}>
+              {() => {
+                const selected = table.getSelectedRowModel().rows
+                return selected.length > 0 ? (
+                  <div className="flex h-10 items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t('hikes.clearSelection')}
+                      onClick={() => table.resetRowSelection(true)}
+                    >
+                      <X />
+                    </Button>
+                    <span className="flex-1 text-sm font-medium tabular-nums">{t('hikes.selected', { count: selected.length })}</span>
+                    <Button variant="outline" size="sm" onClick={() => exportSelected(selected)} disabled={exportHikes.isPending}>
+                      {exportHikes.isPending ? <Loader2 className="animate-spin" /> : <Download />}
+                      {t('hikes.exportGpx')}
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => setDeleting(selected.map((r) => r.original))}>
+                      <Trash2 />
+                      {t('common.delete')}
+                    </Button>
+                  </div>
+                ) : (
+                  <FilterBar hikes={all} userId={userId} matched={data.length} />
+                )
+              }}
+            </table.Subscribe>
+          </div>
+        )}
+      </PageHeader>
 
       <main ref={mainRef} className="flex-1 overflow-y-auto">
         {hikes.isLoading ? (

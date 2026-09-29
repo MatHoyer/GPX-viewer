@@ -4,7 +4,6 @@ import { Trans, useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
@@ -13,6 +12,7 @@ import type { Hike } from '@/features/hikes/api'
 import { KudosButton } from '@/features/interactions/KudosButton'
 import { api } from '@/lib/api'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
+import { PageHeader } from '@/features/layout/PageHeader'
 
 type FeedPage = { hikes: Hike[]; next: string | null }
 
@@ -34,10 +34,7 @@ export function FeedPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
-        <SidebarTrigger />
-        <h1 className="text-lg font-semibold">{t('nav.activity')}</h1>
-      </header>
+      <PageHeader crumbs={[{ label: t('nav.activity') }]} />
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-3 p-4">
           {feed.isLoading ? (

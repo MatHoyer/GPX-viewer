@@ -681,7 +681,9 @@
     "fullscreen": "Toggle fullscreen",
     "resetBearing": "Reset bearing to north",
     "commandTitle": "Command Palette",
-    "commandDescription": "Search for a command to run..."
+    "commandDescription": "Search for a command to run...",
+    "breadcrumb": "Breadcrumb",
+    "more": "More"
   },
   "light": {
     "night": "Night",

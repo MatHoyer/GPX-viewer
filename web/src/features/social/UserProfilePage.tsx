@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
@@ -17,6 +16,7 @@ import { HikesMapView } from '@/features/hikes/HikesMapView'
 import { TaggedBy } from '@/features/hikes/TaggedBy'
 import { ApiError } from '@/lib/api'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
+import { PageHeader } from '@/features/layout/PageHeader'
 
 import type { UserProfile } from './api'
 import { FriendButton } from './FriendButton'
@@ -36,11 +36,7 @@ export function UserProfilePage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
-        {/* Signed-out visitors get the page without the app sidebar. */}
-        {me.data && <SidebarTrigger />}
-        <h1 className="truncate text-lg font-semibold">{name ?? t('nav.profile')}</h1>
-      </header>
+      <PageHeader crumbs={[{ label: name ?? t('nav.profile') }]} />
       <main className="flex-1 overflow-y-auto">
         {notFound ? (
           <EmptyState icon={<Lock />} title={t('profile.notFound')}>
