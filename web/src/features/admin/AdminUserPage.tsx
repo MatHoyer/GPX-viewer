@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
@@ -15,6 +14,7 @@ import { SessionList } from '@/features/sessions/SessionList'
 import { ApiError } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
 import { formatDate, formatRelative } from '@/lib/format'
+import { PageHeader } from '@/features/layout/PageHeader'
 
 import type { AdminUser } from './api'
 import { BanDialog } from './BanDialog'
@@ -41,15 +41,9 @@ export function AdminUserPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
-        <SidebarTrigger />
-        <Button asChild variant="ghost" size="icon" aria-label={t('admin.backToUsers')}>
-          <Link to="/admin">
-            <ArrowLeft />
-          </Link>
-        </Button>
-        <h1 className="truncate text-lg font-semibold">{user.data ? displayName(user.data) : t('admin.user')}</h1>
-      </header>
+      <PageHeader
+        crumbs={[{ label: t('nav.admin'), to: '/admin' }, { label: user.data ? displayName(user.data) : t('admin.user') }]}
+      />
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-4 p-4">
           {user.data ? (

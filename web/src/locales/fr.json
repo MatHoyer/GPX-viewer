@@ -700,7 +700,9 @@
     "fullscreen": "Plein écran",
     "resetBearing": "Réorienter vers le nord",
     "commandTitle": "Palette de commandes",
-    "commandDescription": "Rechercher une commande…"
+    "commandDescription": "Rechercher une commande…",
+    "breadcrumb": "Fil d'Ariane",
+    "more": "Plus"
   },
   "light": {
     "night": "Nuit",

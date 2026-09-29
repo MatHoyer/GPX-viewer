@@ -6,7 +6,6 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useMe } from '@/features/auth/useAuth'
@@ -16,6 +15,7 @@ import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
 import { useHikes, useSummits, useTiles } from '@/features/hikes/useHikes'
 import { exploredTiles, maxSquare } from '@/features/map/tiles'
 import { dateFormat, formatDate, formatDistance, formatDuration, formatElevation, formatNumber } from '@/lib/format'
+import { PageHeader } from '@/features/layout/PageHeader'
 
 import { personalRecords } from './records'
 import { firstVisit, summitsOn } from './summits'
@@ -89,28 +89,30 @@ export function StatsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
-        <SidebarTrigger />
-        <h1 className="min-w-0 flex-1 truncate text-lg font-semibold">{t('nav.stats')}</h1>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger size="sm" className="w-auto min-w-32" aria-label={t('stats.period')}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('stats.allTime')}</SelectItem>
-            {years.map((y) => (
-              <SelectItem key={y} value={String(y)}>
-                {y}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </header>
-      {all.length > 0 && (
-        <div className="border-b px-2 py-1.5 sm:px-4">
-          <FilterBar hikes={all} userId={me.data?.id} matched={shown.length} />
-        </div>
-      )}
+      <PageHeader
+        crumbs={[{ label: t('nav.stats') }]}
+        actions={
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger size="sm" className="w-auto min-w-32" aria-label={t('stats.period')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('stats.allTime')}</SelectItem>
+              {years.map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      >
+        {all.length > 0 && (
+          <div className="px-2 pb-2 sm:px-4">
+            <FilterBar hikes={all} userId={me.data?.id} matched={shown.length} />
+          </div>
+        )}
+      </PageHeader>
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-4 p-4">

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Hike } from '@/features/hikes/api'
 import { hikeColor } from '@/features/hikes/colors'
@@ -17,6 +16,7 @@ import { useHikes } from '@/features/hikes/useHikes'
 import i18n from '@/i18n'
 import { dateFormat, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/features/layout/PageHeader'
 
 import { addMonths, currentMonth, dayKey, formatMonthParam, monthGrid, parseMonth, type YearMonth } from './month'
 
@@ -75,32 +75,36 @@ export function CalendarPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
-        <SidebarTrigger />
-        <h1 className="min-w-0 flex-1 truncate text-lg font-semibold capitalize">
-          {monthFormatter().format(new Date(month.year, month.month, 1))}
-        </h1>
-        <p className="text-muted-foreground hidden text-sm tabular-nums sm:block">
-          <MonthSummary count={inMonth.length} distance={monthDistance} elevation={monthElevation} />
-        </p>
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" onClick={() => goTo(currentMonth())}>
-            {t('calendar.today')}
-          </Button>
-          <Button variant="ghost" size="icon" aria-label={t('calendar.previous')} onClick={() => goTo(addMonths(month, -1))}>
-            <ChevronLeft />
-          </Button>
-          <Button variant="ghost" size="icon" aria-label={t('calendar.next')} onClick={() => goTo(addMonths(month, 1))}>
-            <ChevronRight />
-          </Button>
-        </div>
-      </header>
-
-      {hikes.data && hikes.data.length > 0 && (
-        <div className="border-b px-2 py-1.5 sm:px-4">
-          <FilterBar hikes={hikes.data} userId={me.data?.id} matched={filterHikes(hikes.data, filters, me.data?.id).length} />
-        </div>
-      )}
+      <PageHeader
+        crumbs={[
+          { label: t('nav.calendar') },
+          { label: <span className="capitalize">{monthFormatter().format(new Date(month.year, month.month, 1))}</span> },
+        ]}
+        actions={
+          <>
+            <p className="text-muted-foreground hidden text-sm tabular-nums sm:block">
+              <MonthSummary count={inMonth.length} distance={monthDistance} elevation={monthElevation} />
+            </p>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" onClick={() => goTo(currentMonth())}>
+                {t('calendar.today')}
+              </Button>
+              <Button variant="ghost" size="icon" aria-label={t('calendar.previous')} onClick={() => goTo(addMonths(month, -1))}>
+                <ChevronLeft />
+              </Button>
+              <Button variant="ghost" size="icon" aria-label={t('calendar.next')} onClick={() => goTo(addMonths(month, 1))}>
+                <ChevronRight />
+              </Button>
+            </div>
+          </>
+        }
+      >
+        {hikes.data && hikes.data.length > 0 && (
+          <div className="px-2 pb-2 sm:px-4">
+            <FilterBar hikes={hikes.data} userId={me.data?.id} matched={filterHikes(hikes.data, filters, me.data?.id).length} />
+          </div>
+        )}
+      </PageHeader>
 
       <div className="grid grid-cols-7 border-b">
         {weekdays().map((d) => (

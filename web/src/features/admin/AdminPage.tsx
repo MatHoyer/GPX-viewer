@@ -6,12 +6,12 @@ import { Link, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { FloatingInput } from '@/components/ui/floating-input'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useConfig, useMe } from '@/features/auth/useAuth'
 import { formatDate, formatRelative } from '@/lib/format'
+import { PageHeader } from '@/features/layout/PageHeader'
 
 import type { AdminUser } from './api'
 import { InviteDialog } from './InviteDialog'
@@ -22,10 +22,7 @@ export function AdminPage() {
   const { t } = useTranslation()
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
-        <SidebarTrigger />
-        <h1 className="text-lg font-semibold">{t('nav.admin')}</h1>
-      </header>
+      <PageHeader crumbs={[{ label: t('nav.admin') }]} />
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-4 p-4">
           <RegistrationCard />

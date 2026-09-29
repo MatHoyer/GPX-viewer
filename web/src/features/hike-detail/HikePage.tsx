@@ -1,20 +1,19 @@
 import { ArrowLeft, Download, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayName } from '@/features/account/displayName'
-import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import { PlannedBadge } from '@/features/hikes/PlannedBadge'
 import { DeleteHikesDialog } from '@/features/hikes/DeleteHikesDialog'
 import { useHikeSummits, useUpdateHike } from '@/features/hikes/useHikes'
 import { CommentsPanel } from '@/features/interactions/CommentsPanel'
 import { KudosButton } from '@/features/interactions/KudosButton'
+import { PageHeader } from '@/features/layout/PageHeader'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 
@@ -40,7 +39,6 @@ export function HikePage() {
   const { t } = useTranslation()
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const location = useLocation()
   const me = useMe()
   const hike = useHike(id)
   const profile = useProfile(id)
@@ -84,69 +82,60 @@ export function HikePage() {
   return (
     // The layout fixes the page height, so the page scrolls itself and the header sticks to its top.
     <div className="bg-muted/30 h-full overflow-y-auto">
-      <header className="bg-background/90 sticky top-0 z-20 border-b backdrop-blur">
-        <div className="mx-auto flex max-w-screen-2xl items-center gap-3 px-4 py-3">
-          {/* Signed-out visitors get the page without the app sidebar. */}
-          {me.data && <SidebarTrigger />}
-          {/* Return to whichever view (map or calendar) the hike was opened from. */}
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={t('common.back')}
-            onClick={() => {
-              if (location.key !== 'default') navigate(-1)
-              else navigate(ownerId && !isOwner ? `/u/${ownerId}` : '/')
-            }}
-          >
-            <ArrowLeft />
-          </Button>
-          <div className="min-w-0 flex-1">
-            {hike.data ? (
-              <>
-                {isOwner ? (
-                  <EditableTitle hike={hike.data} />
-                ) : (
-                  <h1 className="truncate text-lg leading-tight font-semibold">{hike.data.name}</h1>
-                )}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  {hike.data.planned && <PlannedBadge />}
-                  {date && <p className="text-muted-foreground text-sm">{date}</p>}
-                  {!isOwner && hike.data.owner && (
-                    <Link
-                      to={`/u/${hike.data.userId}`}
-                      className="text-muted-foreground flex items-center gap-1.5 text-sm hover:underline"
-                    >
-                      {t('hike.by')}
-                      <UserAvatar user={hike.data.owner} className="size-5" />
-                      <span className="text-foreground font-medium">{displayName(hike.data.owner)}</span>
-                    </Link>
-                  )}
-                  <Participants hike={hike.data} isOwner={isOwner} viewerId={me.data?.id} />
-                  {me.data && <RecordBadge hikeId={hike.data.id} />}
-                  <KudosButton hike={hike.data} viewerId={me.data?.id} />
-                </div>
-              </>
+      <PageHeader
+        crumbs={[
+          // Your hikes live in the list; anyone else's on its owner's profile.
+          isOwner || !hike.data?.owner
+            ? { label: t('nav.hikes'), to: me.data ? '/hikes' : undefined }
+            : { label: displayName(hike.data.owner), to: `/u/${hike.data.userId}` },
+          {
+            label: hike.data ? (
+              isOwner ? (
+                <EditableTitle hike={hike.data} />
+              ) : (
+                hike.data.name
+              )
             ) : (
-              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-5 w-40" />
+            ),
+          },
+        ]}
+        actions={
+          <>
+            {hike.data && (
+              <Button asChild variant="ghost" size="icon-sm" aria-label={t('hikeActions.download')} title={t('hikeActions.download')}>
+                <a href={`/api/hikes/${id}/gpx`} download>
+                  <Download />
+                </a>
+              </Button>
             )}
-          </div>
-          {hike.data && (
-            <Button asChild variant="outline" size="icon" aria-label={t('hikeActions.download')} title={t('hikeActions.download')}>
-              <a href={`/api/hikes/${id}/gpx`} download>
-                <Download />
-              </a>
-            </Button>
-          )}
-          {isOwner && hike.data?.planned && <MarkDoneDialog id={id} />}
-          {isOwner && (
-            <Button variant="destructive" size="icon" onClick={() => setConfirmDelete(true)} aria-label={t('hike.delete')}>
-              <Trash2 />
-            </Button>
-          )}
-        </div>
-      </header>
+            {isOwner && hike.data?.planned && <MarkDoneDialog id={id} />}
+            {isOwner && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setConfirmDelete(true)}
+                aria-label={t('hike.delete')}
+                title={t('hike.delete')}
+              >
+                <Trash2 />
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <main className="mx-auto max-w-screen-2xl space-y-4 p-4 pb-20">
+        {hike.data && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {hike.data.planned && <PlannedBadge />}
+            {date && <p className="text-muted-foreground text-sm">{date}</p>}
+            <Participants hike={hike.data} isOwner={isOwner} viewerId={me.data?.id} />
+            {me.data && <RecordBadge hikeId={hike.data.id} />}
+            <KudosButton hike={hike.data} viewerId={me.data?.id} />
+          </div>
+        )}
         {profile.data ? <HikeStats
             summary={profile.data.summary}
             planned={hike.data?.planned}

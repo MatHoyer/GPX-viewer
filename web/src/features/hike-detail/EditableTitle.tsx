@@ -31,7 +31,7 @@ export function EditableTitle({ hike }: { hike: Hike }) {
   if (draft === null) {
     return (
       <div className="group flex min-w-0 items-center gap-1">
-        <h1 className="truncate text-lg leading-tight font-semibold">{hike.name}</h1>
+        <h1 className="text-foreground truncate font-medium">{hike.name}</h1>
         <Button
           variant="ghost"
           size="icon-sm"
@@ -55,7 +55,7 @@ export function EditableTitle({ hike }: { hike: Hike }) {
         autoFocus
         onFocus={(e) => e.currentTarget.select()}
         aria-label={t('hike.name')}
-        className="h-8 text-base font-semibold"
+        className="h-7 text-sm font-medium"
         disabled={rename.isPending}
       />
       <Button type="submit" size="icon-sm" disabled={!draft.trim() || rename.isPending} aria-label={t('hike.saveName')}>
