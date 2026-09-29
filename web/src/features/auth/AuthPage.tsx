@@ -1,11 +1,13 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import { CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { FloatingInput } from '@/components/ui/floating-input'
 import { ApiError } from '@/lib/api'
+import { errorMessage as describeError } from '@/lib/errors'
 
 import { AuthShell } from './AuthShell'
 import { CheckInbox } from './CheckInbox'
@@ -13,26 +15,10 @@ import { useConfig, useLogin, useRegister } from './useAuth'
 
 type Mode = 'login' | 'register'
 
-const copy = {
-  login: {
-    title: 'Welcome back',
-    description: 'Sign in to see your hikes on the map.',
-    submit: 'Sign in',
-    switchText: 'No account yet?',
-    switchLink: 'Create one',
-    switchTo: '/register',
-  },
-  register: {
-    title: 'Create an account',
-    description: 'Import your GPX files and see every hike in one place.',
-    submit: 'Create account',
-    switchText: 'Already have an account?',
-    switchLink: 'Sign in',
-    switchTo: '/login',
-  },
-} satisfies Record<Mode, Record<string, string>>
+const switchTo = { login: '/register', register: '/login' } satisfies Record<Mode, string>
 
 export function AuthPage({ mode }: { mode: Mode }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const loginMutation = useLogin()
   const registerMutation = useRegister()
@@ -47,14 +33,9 @@ export function AuthPage({ mode }: { mode: Mode }) {
   const [password, setPassword] = useState('')
   // Set once the account exists but its email is not confirmed yet.
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
-  const t = copy[mode]
 
   const error = mutation.error instanceof ApiError ? mutation.error : null
-  const errorMessage = !mutation.error
-    ? null
-    : error?.code === 'banned'
-      ? `Your account was suspended. Reason: ${error.reason}`
-      : (error?.message ?? 'Something went wrong')
+  const errorMessage = mutation.error ? describeError(mutation.error, t('errors.generic')) : null
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -94,13 +75,13 @@ export function AuthPage({ mode }: { mode: Mode }) {
     return (
       <AuthShell>
         <CardHeader>
-          <CardTitle>Sign-up is closed</CardTitle>
-          <CardDescription>This instance is invite-only. Ask its admin to invite you.</CardDescription>
+          <CardTitle>{t('auth.closedTitle')}</CardTitle>
+          <CardDescription>{t('auth.closedDescription')}</CardDescription>
         </CardHeader>
         <CardFooter className="mt-6">
           <Button asChild size="lg" className="h-11 w-full rounded-xl">
             <Link to="/login" replace>
-              Sign in
+              {t('common.signIn')}
             </Link>
           </Button>
         </CardFooter>
@@ -119,14 +100,14 @@ export function AuthPage({ mode }: { mode: Mode }) {
   return (
     <AuthShell>
           <CardHeader>
-            <CardTitle>{t.title}</CardTitle>
-            <CardDescription>{t.description}</CardDescription>
+            <CardTitle>{t(`auth.${mode}.title`)}</CardTitle>
+            <CardDescription>{t(`auth.${mode}.description`)}</CardDescription>
           </CardHeader>
           <form onSubmit={onSubmit}>
             <CardContent className="space-y-4">
               <FloatingInput
                 id="email"
-                label="Email"
+                label={t('common.email')}
                 type="email"
                 autoComplete="email"
                 required
@@ -136,7 +117,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
               />
               <FloatingInput
                 id="password"
-                label="Password"
+                label={t('common.password')}
                 type="password"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 required
@@ -144,14 +125,14 @@ export function AuthPage({ mode }: { mode: Mode }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 aria-invalid={error?.field === 'password' || undefined}
-                description={mode === 'register' ? 'At least 8 characters.' : undefined}
+                description={mode === 'register' ? t('settings.passwordRule') : undefined}
               />
               {mode === 'login' && emailEnabled === true && (
                 <Link
                   to={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'}
                   className="text-muted-foreground hover:text-foreground block text-right text-sm underline-offset-4 hover:underline"
                 >
-                  Forgot password?
+                  {t('auth.forgotPassword')}
                 </Link>
               )}
               {errorMessage && (
@@ -163,13 +144,13 @@ export function AuthPage({ mode }: { mode: Mode }) {
             <CardFooter className="mt-6 flex-col gap-3">
               <Button type="submit" size="lg" className="h-11 w-full rounded-xl" disabled={mutation.isPending}>
                 {mutation.isPending && <Loader2 className="animate-spin" aria-hidden />}
-                {t.submit}
+                {t(`auth.${mode}.submit`)}
               </Button>
               {(mode === 'register' || registrationOpen) && (
                 <p className="text-muted-foreground text-sm">
-                  {t.switchText}{' '}
-                  <Link to={t.switchTo} className="text-foreground underline underline-offset-4">
-                    {t.switchLink}
+                  {t(`auth.${mode}.switchText`)}{' '}
+                  <Link to={switchTo[mode]} className="text-foreground underline underline-offset-4">
+                    {t(`auth.${mode}.switchLink`)}
                   </Link>
                 </p>
               )}

@@ -46,6 +46,23 @@ describe('translation catalogs', () => {
     expect(missing).toEqual([])
   })
 
+  it('has every key the code asks for', () => {
+    const sources = import.meta.glob(['/src/**/*.{ts,tsx}', '!/src/**/*.test.ts'], {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    }) as Record<string, string>
+    const exists = (key: string) => english.has(key) || english.has(`${key}_one`)
+    const missing: string[] = []
+    for (const [file, source] of Object.entries(sources)) {
+      for (const m of source.matchAll(/\bt\(\s*['"]([\w.]+)['"]|i18nKey="([\w.]+)"/g)) {
+        const key = m[1] ?? m[2]
+        if (!exists(key)) missing.push(`${file}: ${key}`)
+      }
+    }
+    expect(missing).toEqual([])
+  })
+
   it('uses the same variables in both languages', () => {
     const variables = (k: string) => english.get(k) ?? english.get(k.replace(/_many$/, '_other'))
     const mismatched = [...french].filter(([k, vars]) => variables(k)?.join() !== vars.join())

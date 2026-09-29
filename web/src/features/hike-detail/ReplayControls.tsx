@@ -1,11 +1,12 @@
 import { Crosshair, Moon, Pause, Play, SkipBack, Sun, Sunrise, Sunset, type LucideIcon } from 'lucide-react'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { Toggle } from '@/components/ui/toggle'
-import { formatClock, formatDistance, formatTime } from '@/lib/format'
+import { formatClock, formatDistance, formatElevation, formatNumber, formatTime } from '@/lib/format'
 
 import { valueAt, type Profile } from './profile'
 import { replaySpeeds, useReplay, visibleSpan } from './store'
@@ -22,6 +23,7 @@ export function ReplayControls({
   /** The hike's own time zone, for the time of day; the viewer's when undefined. */
   timeZone?: string
 }) {
+  const { t } = useTranslation()
   const playing = useReplay((s) => s.playing)
   const pos = useReplay((s) => s.pos)
   const range = useReplay((s) => s.range)
@@ -47,10 +49,10 @@ export function ReplayControls({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Button size="icon" onClick={() => s.setPlaying(!playing)} aria-label={playing ? 'Pause' : 'Play'}>
+        <Button size="icon" onClick={() => s.setPlaying(!playing)} aria-label={playing ? t('replay.pause') : t('replay.play')}>
           {playing ? <Pause /> : <Play />}
         </Button>
-        <Button size="icon" variant="outline" onClick={() => s.setPos(lo)} aria-label="Back to start">
+        <Button size="icon" variant="outline" onClick={() => s.setPos(lo)} aria-label={t('replay.backToStart')}>
           <SkipBack />
         </Button>
         <Slider
@@ -60,10 +62,10 @@ export function ReplayControls({
           step={0.01}
           value={[Math.min(hi, Math.max(lo, pos))]}
           onValueChange={([v]) => s.setPos(v)}
-          aria-label="Replay position"
+          aria-label={t('replay.position')}
         />
         <Select value={String(speed)} onValueChange={(v) => s.setSpeed(Number(v))}>
-          <SelectTrigger size="sm" className="w-20" aria-label="Replay speed">
+          <SelectTrigger size="sm" className="w-20" aria-label={t('replay.speed')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -74,7 +76,7 @@ export function ReplayControls({
             ))}
           </SelectContent>
         </Select>
-        <Toggle variant="outline" size="sm" pressed={follow} onPressedChange={s.setFollow} aria-label="Follow on map">
+        <Toggle variant="outline" size="sm" pressed={follow} onPressedChange={s.setFollow} aria-label={t('replay.follow')}>
           <Crosshair />
         </Toggle>
       </div>
@@ -103,24 +105,28 @@ function Readout({
   startedAt: string | null
   timeZone?: string
 }) {
-  const t = valueAt(profile.t, pos)
+  const { t } = useTranslation()
+  const elapsed = valueAt(profile.t, pos)
   const sun = sunAtIndex(profile, startedAt, pos)
   const dist = valueAt(profile.dist, pos) ?? 0
   const ele = valueAt(profile.ele, pos)
   const speed = valueAt(profile.speed, pos)
   const hr = valueAt(profile.hr, pos)
   const items = [
-    t !== null &&
+    elapsed !== null &&
       startedAt && {
-        label: 'Time of day',
-        value: formatTime(new Date(new Date(startedAt).getTime() + t * 1000), timeZone),
+        label: t('replay.timeOfDay'),
+        value: formatTime(new Date(new Date(startedAt).getTime() + elapsed * 1000), timeZone),
         icon: sun ? sunIcon(sun) : undefined,
       },
-    t !== null && { label: 'Elapsed', value: formatClock(t) },
-    { label: 'Distance', value: formatDistance(dist) },
-    ele !== null && { label: 'Altitude', value: `${Math.round(ele)} m` },
-    speed !== null && { label: 'Speed', value: `${(speed * 3.6).toFixed(1)} km/h` },
-    hr !== null && { label: 'Heart rate', value: `${Math.round(hr)} bpm` },
+    elapsed !== null && { label: t('replay.elapsed'), value: formatClock(elapsed) },
+    { label: t('hike.distance'), value: formatDistance(dist) },
+    ele !== null && { label: t('replay.altitude'), value: formatElevation(ele) },
+    speed !== null && {
+      label: t('series.speed'),
+      value: `${formatNumber(speed * 3.6, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km/h`,
+    },
+    hr !== null && { label: t('stat.heartRate'), value: `${Math.round(hr)} bpm` },
   ].filter(Boolean) as Item[]
 
   return (

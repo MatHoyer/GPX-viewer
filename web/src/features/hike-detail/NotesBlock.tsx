@@ -1,18 +1,20 @@
 import { NotebookPen, Pencil } from 'lucide-react'
 import { useState, type KeyboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { FloatingTextarea } from '@/components/ui/floating-textarea'
 import { MAX_NOTES_LENGTH, type Hike } from '@/features/hikes/api'
 import { useUpdateHike } from '@/features/hikes/useHikes'
-import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 
 /**
  * A hike's notes as plain text. Its owner gets a pencil to edit them in place,
  * or a single "Add notes" button while there are none.
  */
 export function NotesBlock({ hike, isOwner }: { hike: Hike; isOwner: boolean }) {
+  const { t } = useTranslation()
   const [draft, setDraft] = useState<string | null>(null)
   const update = useUpdateHike()
 
@@ -23,7 +25,7 @@ export function NotesBlock({ hike, isOwner }: { hike: Hike; isOwner: boolean }) 
       { id: hike.id, notes: draft },
       {
         onSuccess: () => setDraft(null),
-        onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not save notes'),
+        onError: (err) => toast.error(errorMessage(err, t('notes.saveFailed'))),
       },
     )
   }
@@ -37,22 +39,22 @@ export function NotesBlock({ hike, isOwner }: { hike: Hike; isOwner: boolean }) 
     return (
       <div className="space-y-2">
         <FloatingTextarea
-          label="Notes"
+          label={t('notes.label')}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
           maxLength={MAX_NOTES_LENGTH}
           autoFocus
-          placeholder="Conditions, company, what to remember next time…"
+          placeholder={t('notes.placeholder')}
           className="[&_textarea]:bg-card [&_textarea]:max-h-72"
         />
         <div className="flex items-center justify-end gap-2">
-          <span className="text-muted-foreground mr-auto hidden text-xs sm:inline">Ctrl+Enter to save, Esc to cancel</span>
+          <span className="text-muted-foreground mr-auto hidden text-xs sm:inline">{t('notes.shortcuts')}</span>
           <Button variant="ghost" size="sm" onClick={() => setDraft(null)} disabled={update.isPending}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button size="sm" onClick={save} disabled={update.isPending}>
-            {update.isPending ? 'Saving…' : 'Save'}
+            {update.isPending ? t('common.saving') : t('common.save')}
           </Button>
         </div>
       </div>
@@ -64,7 +66,7 @@ export function NotesBlock({ hike, isOwner }: { hike: Hike; isOwner: boolean }) 
     return (
       <Button variant="ghost" size="sm" className="text-muted-foreground -ml-2" onClick={() => setDraft('')}>
         <NotebookPen />
-        Add notes
+        {t('notes.add')}
       </Button>
     )
   }
@@ -78,7 +80,7 @@ export function NotesBlock({ hike, isOwner }: { hike: Hike; isOwner: boolean }) 
           size="icon-sm"
           className="text-muted-foreground absolute -top-1 right-0 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
           onClick={() => setDraft(hike.notes)}
-          aria-label="Edit notes"
+          aria-label={t('notes.edit')}
         >
           <Pencil />
         </Button>

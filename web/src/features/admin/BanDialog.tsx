@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,7 @@ import {
 import { FloatingTextarea } from '@/components/ui/floating-textarea'
 import { displayName } from '@/features/account/displayName'
 import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 
 import { MAX_BAN_REASON_LENGTH, type AdminUser } from './api'
 import { useBanUser } from './useAdmin'
@@ -25,6 +27,7 @@ type Props = {
 
 /** Asks for the reason the banned user will see when they try to sign in. */
 export function BanDialog({ user, onClose }: Props) {
+  const { t } = useTranslation()
   const [reason, setReason] = useState('')
   const ban = useBanUser()
   const error = ban.error instanceof ApiError ? ban.error : null
@@ -43,7 +46,7 @@ export function BanDialog({ user, onClose }: Props) {
       { id: user.id, reason },
       {
         onSuccess: () => {
-          toast.success(`${displayName(user)} is banned`)
+          toast.success(t('admin.banned', { name: displayName(user) }))
           onOpenChange(false)
         },
       },
@@ -55,16 +58,16 @@ export function BanDialog({ user, onClose }: Props) {
       <DialogContent>
         <form onSubmit={onSubmit} className="contents">
           <DialogHeader>
-            <DialogTitle>Ban {user && displayName(user)}?</DialogTitle>
+            <DialogTitle>{t('admin.banTitle', { name: user ? displayName(user) : '' })}</DialogTitle>
             <DialogDescription>
-              They are signed out everywhere and cannot sign in until you lift the ban. Their hikes stay as they are.
+              {t('admin.banDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <FloatingTextarea
               id="ban-reason"
-              label="Reason"
-              description="Shown to them when they try to sign in."
+              label={t('admin.reason')}
+              description={t('admin.reasonHint')}
               required
               autoFocus
               maxLength={MAX_BAN_REASON_LENGTH}
@@ -74,17 +77,17 @@ export function BanDialog({ user, onClose }: Props) {
             />
             {ban.error && (
               <p role="alert" className="text-destructive text-sm">
-                {error?.message ?? 'Could not ban this user'}
+                {errorMessage(ban.error, t('admin.banFailed'))}
               </p>
             )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={ban.isPending}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" variant="destructive" disabled={!reason.trim() || ban.isPending}>
               {ban.isPending && <Loader2 className="animate-spin" aria-hidden />}
-              Ban
+              {t('admin.ban')}
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Search, UserPlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -18,11 +19,12 @@ import { Pill, UserPills } from './Pill'
 import { useUsers } from './useAdmin'
 
 export function AdminPage() {
+  const { t } = useTranslation()
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
         <SidebarTrigger />
-        <h1 className="text-lg font-semibold">Admin</h1>
+        <h1 className="text-lg font-semibold">{t('nav.admin')}</h1>
       </header>
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-4 p-4">
@@ -37,28 +39,28 @@ export function AdminPage() {
 
 /** Read-only: the environment is the source of truth. */
 function RegistrationCard() {
+  const { t } = useTranslation()
   const config = useConfig()
   const enabled = config.data?.registrationEnabled
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Account creation</CardTitle>
+        <CardTitle>{t('admin.registration')}</CardTitle>
         <CardDescription>
-          Set by the <code className="font-mono">REGISTRATION_ENABLED</code> environment variable. Restart the app
-          after changing it.
+          <Trans i18nKey="admin.registrationDescription" components={{ code: <code className="font-mono" /> }} />
         </CardDescription>
         <CardAction>
           {enabled === undefined ? (
             <Skeleton className="h-6 w-20" />
           ) : (
-            <Pill tone={enabled ? 'good' : 'muted'}>{enabled ? 'Open to all' : 'Invite only'}</Pill>
+            <Pill tone={enabled ? 'good' : 'muted'}>{enabled ? t('admin.openToAll') : t('admin.inviteOnly')}</Pill>
           )}
         </CardAction>
       </CardHeader>
       {enabled === false && (
         <CardContent className="text-muted-foreground text-sm">
-          Nobody can sign up on their own. Invite people from the list below.
+          {t('admin.inviteOnlyHint')}
         </CardContent>
       )}
     </Card>
@@ -67,23 +69,22 @@ function RegistrationCard() {
 
 /** Read-only: whether SMTP is set up, and what that changes. */
 function EmailCard() {
+  const { t } = useTranslation()
   const config = useConfig()
   const enabled = config.data?.emailEnabled
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Email</CardTitle>
+        <CardTitle>{t('common.email')}</CardTitle>
         <CardDescription>
-          {enabled === false
-            ? 'No mail server is set up (SMTP_HOST). Accounts sign in without verifying their email, and nothing is emailed: copy invite and password links from each user’s page.'
-            : 'Verification, invite and password reset emails are sent through SMTP_HOST.'}
+          {enabled === false ? t('admin.emailOff') : t('admin.emailOn')}
         </CardDescription>
         <CardAction>
           {enabled === undefined ? (
             <Skeleton className="h-6 w-20" />
           ) : (
-            <Pill tone={enabled ? 'good' : 'muted'}>{enabled ? 'Configured' : 'Not configured'}</Pill>
+            <Pill tone={enabled ? 'good' : 'muted'}>{enabled ? t('admin.configured') : t('admin.notConfigured')}</Pill>
           )}
         </CardAction>
       </CardHeader>
@@ -93,6 +94,7 @@ function EmailCard() {
 
 /** Users, a page at a time; the search and page live in the URL so going back keeps them. */
 function UsersCard() {
+  const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
   const q = params.get('q') ?? ''
   const page = Math.max(1, Number(params.get('page')) || 1)
@@ -106,8 +108,8 @@ function UsersCard() {
   useEffect(() => {
     const next = search.trim()
     if (next === q) return
-    const t = setTimeout(() => setParams(next ? { q: next } : {}, { replace: true }), 300)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setParams(next ? { q: next } : {}, { replace: true }), 300)
+    return () => clearTimeout(timer)
   }, [search, q, setParams])
 
   function goTo(p: number) {
@@ -120,18 +122,21 @@ function UsersCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Users{data && ` (${data.total})`}</CardTitle>
+        <CardTitle>
+          {t('admin.users')}
+          {data && ` (${data.total})`}
+        </CardTitle>
         <CardAction>
           <Button size="sm" onClick={() => setInviting(true)}>
             <UserPlus />
-            Invite
+            {t('admin.invite')}
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-3">
         <FloatingInput
           type="search"
-          label="Search by email or name"
+          label={t('admin.search')}
           icon={<Search />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -145,12 +150,12 @@ function UsersCard() {
             </ul>
           ) : (
             <p className="text-muted-foreground py-4 text-center text-sm">
-              {q ? `No user matches "${q}".` : 'No users yet.'}
+              {q ? t('admin.noMatch', { q }) : t('admin.noUsers')}
             </p>
           )
         ) : users.isError ? (
           <p role="alert" className="text-destructive text-sm">
-            Could not load users.
+            {t('admin.loadFailed')}
           </p>
         ) : (
           <div className="space-y-3">
@@ -162,16 +167,20 @@ function UsersCard() {
       {data && pages > 1 && (
         <CardFooter className="justify-between">
           <span className="text-muted-foreground text-sm">
-            {(page - 1) * data.pageSize + 1}–{Math.min(page * data.pageSize, data.total)} of {data.total}
+            {t('admin.range', {
+              from: (page - 1) * data.pageSize + 1,
+              to: Math.min(page * data.pageSize, data.total),
+              total: data.total,
+            })}
           </span>
           <div className="flex gap-1">
-            <Button variant="outline" size="icon" aria-label="Previous page" disabled={page <= 1} onClick={() => goTo(page - 1)}>
+            <Button variant="outline" size="icon" aria-label={t('admin.previousPage')} disabled={page <= 1} onClick={() => goTo(page - 1)}>
               <ChevronLeft />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              aria-label="Next page"
+              aria-label={t('admin.nextPage')}
               disabled={page >= pages}
               onClick={() => goTo(page + 1)}
             >
@@ -186,11 +195,12 @@ function UsersCard() {
 }
 
 function UserRow({ user }: { user: AdminUser }) {
+  const { t } = useTranslation()
   const me = useMe()
   const meta = [
-    `Joined ${formatDate(user.createdAt)}`,
-    user.lastSeenAt && `active ${formatRelative(user.lastSeenAt)}`,
-    `${user.hikes} ${user.hikes === 1 ? 'hike' : 'hikes'}`,
+    t('admin.joined', { date: formatDate(user.createdAt) }),
+    user.lastSeenAt && t('sessions.active', { when: formatRelative(user.lastSeenAt) }),
+    t('admin.hikeCount', { count: user.hikes }),
   ].filter(Boolean)
 
   return (
@@ -203,7 +213,7 @@ function UserRow({ user }: { user: AdminUser }) {
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="truncate font-medium">{displayName(user)}</span>
-            {me.data?.id === user.id && <span className="text-muted-foreground text-xs">(you)</span>}
+            {me.data?.id === user.id && <span className="text-muted-foreground text-xs">{t('admin.you')}</span>}
             <UserPills user={user} />
           </div>
           <p className="text-muted-foreground truncate text-sm">{user.email}</p>

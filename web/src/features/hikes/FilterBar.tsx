@@ -1,5 +1,6 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { useMemo, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { FloatingInput } from '@/components/ui/floating-input'
@@ -23,6 +24,7 @@ type Props = {
 
 /** Search box plus a sheet of filters on the user's hikes. */
 export function FilterBar({ hikes, userId, matched, className }: Props) {
+  const { t } = useTranslation()
   const { filters, setFilters, clearFilters } = useHikeFilters()
   const active = activeFilterCount(filters)
 
@@ -31,7 +33,7 @@ export function FilterBar({ hikes, userId, matched, className }: Props) {
       <FloatingInput
         size="sm"
         type="search"
-        label="Search hikes"
+        label={t('filters.search')}
         icon={<Search />}
         value={filters.query}
         onChange={(e) => setFilters({ query: e.target.value })}
@@ -40,9 +42,9 @@ export function FilterBar({ hikes, userId, matched, className }: Props) {
       />
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="outline" className="bg-background h-10 rounded-lg" aria-label="Filters">
+          <Button variant="outline" className="bg-background h-10 rounded-lg" aria-label={t('filters.title')}>
             <SlidersHorizontal />
-            <span className="hidden sm:inline">Filters</span>
+            <span className="hidden sm:inline">{t('filters.title')}</span>
             {active > 0 && (
               <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-xs tabular-nums">{active}</span>
             )}
@@ -53,9 +55,9 @@ export function FilterBar({ hikes, userId, matched, className }: Props) {
       {active > 0 && (
         <>
           <span className="bg-background/80 text-muted-foreground hidden rounded px-1.5 text-xs tabular-nums sm:inline">
-            {matched} of {hikes.length}
+            {t('filters.matched', { matched, total: hikes.length })}
           </span>
-          <Button variant="ghost" size="icon-lg" className="size-10" onClick={clearFilters} aria-label="Clear filters" title="Clear filters">
+          <Button variant="ghost" size="icon-lg" className="size-10" onClick={clearFilters} aria-label={t('filters.clear')} title={t('filters.clear')}>
             <X />
           </Button>
         </>
@@ -65,6 +67,7 @@ export function FilterBar({ hikes, userId, matched, className }: Props) {
 }
 
 function FilterSheet({ hikes, userId, matched }: Omit<Props, 'className'>) {
+  const { t } = useTranslation()
   const { filters, setFilters, clearFilters } = useHikeFilters()
 
   // Labels by how often they are used; people by name.
@@ -89,47 +92,41 @@ function FilterSheet({ hikes, userId, matched }: Omit<Props, 'className'>) {
   return (
     <SheetContent className="overflow-y-auto">
       <SheetHeader>
-        <SheetTitle>Filters</SheetTitle>
+        <SheetTitle>{t('filters.title')}</SheetTitle>
         <SheetDescription>
-          {matched} of {hikes.length} hikes match.
+          {t('filters.matchedHikes', { matched, count: hikes.length })}
         </SheetDescription>
       </SheetHeader>
 
       <div className="space-y-6 px-4">
-        <Chips label="Show" hint="Walked hikes or planned routes">
-          {(
-            [
-              ['all', 'All'],
-              ['done', 'Done'],
-              ['planned', 'Planned'],
-            ] as const
-          ).map(([value, label]) => (
+        <Chips label={t('filters.show')} hint={t('filters.showHint')}>
+          {(['all', 'done', 'planned'] as const).map((value) => (
             <Chip key={value} pressed={filters.status === value} onClick={() => setFilters({ status: value })}>
-              {label}
+              {t(`filters.status.${value}`)}
             </Chip>
           ))}
         </Chips>
         <Range
-          label="Date"
+          label={t('hikes.columns.date')}
           type="date"
           min={filters.from}
           max={filters.to}
           onChange={(from, to) => setFilters({ from, to })}
         />
         <NumberRange
-          label="Distance (km)"
+          label={t('filters.distanceKm')}
           min={filters.minKm}
           max={filters.maxKm}
           onChange={(minKm, maxKm) => setFilters({ minKm, maxKm })}
         />
         <NumberRange
-          label="Elevation gain (m)"
+          label={t('filters.gainM')}
           min={filters.minGainM}
           max={filters.maxGainM}
           onChange={(minGainM, maxGainM) => setFilters({ minGainM, maxGainM })}
         />
         {labels.length > 0 && (
-          <Chips label="Labels" hint="Hikes with all of them">
+          <Chips label={t('hikes.columns.labels')} hint={t('filters.labelsHint')}>
             {labels.map((l) => (
               <Chip key={l} pressed={filters.labels.includes(l)} onClick={() => toggle('labels', l)}>
                 {l}
@@ -138,7 +135,7 @@ function FilterSheet({ hikes, userId, matched }: Omit<Props, 'className'>) {
           </Chips>
         )}
         {people.length > 0 && (
-          <Chips label="With" hint="Hikes shared with all of them">
+          <Chips label={t('filters.with')} hint={t('filters.withHint')}>
             {people.map((p) => (
               <Chip key={p.id} pressed={filters.people.includes(p.id)} onClick={() => toggle('people', p.id)}>
                 <UserAvatar user={p} className="-ml-1 size-4" />
@@ -151,7 +148,7 @@ function FilterSheet({ hikes, userId, matched }: Omit<Props, 'className'>) {
 
       <SheetFooter>
         <Button variant="outline" onClick={clearFilters} disabled={activeFilterCount(filters) === 0}>
-          Clear all
+          {t('filters.clearAll')}
         </Button>
       </SheetFooter>
     </SheetContent>
@@ -171,6 +168,7 @@ function Range({
   max: string
   onChange: (min: string, max: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     // Fieldsets default to min-width: min-content, which would keep the date inputs from shrinking.
     <fieldset className="min-w-0 space-y-2">
@@ -178,21 +176,21 @@ function Range({
       {/* Two dates do not fit side by side on a phone. */}
       <div className={cn('flex items-center gap-2', type === 'date' && 'max-sm:flex-col max-sm:items-stretch')}>
         <FloatingInput
-          label="From"
+          label={t('filters.from')}
           type={type}
           value={min}
           onChange={(e) => onChange(e.target.value, max)}
-          aria-label={`${label} from`}
+          aria-label={t('filters.fromAria', { label })}
           min={0}
           className="min-w-0 flex-1"
         />
         <span className={cn('text-muted-foreground', type === 'date' && 'max-sm:hidden')}>–</span>
         <FloatingInput
-          label="To"
+          label={t('filters.to')}
           type={type}
           value={max}
           onChange={(e) => onChange(min, e.target.value)}
-          aria-label={`${label} to`}
+          aria-label={t('filters.toAria', { label })}
           min={0}
           className="min-w-0 flex-1"
         />

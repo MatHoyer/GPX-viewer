@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { HikeActionsMenu } from '@/features/hikes/HikeActionsMenu'
 import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
 import { taggedBy } from '@/features/hikes/owner'
 import { useHikes } from '@/features/hikes/useHikes'
+import i18n from '@/i18n'
 import { dateFormat, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -27,6 +29,7 @@ const dayFormatter = () => dateFormat({ weekday: 'long', month: 'long', day: 'nu
 const weekdays = () => Array.from({ length: 7 }, (_, i) => weekdayFormatter().format(new Date(2024, 0, 1 + i)))
 
 export function CalendarPage() {
+  const { t } = useTranslation()
   const hikes = useHikes()
   const me = useMe()
   const filters = useHikeFilters((s) => s.filters)
@@ -82,12 +85,12 @@ export function CalendarPage() {
         </p>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="sm" onClick={() => goTo(currentMonth())}>
-            Today
+            {t('calendar.today')}
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Previous month" onClick={() => goTo(addMonths(month, -1))}>
+          <Button variant="ghost" size="icon" aria-label={t('calendar.previous')} onClick={() => goTo(addMonths(month, -1))}>
             <ChevronLeft />
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Next month" onClick={() => goTo(addMonths(month, 1))}>
+          <Button variant="ghost" size="icon" aria-label={t('calendar.next')} onClick={() => goTo(addMonths(month, 1))}>
             <ChevronRight />
           </Button>
         </div>
@@ -151,7 +154,7 @@ export function CalendarPage() {
                   <button
                     type="button"
                     className="absolute inset-0 sm:hidden"
-                    aria-label={`Show hikes on ${dayFormatter().format(day)}`}
+                    aria-label={t('calendar.showDay', { day: dayFormatter().format(day) })}
                     onClick={() => document.getElementById(`day-${key}`)?.scrollIntoView({ behavior: 'smooth' })}
                   />
                 )}
@@ -170,8 +173,7 @@ export function CalendarPage() {
 
       {undated > 0 && (
         <p className="text-muted-foreground border-t px-4 py-2 text-xs">
-          {undated} {undated === 1 ? 'hike has' : 'hikes have'} no recorded date and {undated === 1 ? 'is' : 'are'} not
-          shown.
+          {t('calendar.undated', { count: undated })}
         </p>
       )}
     </div>
@@ -179,9 +181,11 @@ export function CalendarPage() {
 }
 
 function MonthSummary({ count, distance, elevation }: { count: number; distance: number; elevation: number }) {
+  const { t } = useTranslation()
   return (
     <>
-      {count} {count === 1 ? 'hike' : 'hikes'} · {formatDistance(distance)} · {formatElevation(elevation)} D+
+      {t('admin.hikeCount', { count })} · {formatDistance(distance)} ·{' '}
+      {t('hike.gainValue', { value: formatElevation(elevation) })}
     </>
   )
 }
@@ -189,6 +193,7 @@ function MonthSummary({ count, distance, elevation }: { count: number; distance:
 type AgendaProps = { byDay: Map<string, DatedHike[]>; days: Date[]; loading: boolean; summary: React.ReactNode }
 
 function MonthAgenda({ byDay, days, loading, summary }: AgendaProps) {
+  const { t } = useTranslation()
   const withHikes = days.filter((d) => byDay.has(dayKey(d)))
   return (
     <section className="sm:hidden">
@@ -199,7 +204,7 @@ function MonthAgenda({ byDay, days, loading, summary }: AgendaProps) {
           <Skeleton className="h-14" />
         </div>
       ) : withHikes.length === 0 ? (
-        <p className="text-muted-foreground p-4 text-sm">No hikes this month.</p>
+        <p className="text-muted-foreground p-4 text-sm">{t('calendar.empty')}</p>
       ) : (
         <ol className="divide-y border-y">
           {withHikes.map((day) => {
@@ -225,6 +230,7 @@ function MonthAgenda({ byDay, days, loading, summary }: AgendaProps) {
 }
 
 function AgendaItem({ hike, color }: DatedHike) {
+  const { t } = useTranslation()
   const owner = taggedBy(hike, useMe().data?.id)
   return (
     <div className="-mx-2 flex items-center gap-1">
@@ -237,7 +243,7 @@ function AgendaItem({ hike, color }: DatedHike) {
           <span className="block truncate text-sm font-medium">{hike.name}</span>
           <span className="text-muted-foreground block truncate text-xs tabular-nums">
             {hikeDetails(hike).join(' · ')}
-            {owner && ` · tagged by ${owner}`}
+            {owner && ` · ${t('calendar.taggedBy', { name: owner })}`}
           </span>
         </span>
       </Link>
@@ -247,19 +253,20 @@ function AgendaItem({ hike, color }: DatedHike) {
 }
 
 function hikeDetails(hike: Hike): string[] {
-  const details = [formatDistance(hike.distanceM), `${formatElevation(hike.elevationGainM)} D+`]
+  const details = [formatDistance(hike.distanceM), i18n.t('hike.gainValue', { value: formatElevation(hike.elevationGainM) })]
   if (hike.durationS > 0) details.push(formatDuration(hike.durationS))
   return details
 }
 
 function HikeChip({ hike, color, muted }: DatedHike & { muted: boolean }) {
+  const { t } = useTranslation()
   const owner = taggedBy(hike, useMe().data?.id)
 
   return (
     <div className="flex min-w-0 items-center">
       <Link
         to={`/hikes/${hike.id}`}
-        title={`${hike.name}${owner ? ` (tagged by ${owner})` : ''} — ${hikeDetails(hike).join(' · ')}`}
+        title={`${hike.name}${owner ? ` (${t('calendar.taggedBy', { name: owner })})` : ''} — ${hikeDetails(hike).join(' · ')}`}
         className={cn(
           'hover:bg-accent flex min-w-0 flex-1 items-center gap-1.5 rounded-sm px-1 py-0.5 text-xs transition-colors',
           muted && 'opacity-60',

@@ -1,5 +1,8 @@
-import { ESTIMATE_NOTE, estimatedDurationS } from '@/features/hikes/estimate'
-import { formatDistance, formatDuration, formatElevation, formatTime } from '@/lib/format'
+import { useTranslation } from 'react-i18next'
+
+import { estimateNote, estimatedDurationS } from '@/features/hikes/estimate'
+import i18n from '@/i18n'
+import { formatDistance, formatDuration, formatElevation, formatNumber, formatTime } from '@/lib/format'
 
 import type { ProfileSummary } from './profile'
 import { daylightAt } from './sun'
@@ -19,49 +22,56 @@ type Props = {
 /** Sunrise and sunset where and when a walked hike started. */
 function daylightStat(startedAt: string, [lon, lat]: [number, number], timeZone?: string): Stat {
   const d = daylightAt(startedAt, lat, lon)
-  if (d.alwaysUp) return { label: 'Daylight', value: 'All day', hint: 'Midnight sun' }
-  if (d.alwaysDown) return { label: 'Daylight', value: 'None', hint: 'Polar night' }
+  const t = i18n.t
+  if (d.alwaysUp) return { label: t('stat.daylight'), value: t('stat.allDay'), hint: t('stat.midnightSun') }
+  if (d.alwaysDown) return { label: t('stat.daylight'), value: t('stat.none'), hint: t('stat.polarNight') }
   return {
-    label: 'Sunrise',
+    label: t('stat.sunrise'),
     value: d.sunrise ? formatTime(d.sunrise, timeZone) : '—',
-    hint: d.sunset ? `sunset ${formatTime(d.sunset, timeZone)}` : undefined,
+    hint: d.sunset ? t('stat.sunset', { time: formatTime(d.sunset, timeZone) }) : undefined,
   }
 }
 
 /** A planned route has no times of its own, so its duration is estimated from its distance. */
 export function HikeStats({ summary, planned = false, startedAt = null, start, timeZone }: Props) {
+  const { t } = useTranslation()
   const s = summary
+  const oneDecimal = (n: number) => formatNumber(n, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
   const stats = [
-    { label: 'Distance', value: formatDistance(s.distanceM) },
+    { label: t('hike.distance'), value: formatDistance(s.distanceM) },
     s.maxEle !== null && {
-      label: 'Elevation',
+      label: t('stat.elevation'),
       value: `+${formatElevation(s.elevationGainM)}`,
       hint: `−${formatElevation(s.elevationLossM)}`,
     },
     planned && {
-      label: 'Est. duration',
+      label: t('stat.estDuration'),
       value: `~${formatDuration(estimatedDurationS(s.distanceM))}`,
-      hint: ESTIMATE_NOTE,
+      hint: estimateNote(),
     },
     s.elapsedS !== null && {
-      label: 'Duration',
+      label: t('hikes.columns.duration'),
       value: formatDuration(s.elapsedS),
-      hint: s.movingS !== null ? `${formatDuration(s.movingS)} moving` : undefined,
+      hint: s.movingS !== null ? t('stat.moving', { duration: formatDuration(s.movingS) }) : undefined,
     },
     !planned && startedAt && start && daylightStat(startedAt, start, timeZone),
     s.avgSpeedMS !== null && {
-      label: 'Avg speed',
-      value: `${(s.avgSpeedMS * 3.6).toFixed(1)} km/h`,
-      hint: s.maxSpeedMS !== null ? `max ${(s.maxSpeedMS * 3.6).toFixed(1)}` : undefined,
+      label: t('stat.avgSpeed'),
+      value: `${oneDecimal(s.avgSpeedMS * 3.6)} km/h`,
+      hint: s.maxSpeedMS !== null ? t('stat.max', { value: oneDecimal(s.maxSpeedMS * 3.6) }) : undefined,
     },
     s.maxEle !== null && {
-      label: 'Highest point',
+      label: t('stat.highest'),
       value: formatElevation(s.maxEle),
-      hint: s.minEle !== null ? `lowest ${formatElevation(s.minEle)}` : undefined,
+      hint: s.minEle !== null ? t('stat.lowest', { value: formatElevation(s.minEle) }) : undefined,
     },
-    s.avgHR !== null && { label: 'Heart rate', value: `${Math.round(s.avgHR)} bpm`, hint: s.maxHR !== null ? `max ${Math.round(s.maxHR)}` : undefined },
-    s.avgCad !== null && { label: 'Cadence', value: `${Math.round(s.avgCad)} spm` },
-    s.avgTemp !== null && { label: 'Temperature', value: `${s.avgTemp.toFixed(1)} °C` },
+    s.avgHR !== null && {
+      label: t('stat.heartRate'),
+      value: `${Math.round(s.avgHR)} bpm`,
+      hint: s.maxHR !== null ? t('stat.max', { value: Math.round(s.maxHR) }) : undefined,
+    },
+    s.avgCad !== null && { label: t('stat.cadence'), value: `${Math.round(s.avgCad)} spm` },
+    s.avgTemp !== null && { label: t('stat.temperature'), value: `${oneDecimal(s.avgTemp)} °C` },
   ].filter(Boolean) as Stat[]
 
   return (

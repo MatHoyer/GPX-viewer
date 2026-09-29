@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { MessageCircle } from 'lucide-react'
+import { Trans, useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,7 @@ function useFeed() {
 
 /** Friends' recent hikes and the ones you were tagged on, newest first. */
 export function FeedPage() {
+  const { t } = useTranslation()
   const feed = useFeed()
   const me = useMe()
   const hikes = feed.data?.pages.flatMap((p) => p.hikes) ?? []
@@ -34,7 +36,7 @@ export function FeedPage() {
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
         <SidebarTrigger />
-        <h1 className="text-lg font-semibold">Activity</h1>
+        <h1 className="text-lg font-semibold">{t('nav.activity')}</h1>
       </header>
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-3 p-4">
@@ -42,10 +44,9 @@ export function FeedPage() {
             Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-28 w-full" />)
           ) : hikes.length === 0 ? (
             <div className="text-muted-foreground space-y-2 py-12 text-center text-sm">
-              <p>Nothing here yet.</p>
+              <p>{t('feed.empty')}</p>
               <p>
-                Hikes from <Link to="/friends" className="text-foreground underline">friends</Link> who share them, and the ones
-                you are tagged on, show up here.
+                <Trans i18nKey="feed.emptyHint" components={{ friends: <Link to="/friends" className="text-foreground underline" /> }} />
               </p>
             </div>
           ) : (
@@ -55,7 +56,7 @@ export function FeedPage() {
               ))}
               {feed.hasNextPage && (
                 <Button variant="outline" className="w-full" onClick={() => feed.fetchNextPage()} disabled={feed.isFetchingNextPage}>
-                  {feed.isFetchingNextPage ? 'Loading…' : 'Show more'}
+                  {feed.isFetchingNextPage ? t('common.loading') : t('common.showMore')}
                 </Button>
               )}
             </>
@@ -67,11 +68,12 @@ export function FeedPage() {
 }
 
 function FeedCard({ hike, viewerId }: { hike: Hike; viewerId: string | undefined }) {
+  const { t } = useTranslation()
   const others = (hike.participants ?? []).filter((p) => p.id !== viewerId)
   const taggedMe = hike.participants?.some((p) => p.id === viewerId) ?? false
   const stats = [
     formatDistance(hike.distanceM),
-    `${formatElevation(hike.elevationGainM)} D+`,
+    t('hike.gainValue', { value: formatElevation(hike.elevationGainM) }),
     hike.durationS > 0 ? formatDuration(hike.movingS ?? hike.durationS) : null,
   ].filter(Boolean)
 
@@ -92,15 +94,16 @@ function FeedCard({ hike, viewerId }: { hike: Hike; viewerId: string | undefined
       <p className="text-muted-foreground text-sm tabular-nums">{stats.join(' · ')}</p>
       {(taggedMe || others.length > 0) && (
         <p className="text-muted-foreground text-xs">
-          {taggedMe ? 'With you' : 'With'}
-          {others.length > 0 && `${taggedMe ? ', ' : ' '}${others.map(displayName).join(', ')}`}
+          {others.length === 0
+            ? t('feed.withYou')
+            : t(taggedMe ? 'feed.withYouAnd' : 'feed.with', { names: others.map(displayName).join(', ') })}
         </p>
       )}
       <div className="flex items-center gap-3 pt-1">
         <KudosButton hike={hike} viewerId={viewerId} />
         <Link to={`/hikes/${hike.id}#comments`} className="text-muted-foreground inline-flex items-center gap-1 text-sm hover:underline">
           <MessageCircle className="size-4" />
-          {hike.interactions?.comments ? hike.interactions.comments : 'Comment'}
+          {hike.interactions?.comments ? hike.interactions.comments : t('comments.comment')}
         </Link>
       </div>
       {hike.labels.length > 0 && (

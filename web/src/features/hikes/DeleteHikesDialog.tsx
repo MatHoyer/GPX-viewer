@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import {
@@ -10,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 
 import type { Hike } from './api'
 import { useDeleteHikes } from './useHikes'
@@ -24,6 +25,7 @@ type Props = {
 
 /** Confirms permanently deleting one or several of your hikes. */
 export function DeleteHikesDialog({ hikes, onClose, onDeleted }: Props) {
+  const { t } = useTranslation()
   const remove = useDeleteHikes()
   const one = hikes.length === 1
 
@@ -32,11 +34,11 @@ export function DeleteHikesDialog({ hikes, onClose, onDeleted }: Props) {
       hikes.map((h) => h.id),
       {
         onSuccess: ({ deleted }) => {
-          toast.success(deleted === 1 ? 'Hike deleted' : `${deleted} hikes deleted`)
+          toast.success(t('deleteHikes.deleted', { count: deleted }))
           onClose()
           onDeleted?.()
         },
-        onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not delete'),
+        onError: (err) => toast.error(errorMessage(err, t('deleteHikes.failed'))),
       },
     )
   }
@@ -45,15 +47,13 @@ export function DeleteHikesDialog({ hikes, onClose, onDeleted }: Props) {
     <AlertDialog open={hikes.length > 0} onOpenChange={(open) => !open && !remove.isPending && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{one ? 'Delete this hike?' : `Delete ${hikes.length} hikes?`}</AlertDialogTitle>
+          <AlertDialogTitle>{t('deleteHikes.title', { count: hikes.length })}</AlertDialogTitle>
           <AlertDialogDescription>
-            {one
-              ? `“${hikes[0].name}” and its GPX file will be permanently removed.`
-              : 'They and their GPX files will be permanently removed, with their kudos, comments and tags.'}
+            {one ? t('deleteHikes.one', { name: hikes[0].name }) : t('deleteHikes.many')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={remove.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={remove.isPending}>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             disabled={remove.isPending}
@@ -63,7 +63,7 @@ export function DeleteHikesDialog({ hikes, onClose, onDeleted }: Props) {
               confirm()
             }}
           >
-            {remove.isPending ? 'Deleting…' : 'Delete'}
+            {remove.isPending ? t('common.deleting') : t('common.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

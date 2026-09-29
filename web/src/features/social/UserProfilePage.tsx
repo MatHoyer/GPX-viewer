@@ -1,5 +1,6 @@
 import { ChevronRight, Clock, Link2, Lock, MoveUpRight, Pencil, Route, UsersRound } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router'
 import { toast } from 'sonner'
 
@@ -11,7 +12,7 @@ import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import { doneHikes, type Hike } from '@/features/hikes/api'
-import { ESTIMATE_NOTE, estimatedDurationS } from '@/features/hikes/estimate'
+import { estimateNote, estimatedDurationS } from '@/features/hikes/estimate'
 import { HikesMapView } from '@/features/hikes/HikesMapView'
 import { TaggedBy } from '@/features/hikes/TaggedBy'
 import { ApiError } from '@/lib/api'
@@ -22,6 +23,7 @@ import { FriendButton } from './FriendButton'
 import { useUserHikes, useUserProfile, useUserTracks } from './useSocial'
 
 export function UserProfilePage() {
+  const { t } = useTranslation()
   const { id = '' } = useParams()
   const me = useMe()
   const profile = useUserProfile(id)
@@ -37,12 +39,12 @@ export function UserProfilePage() {
       <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
         {/* Signed-out visitors get the page without the app sidebar. */}
         {me.data && <SidebarTrigger />}
-        <h1 className="truncate text-lg font-semibold">{name ?? 'Profile'}</h1>
+        <h1 className="truncate text-lg font-semibold">{name ?? t('nav.profile')}</h1>
       </header>
       <main className="flex-1 overflow-y-auto">
         {notFound ? (
-          <EmptyState icon={<Lock />} title="Profile not found">
-            This profile does not exist, or its owner does not share it publicly.
+          <EmptyState icon={<Lock />} title={t('profile.notFound')}>
+            {t('profile.notFoundDescription')}
           </EmptyState>
         ) : (
           <div className="mx-auto max-w-5xl space-y-4 p-4">
@@ -69,12 +71,13 @@ export function UserProfilePage() {
 }
 
 function ProfileCard({ profile, signedIn }: { profile: UserProfile; signedIn: boolean }) {
+  const { t } = useTranslation()
   const { user, relation, visibility } = profile
 
   function copyLink() {
     navigator.clipboard.writeText(`${location.origin}/u/${user.id}`).then(
-      () => toast.success('Link copied'),
-      () => toast.error('Could not copy link'),
+      () => toast.success(t('profile.linkCopied')),
+      () => toast.error(t('profile.copyFailed')),
     )
   }
 
@@ -84,27 +87,27 @@ function ProfileCard({ profile, signedIn }: { profile: UserProfile; signedIn: bo
         <UserAvatar user={user} className="size-16 sm:size-20" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-2xl font-semibold">{displayName(user)}</p>
-          <p className="text-muted-foreground text-sm">Hiking since {formatDate(user.createdAt)}</p>
+          <p className="text-muted-foreground text-sm">{t('profile.hikingSince', { date: formatDate(user.createdAt) })}</p>
         </div>
         <div className="flex flex-wrap gap-2 max-sm:basis-full max-sm:[&>*]:flex-1">
           {visibility === 'public' && (
             <Button variant="outline" onClick={copyLink}>
               <Link2 />
-              Copy link
+              {t('profile.copyLink')}
             </Button>
           )}
           {relation === 'self' ? (
             <Button asChild variant="outline">
               <Link to="/settings">
                 <Pencil />
-                Edit profile
+                {t('profile.edit')}
               </Link>
             </Button>
           ) : signedIn ? (
             <FriendButton userId={user.id} relation={relation} />
           ) : (
             <Button asChild>
-              <Link to="/login">Sign in to add as friend</Link>
+              <Link to="/login">{t('profile.signInToAdd')}</Link>
             </Button>
           )}
         </div>
@@ -114,19 +117,18 @@ function ProfileCard({ profile, signedIn }: { profile: UserProfile; signedIn: bo
 }
 
 function HiddenNotice({ profile }: { profile: UserProfile }) {
+  const { t } = useTranslation()
   const name = displayName(profile.user)
   if (profile.visibility === 'friends') {
     return (
-      <EmptyState icon={<UsersRound />} title="Friends only">
-        {profile.relation === 'outgoing'
-          ? `Your friend request is waiting for ${name} to accept it.`
-          : `Only ${name}'s friends can see their hikes.`}
+      <EmptyState icon={<UsersRound />} title={t('profile.friendsOnly')}>
+        {profile.relation === 'outgoing' ? t('profile.requestWaiting', { name }) : t('profile.friendsOnlyDescription', { name })}
       </EmptyState>
     )
   }
   return (
-    <EmptyState icon={<Lock />} title="Private profile">
-      {name} keeps their hikes to themselves.
+    <EmptyState icon={<Lock />} title={t('profile.private')}>
+      {t('profile.privateDescription', { name })}
     </EmptyState>
   )
 }
@@ -142,6 +144,7 @@ function EmptyState({ icon, title, children }: { icon: React.ReactNode; title: s
 }
 
 function Totals({ hikes }: { hikes: Hike[] | undefined }) {
+  const { t } = useTranslation()
   const totals = useMemo(() => {
     const list = doneHikes(hikes ?? [])
     return {
@@ -154,9 +157,9 @@ function Totals({ hikes }: { hikes: Hike[] | undefined }) {
 
   return (
     <dl className="grid grid-cols-3 gap-2 sm:gap-4">
-      <Stat label="Hikes" value={loading ? '…' : String(totals.count)} />
-      <Stat label="Distance" value={loading ? '…' : formatDistance(totals.distance)} />
-      <Stat label="Elevation gain" value={loading ? '…' : formatElevation(totals.elevation)} />
+      <Stat label={t('nav.hikes')} value={loading ? '…' : String(totals.count)} />
+      <Stat label={t('hike.distance')} value={loading ? '…' : formatDistance(totals.distance)} />
+      <Stat label={t('hike.elevationGain')} value={loading ? '…' : formatElevation(totals.elevation)} />
     </dl>
   )
 }
@@ -171,13 +174,14 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function HikeList({ hikes, userId }: { hikes: Hike[] | undefined; userId: string }) {
+  const { t } = useTranslation()
   if (hikes && hikes.length === 0) {
-    return <p className="text-muted-foreground py-8 text-center text-sm">No hikes yet.</p>
+    return <p className="text-muted-foreground py-8 text-center text-sm">{t('profile.noHikes')}</p>
   }
   return (
     <Card className="gap-0 pb-0">
       <CardHeader className="pb-4">
-        <CardTitle>Hikes</CardTitle>
+        <CardTitle>{t('nav.hikes')}</CardTitle>
       </CardHeader>
       <ul className="divide-y border-t">
         {hikes
@@ -198,7 +202,7 @@ function HikeList({ hikes, userId }: { hikes: Hike[] | undefined; userId: string
                         {formatElevation(h.elevationGainM)}
                       </span>
                       {h.planned ? (
-                        <span className="inline-flex items-center gap-1" title={ESTIMATE_NOTE}>
+                        <span className="inline-flex items-center gap-1" title={estimateNote()}>
                           <Clock className="size-3" />~{formatDuration(estimatedDurationS(h.distanceM))}
                         </span>
                       ) : (

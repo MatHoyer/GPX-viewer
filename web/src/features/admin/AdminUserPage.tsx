@@ -1,5 +1,6 @@
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
@@ -12,6 +13,7 @@ import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import { SessionList } from '@/features/sessions/SessionList'
 import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 import { formatDate, formatRelative } from '@/lib/format'
 
 import type { AdminUser } from './api'
@@ -29,10 +31,11 @@ import {
   useUserSessions,
 } from './useAdmin'
 
-const onError = (fallback: string) => (err: Error) => toast.error(err instanceof ApiError ? err.message : fallback)
+const onError = (fallback: string) => (err: Error) => toast.error(errorMessage(err, fallback))
 
 /** One user as an admin sees them: account details, what can be done to it, and its sessions. */
 export function AdminUserPage() {
+  const { t } = useTranslation()
   const { id = '' } = useParams()
   const user = useUser(id)
 
@@ -40,12 +43,12 @@ export function AdminUserPage() {
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
         <SidebarTrigger />
-        <Button asChild variant="ghost" size="icon" aria-label="Back to users">
+        <Button asChild variant="ghost" size="icon" aria-label={t('admin.backToUsers')}>
           <Link to="/admin">
             <ArrowLeft />
           </Link>
         </Button>
-        <h1 className="truncate text-lg font-semibold">{user.data ? displayName(user.data) : 'User'}</h1>
+        <h1 className="truncate text-lg font-semibold">{user.data ? displayName(user.data) : t('admin.user')}</h1>
       </header>
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-4 p-4">
@@ -58,8 +61,8 @@ export function AdminUserPage() {
           ) : user.isError ? (
             <p role="alert" className="text-destructive text-sm">
               {user.error instanceof ApiError && user.error.status === 404
-                ? 'This user does not exist anymore.'
-                : 'Could not load this user.'}
+                ? t('admin.userGone')
+                : t('admin.userLoadFailed')}
             </p>
           ) : (
             <Skeleton className="h-48" />
@@ -71,6 +74,7 @@ export function AdminUserPage() {
 }
 
 function AccountCard({ user }: { user: AdminUser }) {
+  const { t } = useTranslation()
   return (
     <Card>
       <CardHeader>
@@ -87,7 +91,7 @@ function AccountCard({ user }: { user: AdminUser }) {
         <CardAction>
           <Button asChild variant="ghost" size="sm">
             <Link to={`/u/${user.id}`}>
-              Profile
+              {t('nav.profile')}
               <ExternalLink />
             </Link>
           </Button>
@@ -96,14 +100,16 @@ function AccountCard({ user }: { user: AdminUser }) {
       <CardContent>
         {user.bannedAt && (
           <p className="bg-destructive/10 text-destructive mb-4 rounded-lg px-3 py-2 text-sm break-words">
-            Banned {formatDate(user.bannedAt)}: {user.banReason}
+            {t('admin.bannedOn', { date: formatDate(user.bannedAt), reason: user.banReason })}
           </p>
         )}
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
-          <Fact label="Joined">{formatDate(user.createdAt)}</Fact>
-          <Fact label="Email confirmed">{formatDate(user.emailVerifiedAt) ?? 'Not yet'}</Fact>
-          <Fact label="Last active">{user.lastSeenAt ? formatRelative(user.lastSeenAt) : 'Not signed in'}</Fact>
-          <Fact label="Hikes">{user.hikes}</Fact>
+          <Fact label={t('admin.factJoined')}>{formatDate(user.createdAt)}</Fact>
+          <Fact label={t('admin.factEmailConfirmed')}>{formatDate(user.emailVerifiedAt) ?? t('admin.notYet')}</Fact>
+          <Fact label={t('admin.factLastActive')}>
+            {user.lastSeenAt ? formatRelative(user.lastSeenAt) : t('admin.notSignedIn')}
+          </Fact>
+          <Fact label={t('nav.hikes')}>{user.hikes}</Fact>
         </dl>
       </CardContent>
     </Card>
@@ -122,6 +128,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 type Dialog = 'reinvite' | 'revoke' | 'ban' | null
 
 function ActionsCard({ user }: { user: AdminUser }) {
+  const { t } = useTranslation()
   const me = useMe()
   const navigate = useNavigate()
   const [dialog, setDialog] = useState<Dialog>(null)
@@ -134,8 +141,8 @@ function ActionsCard({ user }: { user: AdminUser }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Actions</CardTitle>
-          <CardDescription>This is you. Ask another admin to change your role.</CardDescription>
+          <CardTitle>{t('admin.actions')}</CardTitle>
+          <CardDescription>{t('admin.actionsSelf')}</CardDescription>
         </CardHeader>
       </Card>
     )
@@ -146,12 +153,12 @@ function ActionsCard({ user }: { user: AdminUser }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Actions</CardTitle>
+        <CardTitle>{t('admin.actions')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         {!user.bannedAt && (
           <Button variant="outline" onClick={() => setDialog('reinvite')}>
-            {pending ? 'New invite link' : 'Password link'}
+            {pending ? t('admin.newInviteLink') : t('admin.passwordLink')}
           </Button>
         )}
         {!pending && (
@@ -162,13 +169,13 @@ function ActionsCard({ user }: { user: AdminUser }) {
               setVerified.mutate(
                 { id: user.id, verified: !verified },
                 {
-                  onSuccess: () => toast.success(verified ? 'Email marked as not verified' : 'Email marked as verified'),
-                  onError: onError('Could not change the email status'),
+                  onSuccess: () => toast.success(verified ? t('admin.markedUnverified') : t('admin.markedVerified')),
+                  onError: onError(t('admin.emailStatusFailed')),
                 },
               )
             }
           >
-            {verified ? 'Mark email unverified' : 'Mark email verified'}
+            {verified ? t('admin.markUnverified') : t('admin.markVerified')}
           </Button>
         )}
         {!user.bannedAt && (
@@ -180,13 +187,13 @@ function ActionsCard({ user }: { user: AdminUser }) {
                 { id: user.id, admin: !user.isAdmin },
                 {
                   onSuccess: () =>
-                    toast.success(user.isAdmin ? `${name} is no longer an admin` : `${name} is now an admin`),
-                  onError: onError('Could not change their role'),
+                    toast.success(user.isAdmin ? t('admin.noLongerAdmin', { name }) : t('admin.nowAdmin', { name })),
+                  onError: onError(t('admin.roleFailed')),
                 },
               )
             }
           >
-            {user.isAdmin ? 'Remove admin role' : 'Make admin'}
+            {user.isAdmin ? t('admin.removeAdmin') : t('admin.makeAdmin')}
           </Button>
         )}
         {!user.isAdmin &&
@@ -196,21 +203,21 @@ function ActionsCard({ user }: { user: AdminUser }) {
               disabled={unban.isPending}
               onClick={() =>
                 unban.mutate(user.id, {
-                  onSuccess: () => toast.success(`${name} can sign in again`),
-                  onError: onError('Could not lift the ban'),
+                  onSuccess: () => toast.success(t('admin.unbanned', { name })),
+                  onError: onError(t('admin.unbanFailed')),
                 })
               }
             >
-              Lift ban
+              {t('admin.liftBan')}
             </Button>
           ) : (
             <Button variant="destructive" onClick={() => setDialog('ban')}>
-              Ban…
+              {t('admin.banEllipsis')}
             </Button>
           ))}
         {pending && user.hikes === 0 && (
           <Button variant="destructive" onClick={() => setDialog('revoke')}>
-            Revoke invite…
+            {t('admin.revokeEllipsis')}
           </Button>
         )}
       </CardContent>
@@ -226,6 +233,7 @@ function ActionsCard({ user }: { user: AdminUser }) {
 }
 
 function SessionsCard({ user }: { user: AdminUser }) {
+  const { t } = useTranslation()
   const me = useMe()
   const sessions = useUserSessions(user.id)
   const revoke = useRevokeUserSession()
@@ -235,11 +243,9 @@ function SessionsCard({ user }: { user: AdminUser }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sessions</CardTitle>
+        <CardTitle>{t('admin.sessions')}</CardTitle>
         <CardDescription>
-          {self
-            ? 'Manage your own sessions from Settings.'
-            : 'Devices this user is signed in on. Signing them out does not stop them signing in again; ban them for that.'}
+          {self ? t('admin.sessionsSelf') : t('admin.sessionsDescription')}
         </CardDescription>
         {!self && sessions.data && sessions.data.length > 0 && (
           <CardAction>
@@ -249,12 +255,12 @@ function SessionsCard({ user }: { user: AdminUser }) {
               disabled={revokeAll.isPending}
               onClick={() =>
                 revokeAll.mutate(user.id, {
-                  onSuccess: () => toast.success(`${displayName(user)} is signed out everywhere`),
-                  onError: onError('Could not sign them out'),
+                  onSuccess: () => toast.success(t('admin.signedOutEverywhere', { name: displayName(user) })),
+                  onError: onError(t('admin.signOutFailed')),
                 })
               }
             >
-              Sign out everywhere
+              {t('admin.signOutEverywhere')}
             </Button>
           </CardAction>
         )}
@@ -267,12 +273,12 @@ function SessionsCard({ user }: { user: AdminUser }) {
             onRevoke={
               self
                 ? undefined
-                : (s) => revoke.mutate({ userId: user.id, id: s.id }, { onError: onError('Could not sign out that device') })
+                : (s) => revoke.mutate({ userId: user.id, id: s.id }, { onError: onError(t('sessions.signOutFailed')) })
             }
           />
         ) : sessions.isError ? (
           <p role="alert" className="text-destructive text-sm">
-            Could not load sessions.
+            {t('admin.sessionsLoadFailed')}
           </p>
         ) : (
           <Skeleton className="h-12" />

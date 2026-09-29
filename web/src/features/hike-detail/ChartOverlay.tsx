@@ -1,5 +1,6 @@
 import { Moon, Sunrise, Sunset } from 'lucide-react'
 import { useRef, useState, type PointerEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
 
@@ -28,6 +29,7 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
  * head and hover lines, so Recharts never re-renders during interaction.
  */
 export function ChartOverlay({ xs, domain, showXAxis, bands = [], bandIcons = false }: Props) {
+  const { t } = useTranslation()
   const pos = useReplay((s) => s.pos)
   const hover = useReplay((s) => s.hover)
   const drag = useRef<Drag | null>(null)
@@ -105,7 +107,7 @@ export function ChartOverlay({ xs, domain, showXAxis, bands = [], bandIcons = fa
           >
             {/* Too narrow a band would clip its icon. */}
             {bandIcons && to - from > 0.04 && (
-              <Icon className="text-muted-foreground mt-1 size-3.5" role="img" aria-label={night ? 'Night' : b.rising ? 'Dawn' : 'Dusk'} />
+              <Icon className="text-muted-foreground mt-1 size-3.5" role="img" aria-label={night ? t('light.night') : b.rising ? t('light.dawn') : t('light.dusk')} />
             )}
           </div>
         )

@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { FloatingInput } from '@/components/ui/floating-input'
 import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 
 import { AuthShell } from './AuthShell'
 import { useConfig, useResetPassword } from './useAuth'
@@ -16,6 +18,7 @@ import { useConfig, useResetPassword } from './useAuth'
  * an admin: sets a password and signs in.
  */
 export function ResetPasswordPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
@@ -35,7 +38,7 @@ export function ResetPasswordPage() {
       { token, password },
       {
         onSuccess: () => {
-          toast.success(invite ? 'Welcome aboard!' : 'Password updated')
+          toast.success(invite ? t('auth.welcomeAboard') : t('auth.passwordUpdated'))
           navigate('/', { replace: true })
         },
       },
@@ -46,17 +49,17 @@ export function ResetPasswordPage() {
     return (
       <AuthShell>
         <CardHeader>
-          <CardTitle>{invite ? 'Could not accept the invite' : 'Could not reset your password'}</CardTitle>
+          <CardTitle>{invite ? t('auth.inviteFailed') : t('auth.resetFailed')}</CardTitle>
           <CardDescription role="alert">
-            {token ? error?.message : 'This link is incomplete.'}{' '}
-            {invite ? 'Ask whoever invited you for a new link.' : emailEnabled ? 'Ask for a new link.' : 'Ask an admin for a new link.'}
+            {token ? errorMessage(reset.error, '') : t('auth.linkIncomplete')}{' '}
+            {invite ? t('auth.askInviter') : emailEnabled ? t('auth.askNewLink') : t('auth.askAdminNewLink')}
           </CardDescription>
         </CardHeader>
         {!invite && emailEnabled && (
           <CardFooter className="mt-6">
             <Button asChild size="lg" className="h-11 w-full rounded-xl">
               <Link to="/forgot-password" replace>
-                Send a new link
+                {t('auth.sendNewLink')}
               </Link>
             </Button>
           </CardFooter>
@@ -68,16 +71,16 @@ export function ResetPasswordPage() {
   return (
     <AuthShell>
       <CardHeader>
-        <CardTitle>{invite ? 'Welcome to GPX Viewer' : 'Choose a new password'}</CardTitle>
+        <CardTitle>{invite ? t('auth.inviteTitle') : t('auth.newPasswordTitle')}</CardTitle>
         <CardDescription>
-          {invite ? 'Choose a password to finish creating your account.' : 'You will be signed out everywhere else.'}
+          {invite ? t('auth.inviteDescription') : t('auth.newPasswordDescription')}
         </CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
           <FloatingInput
             id="password"
-            label={invite ? 'Password' : 'New password'}
+            label={invite ? t('common.password') : t('settings.newPassword')}
             type="password"
             autoComplete="new-password"
             required
@@ -86,18 +89,18 @@ export function ResetPasswordPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={error?.field === 'password' || undefined}
-            description="At least 8 characters."
+            description={t('settings.passwordRule')}
           />
           {reset.isError && (
             <p role="alert" className="text-destructive text-sm">
-              {error?.message ?? 'Something went wrong, try again later.'}
+              {errorMessage(reset.error, t('errors.tryLater'))}
             </p>
           )}
         </CardContent>
         <CardFooter className="mt-6">
           <Button type="submit" size="lg" className="h-11 w-full rounded-xl" disabled={reset.isPending}>
             {reset.isPending && <Loader2 className="animate-spin" aria-hidden />}
-            Set password
+            {t('auth.setPassword')}
           </Button>
         </CardFooter>
       </form>

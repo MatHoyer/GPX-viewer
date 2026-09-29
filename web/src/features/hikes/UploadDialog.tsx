@@ -1,5 +1,6 @@
 import { FileUp, Upload } from 'lucide-react'
 import { useRef, useState, type DragEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -12,12 +13,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
+import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import { useUploadHikes } from './useHikes'
 
 export function UploadDialog() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [dragging, setDragging] = useState(false)
@@ -28,7 +31,7 @@ export function UploadDialog() {
   function addFiles(list: FileList | null) {
     if (!list) return
     const gpx = Array.from(list).filter((f) => f.name.toLowerCase().endsWith('.gpx'))
-    if (gpx.length < list.length) toast.warning('Only .gpx files are supported')
+    if (gpx.length < list.length) toast.warning(t('upload.onlyGpx'))
     setFiles((prev) => [...prev, ...gpx])
   }
 
@@ -52,11 +55,11 @@ export function UploadDialog() {
       onSuccess: (results) => {
         const ok = results.filter((r) => r.hike).length
         const failed = results.filter((r) => r.error)
-        if (ok > 0) toast.success(`Imported ${ok} ${planned ? 'planned ' : ''}hike${ok > 1 ? 's' : ''}`)
+        if (ok > 0) toast.success(t(planned ? 'upload.importedPlanned' : 'upload.imported', { count: ok }))
         for (const f of failed) toast.error(`${f.filename}: ${f.error}`)
         onOpenChange(false)
       },
-      onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Upload failed'),
+      onError: (err) => toast.error(errorMessage(err, t('upload.failed'))),
     })
   }
 
@@ -65,13 +68,13 @@ export function UploadDialog() {
       <DialogTrigger asChild>
         <Button className="w-full">
           <Upload />
-          Import GPX
+          {t('upload.trigger')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Import GPX files</DialogTitle>
-          <DialogDescription>Drop one or more .gpx files exported from your watch or app.</DialogDescription>
+          <DialogTitle>{t('upload.title')}</DialogTitle>
+          <DialogDescription>{t('upload.description')}</DialogDescription>
         </DialogHeader>
 
         <button
@@ -89,7 +92,7 @@ export function UploadDialog() {
           )}
         >
           <FileUp className="size-8" />
-          <span>Drag & drop files here, or click to browse</span>
+          <span>{t('upload.drop')}</span>
         </button>
         <input
           ref={inputRef}
@@ -108,7 +111,7 @@ export function UploadDialog() {
             {files.map((f, i) => (
               <li key={`${f.name}-${i}`} className="flex justify-between gap-2">
                 <span className="truncate">{f.name}</span>
-                <span className="text-muted-foreground shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                <span className="text-muted-foreground shrink-0">{formatNumber(Math.round(f.size / 1024))} KB</span>
               </li>
             ))}
           </ul>
@@ -117,17 +120,17 @@ export function UploadDialog() {
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={planned} onChange={(e) => setPlanned(e.target.checked)} className="accent-primary mt-0.5" />
           <span>
-            Routes I plan to do
-            <span className="text-muted-foreground block text-xs">Shown dashed on the map and left out of stats until marked done.</span>
+            {t('upload.planned')}
+            <span className="text-muted-foreground block text-xs">{t('upload.plannedHint')}</span>
           </span>
         </label>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button onClick={submit} disabled={files.length === 0 || upload.isPending}>
-            {upload.isPending ? 'Importing…' : `Import ${files.length || ''}`.trim()}
+            {upload.isPending ? t('upload.importing') : files.length ? t('upload.importCount', { count: files.length }) : t('upload.import')}
           </Button>
         </DialogFooter>
       </DialogContent>
