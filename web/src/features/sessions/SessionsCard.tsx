@@ -1,26 +1,28 @@
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 
 import { SessionList } from './SessionList'
 import { useMySessions, useRevokeMyOtherSessions, useRevokeMySession } from './useSessions'
 
 /** The devices you are signed in on, for Settings. */
 export function SessionsCard() {
+  const { t } = useTranslation()
   const sessions = useMySessions()
   const revoke = useRevokeMySession()
   const revokeOthers = useRevokeMyOtherSessions()
   const others = sessions.data?.filter((s) => !s.current).length ?? 0
-  const onError = (fallback: string) => (err: Error) => toast.error(err instanceof ApiError ? err.message : fallback)
+  const onError = (fallback: string) => (err: Error) => toast.error(errorMessage(err, fallback))
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Active sessions</CardTitle>
-        <CardDescription>Devices signed in to your account. Sign out any you don't recognise.</CardDescription>
+        <CardTitle>{t('sessions.title')}</CardTitle>
+        <CardDescription>{t('sessions.description')}</CardDescription>
         {others > 0 && (
           <CardAction>
             <Button
@@ -29,12 +31,12 @@ export function SessionsCard() {
               disabled={revokeOthers.isPending}
               onClick={() =>
                 revokeOthers.mutate(undefined, {
-                  onSuccess: () => toast.success('Signed out of your other devices'),
-                  onError: onError('Could not sign out your other devices'),
+                  onSuccess: () => toast.success(t('sessions.signedOutOthers')),
+                  onError: onError(t('sessions.signOutOthersFailed')),
                 })
               }
             >
-              Sign out others
+              {t('sessions.signOutOthers')}
             </Button>
           </CardAction>
         )}
@@ -44,11 +46,11 @@ export function SessionsCard() {
           <SessionList
             sessions={sessions.data}
             revoking={revoke.isPending ? revoke.variables : undefined}
-            onRevoke={(s) => revoke.mutate(s.id, { onError: onError('Could not sign out that device') })}
+            onRevoke={(s) => revoke.mutate(s.id, { onError: onError(t('sessions.signOutFailed')) })}
           />
         ) : sessions.isError ? (
           <p role="alert" className="text-destructive text-sm">
-            Could not load your sessions.
+            {t('sessions.loadFailed')}
           </p>
         ) : (
           <Skeleton className="h-12" />

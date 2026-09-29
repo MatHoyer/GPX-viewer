@@ -24,12 +24,31 @@ func (v Visibility) Valid() bool {
 	return false
 }
 
+// Language is a UI language the app is translated to. Empty means the user
+// never picked one.
+type Language string
+
+const (
+	LanguageEnglish Language = "en"
+	LanguageFrench  Language = "fr"
+)
+
+func (l Language) Valid() bool {
+	switch l {
+	case LanguageEnglish, LanguageFrench:
+		return true
+	}
+	return false
+}
+
 type User struct {
 	ID           uuid.UUID
 	Email        string
 	Name         string
 	PasswordHash string
 	Visibility   Visibility
+	// Language is what the user reads the app and its emails in.
+	Language Language
 	// EmailVerifiedAt is nil until the user follows the link sent to Email.
 	EmailVerifiedAt *time.Time
 	// IsAdmin grants access to the admin panel. The first account is an admin.
@@ -97,4 +116,5 @@ type AccountRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	UpdateName(ctx context.Context, id uuid.UUID, name string) error
 	UpdateVisibility(ctx context.Context, id uuid.UUID, v Visibility) error
+	UpdateLanguage(ctx context.Context, id uuid.UUID, l Language) error
 }

@@ -48,6 +48,15 @@ func (f *fakeUsers) UpdateVisibility(_ context.Context, id uuid.UUID, v domain.V
 	return nil
 }
 
+func (f *fakeUsers) UpdateLanguage(_ context.Context, id uuid.UUID, l domain.Language) error {
+	u, ok := f.users[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.Language = l
+	return nil
+}
+
 func TestUpdateName(t *testing.T) {
 	id := uuid.New()
 	svc := NewService(newFake(id))
@@ -86,5 +95,23 @@ func TestUpdateVisibility(t *testing.T) {
 	var ve *domain.ValidationError
 	if _, err := svc.UpdateVisibility(ctx, id, "everyone"); !errors.As(err, &ve) || ve.Field != "visibility" {
 		t.Errorf("invalid visibility err = %v", err)
+	}
+}
+
+func TestUpdateLanguage(t *testing.T) {
+	id := uuid.New()
+	svc := NewService(newFake(id))
+	ctx := context.Background()
+
+	u, err := svc.UpdateLanguage(ctx, id, domain.LanguageFrench)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Language != domain.LanguageFrench {
+		t.Fatalf("language = %q", u.Language)
+	}
+	var ve *domain.ValidationError
+	if _, err := svc.UpdateLanguage(ctx, id, "de"); !errors.As(err, &ve) || ve.Field != "language" {
+		t.Fatalf("want language validation error, got %v", err)
 	}
 }

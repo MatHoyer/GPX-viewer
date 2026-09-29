@@ -36,12 +36,14 @@ type DeleteAccount struct {
 }
 
 type User struct {
-	ID         string    `json:"id"`
-	Email      string    `json:"email"`
-	Name       string    `json:"name"`
-	Visibility string    `json:"visibility"`
-	IsAdmin    bool      `json:"isAdmin"`
-	CreatedAt  time.Time `json:"createdAt"`
+	ID         string `json:"id"`
+	Email      string `json:"email"`
+	Name       string `json:"name"`
+	Visibility string `json:"visibility"`
+	// Language is empty until the user picks one.
+	Language  string    `json:"language"`
+	IsAdmin   bool      `json:"isAdmin"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 func NewUser(u *domain.User) User {
@@ -50,6 +52,7 @@ func NewUser(u *domain.User) User {
 		Email:      u.Email,
 		Name:       u.Name,
 		Visibility: string(u.Visibility),
+		Language:   string(u.Language),
 		IsAdmin:    u.IsAdmin,
 		CreatedAt:  u.CreatedAt,
 	}
@@ -118,6 +121,7 @@ type Relation struct {
 type UpdateAccount struct {
 	Name       *string `json:"name"`
 	Visibility *string `json:"visibility"`
+	Language   *string `json:"language"`
 }
 
 type Error struct {

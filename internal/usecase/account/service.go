@@ -43,3 +43,14 @@ func (s *Service) UpdateVisibility(ctx context.Context, userID uuid.UUID, v doma
 	}
 	return s.users.GetByID(ctx, userID)
 }
+
+// UpdateLanguage sets the language the user reads the app and its emails in.
+func (s *Service) UpdateLanguage(ctx context.Context, userID uuid.UUID, l domain.Language) (*domain.User, error) {
+	if !l.Valid() {
+		return nil, &domain.ValidationError{Field: "language", Message: "unsupported language"}
+	}
+	if err := s.users.UpdateLanguage(ctx, userID, l); err != nil {
+		return nil, err
+	}
+	return s.users.GetByID(ctx, userID)
+}

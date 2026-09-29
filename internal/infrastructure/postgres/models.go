@@ -14,6 +14,7 @@ type UserModel struct {
 	Name         string    `gorm:"not null;default:''"`
 	PasswordHash string    `gorm:"not null"`
 	Visibility   string    `gorm:"not null;default:private"`
+	Language     string    `gorm:"not null;default:''"`
 	// EmailVerifiedAt is nil until the email verification link is followed.
 	EmailVerifiedAt *time.Time
 	IsAdmin         bool `gorm:"not null;default:false"`
@@ -32,6 +33,7 @@ func (m UserModel) toDomain() *domain.User {
 		Name:            m.Name,
 		PasswordHash:    m.PasswordHash,
 		Visibility:      domain.Visibility(m.Visibility),
+		Language:        domain.Language(m.Language),
 		EmailVerifiedAt: m.EmailVerifiedAt,
 		IsAdmin:         m.IsAdmin,
 		BannedAt:        m.BannedAt,

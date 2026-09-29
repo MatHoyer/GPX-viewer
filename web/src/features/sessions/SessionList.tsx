@@ -1,4 +1,5 @@
 import { HelpCircle, Laptop, Smartphone } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { formatDate, formatRelative } from '@/lib/format'
@@ -22,8 +23,9 @@ type Props = {
 
 /** Signed-in devices, each with a sign-out button except the current one. */
 export function SessionList({ sessions, onRevoke, revoking }: Props) {
+  const { t } = useTranslation()
   if (sessions.length === 0) {
-    return <p className="text-muted-foreground text-sm">Not signed in anywhere.</p>
+    return <p className="text-muted-foreground text-sm">{t('sessions.none')}</p>
   }
   return (
     <ul className="divide-y">
@@ -38,15 +40,15 @@ export function SessionList({ sessions, onRevoke, revoking }: Props) {
                 {label}
                 {s.current && (
                   <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
-                    This device
+                    {t('sessions.thisDevice')}
                   </span>
                 )}
               </p>
               <p className="text-muted-foreground text-xs">
                 {[
                   s.ip,
-                  s.current ? 'active now' : `active ${formatRelative(s.lastUsedAt)}`,
-                  `signed in ${formatDate(s.createdAt)}`,
+                  s.current ? t('sessions.activeNow') : t('sessions.active', { when: formatRelative(s.lastUsedAt) }),
+                  t('sessions.signedIn', { date: formatDate(s.createdAt) }),
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -54,7 +56,7 @@ export function SessionList({ sessions, onRevoke, revoking }: Props) {
             </div>
             {onRevoke && !s.current && (
               <Button variant="outline" size="sm" onClick={() => onRevoke(s)} disabled={revoking === s.id}>
-                {revoking === s.id ? 'Signing out…' : 'Sign out'}
+                {revoking === s.id ? t('sessions.signingOut') : t('sessions.signOut')}
               </Button>
             )}
           </li>

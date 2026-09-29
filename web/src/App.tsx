@@ -6,6 +6,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SettingsPage } from '@/features/account/SettingsPage'
+import { useAccountLanguage } from '@/features/account/useLanguage'
 import { AdminPage } from '@/features/admin/AdminPage'
 import { AdminUserPage } from '@/features/admin/AdminUserPage'
 import { AuthPage } from '@/features/auth/AuthPage'
@@ -38,6 +39,7 @@ export default function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
+        <AccountLanguage />
         <TooltipProvider>
           <BrowserRouter>
             <Routes>
@@ -71,6 +73,11 @@ export default function App() {
       </QueryClientProvider>
     </ThemeProvider>
   )
+}
+
+function AccountLanguage() {
+  useAccountLanguage()
+  return null
 }
 
 function RequireAuth({ children }: { children: ReactNode }) {

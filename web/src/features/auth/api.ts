@@ -1,3 +1,4 @@
+import type { Language } from '@/i18n'
 import { api, ApiError } from '@/lib/api'
 
 /** Who can see a user's profile and hikes. */
@@ -9,6 +10,8 @@ export type User = {
   /** Empty when the user has not set a display name. */
   name: string
   visibility: Visibility
+  /** Empty until the user picks one; then it follows them across devices. */
+  language: Language | ''
   /** Can open the admin panel. */
   isAdmin: boolean
   createdAt: string

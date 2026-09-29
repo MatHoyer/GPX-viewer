@@ -1,5 +1,6 @@
 import { TriangleAlert } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import {
@@ -18,12 +19,14 @@ import { FloatingInput } from '@/components/ui/floating-input'
 import type { User } from '@/features/auth/api'
 import { useDeleteAccount } from '@/features/auth/useAuth'
 import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 
 /**
  * Deletes the account after two confirmations: a warning listing what goes,
  * then retyping the email and the password.
  */
 export function DeleteAccountDialog({ user }: { user: User }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<'warn' | 'confirm'>('warn')
   const [email, setEmail] = useState('')
@@ -46,13 +49,13 @@ export function DeleteAccountDialog({ user }: { user: User }) {
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!emailMatches || !password) return
-    remove.mutate(password, { onSuccess: () => toast.success('Your account was deleted') })
+    remove.mutate(password, { onSuccess: () => toast.success(t('deleteAccount.deleted')) })
   }
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive">Delete my account</Button>
+        <Button variant="destructive">{t('deleteAccount.trigger')}</Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         {step === 'warn' ? (
@@ -61,39 +64,42 @@ export function DeleteAccountDialog({ user }: { user: User }) {
               <AlertDialogMedia className="bg-destructive/10 text-destructive">
                 <TriangleAlert />
               </AlertDialogMedia>
-              <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+              <AlertDialogTitle>{t('deleteAccount.title')}</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-2">
-                  <p>This permanently deletes, with no way back:</p>
+                  <p>{t('deleteAccount.intro')}</p>
                   <ul className="list-disc space-y-0.5 pl-5 text-left">
-                    <li>all your hikes and planned routes, with their GPX files</li>
-                    <li>your tags on friends' hikes</li>
-                    <li>your friends and friend requests</li>
-                    <li>your kudos and comments, and those on your hikes</li>
+                    <li>{t('deleteAccount.hikes')}</li>
+                    <li>{t('deleteAccount.tags')}</li>
+                    <li>{t('deleteAccount.friends')}</li>
+                    <li>{t('deleteAccount.interactions')}</li>
                   </ul>
-                  <p>Download your hikes first if you want to keep them.</p>
+                  <p>{t('deleteAccount.downloadFirst')}</p>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <Button variant="destructive" onClick={() => setStep('confirm')}>
-                Continue
+                {t('common.continue')}
               </Button>
             </AlertDialogFooter>
           </>
         ) : (
           <form onSubmit={onSubmit} className="contents">
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogTitle>{t('deleteAccount.confirmTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Type <span className="text-foreground font-medium break-all">{user.email}</span> and your password to
-                delete your account for good.
+                <Trans
+                  i18nKey="deleteAccount.confirmDescription"
+                  values={{ email: user.email }}
+                  components={{ email: <span className="text-foreground font-medium break-all" /> }}
+                />
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-4">
               <FloatingInput
-                label="Your email"
+                label={t('deleteAccount.yourEmail')}
                 type="email"
                 autoComplete="off"
                 required
@@ -101,7 +107,7 @@ export function DeleteAccountDialog({ user }: { user: User }) {
                 onChange={(e) => setEmail(e.target.value)}
               />
               <FloatingInput
-                label="Password"
+                label={t('common.password')}
                 type="password"
                 autoComplete="current-password"
                 required
@@ -111,18 +117,18 @@ export function DeleteAccountDialog({ user }: { user: User }) {
               />
               {remove.error && (
                 <p role="alert" className="text-destructive text-sm">
-                  {error?.message ?? 'Could not delete your account'}
+                  {errorMessage(remove.error, t('deleteAccount.failed'))}
                 </p>
               )}
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={remove.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={remove.isPending}>{t('common.cancel')}</AlertDialogCancel>
               <Button
                 type="submit"
                 className="bg-destructive hover:bg-destructive/80 text-white"
                 disabled={!emailMatches || !password || remove.isPending}
               >
-                {remove.isPending ? 'Deleting…' : 'Delete my account forever'}
+                {remove.isPending ? t('common.deleting') : t('deleteAccount.confirm')}
               </Button>
             </AlertDialogFooter>
           </form>
