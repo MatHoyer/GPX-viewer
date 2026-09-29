@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/mail"
 	"net/url"
@@ -125,7 +124,7 @@ func (s *Service) RegistrationOpen(ctx context.Context) (bool, error) {
 // verification link and the account cannot sign in until the link is
 // followed; without one, it can sign in right away. The first account becomes
 // the admin.
-func (s *Service) Register(ctx context.Context, email, password string) (*domain.User, error) {
+func (s *Service) Register(ctx context.Context, email, password string, lang domain.Language) (*domain.User, error) {
 	email = normalizeEmail(email)
 	if err := validateEmail(email); err != nil {
 		return nil, err
@@ -150,7 +149,10 @@ func (s *Service) Register(ctx context.Context, email, password string) (*domain
 	if err != nil {
 		return nil, err
 	}
-	u := &domain.User{ID: uuid.New(), Email: email, PasswordHash: hash, Visibility: domain.VisibilityPrivate, IsAdmin: n == 0, CreatedAt: s.now()}
+	if !lang.Valid() {
+		lang = ""
+	}
+	u := &domain.User{ID: uuid.New(), Email: email, PasswordHash: hash, Visibility: domain.VisibilityPrivate, Language: lang, IsAdmin: n == 0, CreatedAt: s.now()}
 	if err := s.users.Create(ctx, u); err != nil {
 		return nil, err
 	}
@@ -169,7 +171,7 @@ func (s *Service) Register(ctx context.Context, email, password string) (*domain
 // password. Following the link also verifies the email. The link is emailed
 // when send is set and a mail server is configured; a failed delivery is
 // logged and reported by emailed, and the link still works.
-func (s *Service) Invite(ctx context.Context, email, name string, send bool) (u *domain.User, link string, emailed bool, err error) {
+func (s *Service) Invite(ctx context.Context, email, name string, lang domain.Language, send bool) (u *domain.User, link string, emailed bool, err error) {
 	email = normalizeEmail(email)
 	if err := validateEmail(email); err != nil {
 		return nil, "", false, err
@@ -190,7 +192,10 @@ func (s *Service) Invite(ctx context.Context, email, name string, send bool) (u 
 		return nil, "", false, err
 	}
 	now := s.now()
-	u = &domain.User{ID: uuid.New(), Email: email, Name: name, PasswordHash: hash, Visibility: domain.VisibilityPrivate, InvitedAt: &now, CreatedAt: now}
+	if !lang.Valid() {
+		lang = ""
+	}
+	u = &domain.User{ID: uuid.New(), Email: email, Name: name, PasswordHash: hash, Visibility: domain.VisibilityPrivate, Language: lang, InvitedAt: &now, CreatedAt: now}
 	if err := s.users.Create(ctx, u); err != nil {
 		return nil, "", false, err
 	}
@@ -209,7 +214,7 @@ func (s *Service) PasswordLink(ctx context.Context, userID uuid.UUID, send bool)
 		return "", false, err
 	}
 	if u.BannedAt != nil {
-		return "", false, &domain.ValidationError{Field: "user", Message: "lift their ban first"}
+		return "", false, &domain.ValidationError{Field: "user", Message: "lift their ban first", Code: "banned_user"}
 	}
 	return s.sendPasswordLink(ctx, u, send)
 }
@@ -231,21 +236,9 @@ func (s *Service) sendPasswordLink(ctx context.Context, u *domain.User, send boo
 	if !send || !s.EmailEnabled() {
 		return link, false, nil
 	}
-	subject, body := "Choose a new password", fmt.Sprintf(`An admin of GPX Viewer sent you a link to choose a new password:
-
-%s
-
-The link expires in 24 hours. Your current password works until you use it.
-`, link)
+	subject, body := emailsIn(u.Language).adminReset.render(link)
 	if invite {
-		subject, body = "You're invited to GPX Viewer", fmt.Sprintf(`You have been invited to GPX Viewer!
-
-Choose a password to finish creating your account:
-
-%s
-
-The link expires in 7 days.
-`, link)
+		subject, body = emailsIn(u.Language).invite.render(link)
 	}
 	if err := s.mailer.Send(ctx, u.Email, subject, body); err != nil {
 		slog.Error("send password link", "user", u.ID, "err", err)
@@ -256,18 +249,18 @@ The link expires in 7 days.
 
 func validateEmail(email string) error {
 	if addr, err := mail.ParseAddress(email); err != nil || addr.Address != email {
-		return &domain.ValidationError{Field: "email", Message: "invalid email address"}
+		return &domain.ValidationError{Field: "email", Message: "invalid email address", Code: "invalid_email"}
 	}
 	return nil
 }
 
 func validatePassword(field, password string) error {
 	if len(password) < MinPasswordLength {
-		return &domain.ValidationError{Field: field, Message: "must be at least 8 characters"}
+		return &domain.ValidationError{Field: field, Message: "must be at least 8 characters", Code: "password_too_short", Params: map[string]any{"min": 8}}
 	}
 	// bcrypt ignores anything past 72 bytes.
 	if len(password) > 72 {
-		return &domain.ValidationError{Field: field, Message: "must be at most 72 characters"}
+		return &domain.ValidationError{Field: field, Message: "must be at most 72 characters", Code: "password_too_long", Params: map[string]any{"max": 72}}
 	}
 	return nil
 }
@@ -360,15 +353,8 @@ func (s *Service) sendVerification(ctx context.Context, u *domain.User) (err err
 			_ = s.verifications.DeleteByUserID(context.WithoutCancel(ctx), u.ID)
 		}
 	}()
-	body := fmt.Sprintf(`Welcome to GPX Viewer!
-
-Confirm your email address by opening this link:
-
-%s
-
-The link expires in 24 hours. If you did not create an account, ignore this email.
-`, link)
-	return s.mailer.Send(ctx, u.Email, "Confirm your email address", body)
+	subject, body := emailsIn(u.Language).verification.render(link)
+	return s.mailer.Send(ctx, u.Email, subject, body)
 }
 
 // RequestPasswordReset emails a reset link to the account, if there is one.
@@ -423,15 +409,8 @@ func (s *Service) sendPasswordReset(ctx context.Context, u *domain.User) (err er
 			_ = s.resets.DeleteByUserID(context.WithoutCancel(ctx), u.ID)
 		}
 	}()
-	body := fmt.Sprintf(`Someone asked to reset the password of your GPX Viewer account.
-
-Choose a new password by opening this link:
-
-%s
-
-The link expires in 1 hour. If you did not ask for this, ignore this email; your password stays the same.
-`, link)
-	return s.mailer.Send(ctx, u.Email, "Reset your password", body)
+	subject, body := emailsIn(u.Language).passwordReset.render(link)
+	return s.mailer.Send(ctx, u.Email, subject, body)
 }
 
 // ResetPassword consumes a reset token, sets the new password, signs out
@@ -491,7 +470,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, current,
 		return "", nil, err
 	}
 	if err := s.hasher.Compare(u.PasswordHash, current); err != nil {
-		return "", nil, &domain.ValidationError{Field: "currentPassword", Message: "current password is incorrect"}
+		return "", nil, &domain.ValidationError{Field: "currentPassword", Message: "current password is incorrect", Code: "wrong_password"}
 	}
 	if err := validatePassword("password", password); err != nil {
 		return "", nil, err
@@ -510,7 +489,7 @@ func (s *Service) DeleteAccount(ctx context.Context, userID uuid.UUID, password 
 		return err
 	}
 	if err := s.hasher.Compare(u.PasswordHash, password); err != nil {
-		return &domain.ValidationError{Field: "password", Message: "password is incorrect"}
+		return &domain.ValidationError{Field: "password", Message: "password is incorrect", Code: "wrong_password"}
 	}
 	if u.IsAdmin {
 		if err := s.ensureOtherAdmin(ctx); err != nil {
@@ -532,7 +511,7 @@ func (s *Service) ensureOtherAdmin(ctx context.Context) error {
 		return err
 	}
 	if admins <= 1 && users > 1 {
-		return &domain.ValidationError{Field: "account", Message: "you are the only admin; make someone else an admin first"}
+		return &domain.ValidationError{Field: "account", Message: "you are the only admin; make someone else an admin first", Code: "only_admin"}
 	}
 	return nil
 }
@@ -641,7 +620,7 @@ func (s *Service) Sessions(ctx context.Context, userID uuid.UUID, token string) 
 // belongs to is refused: signing out does that.
 func (s *Service) RevokeSession(ctx context.Context, userID, id uuid.UUID, token string) error {
 	if sess, err := s.sessions.GetByTokenHash(ctx, hashToken(token)); err == nil && sess.ID == id {
-		return &domain.ValidationError{Field: "session", Message: "this is your current session; sign out instead"}
+		return &domain.ValidationError{Field: "session", Message: "this is your current session; sign out instead", Code: "current_session"}
 	}
 	return s.sessions.DeleteByID(ctx, userID, id)
 }

@@ -87,7 +87,7 @@ func (f *fakeSessions) DeleteByUserID(_ context.Context, id uuid.UUID) error {
 // noInviter stands in for the auth service; requireVerified mimics having SMTP.
 type noInviter struct{ requireVerified bool }
 
-func (noInviter) Invite(context.Context, string, string, bool) (*domain.User, string, bool, error) {
+func (noInviter) Invite(context.Context, string, string, domain.Language, bool) (*domain.User, string, bool, error) {
 	return nil, "", false, errors.New("not called")
 }
 

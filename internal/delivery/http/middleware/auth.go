@@ -76,7 +76,7 @@ func RequireAdmin(next http.Handler) http.Handler {
 		if !UserFrom(r.Context()).IsAdmin {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "admins only"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "admins only", "code": "admins_only"})
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -116,5 +116,5 @@ func RejectCrossSite(next http.Handler) http.Handler {
 func unauthorized(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized", "code": "unauthorized"})
 }

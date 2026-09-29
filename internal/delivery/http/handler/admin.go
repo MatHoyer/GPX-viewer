@@ -19,7 +19,7 @@ type AdminService interface {
 	Sessions(ctx context.Context, userID uuid.UUID) ([]domain.Session, error)
 	RevokeSession(ctx context.Context, userID, id uuid.UUID) error
 	RevokeSessions(ctx context.Context, userID uuid.UUID) error
-	Invite(ctx context.Context, email, name string, send bool) (*domain.User, string, bool, error)
+	Invite(ctx context.Context, email, name string, lang domain.Language, send bool) (*domain.User, string, bool, error)
 	PasswordLink(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error)
 	SetEmailVerified(ctx context.Context, actorID, targetID uuid.UUID, verified bool) error
 	RevokeInvite(ctx context.Context, targetID uuid.UUID) error
@@ -124,7 +124,9 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	u, link, sent, err := h.svc.Invite(r.Context(), in.Email, in.Name, in.SendEmail)
+	// Until they pick one, invitees get the language of the admin inviting them.
+	lang := middleware.UserFrom(r.Context()).Language
+	u, link, sent, err := h.svc.Invite(r.Context(), in.Email, in.Name, lang, in.SendEmail)
 	if err != nil {
 		writeError(w, r, err)
 		return

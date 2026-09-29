@@ -1,4 +1,4 @@
-import type { Language } from '@/i18n'
+import { currentLanguage, type Language } from '@/i18n'
 import { api, ApiError } from '@/lib/api'
 
 /** Who can see a user's profile and hikes. */
@@ -57,7 +57,9 @@ export function login(credentials: Credentials) {
  * Signing in while unverified answers 403 and emails a new link if the last one expired.
  */
 export function register(credentials: Credentials) {
-  return api<User>('/auth/register', { method: 'POST', body: JSON.stringify(credentials) })
+  // The verification email, and the account, use the language picked here.
+  const body = { ...credentials, language: currentLanguage() }
+  return api<User>('/auth/register', { method: 'POST', body: JSON.stringify(body) })
 }
 
 /** Consumes the token from the verification link and starts a session. */

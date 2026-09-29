@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { errorMessage } from '@/lib/errors'
+import { codeMessage, errorMessage } from '@/lib/errors'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -56,7 +56,7 @@ export function UploadDialog() {
         const ok = results.filter((r) => r.hike).length
         const failed = results.filter((r) => r.error)
         if (ok > 0) toast.success(t(planned ? 'upload.importedPlanned' : 'upload.imported', { count: ok }))
-        for (const f of failed) toast.error(`${f.filename}: ${f.error}`)
+        for (const f of failed) toast.error(`${f.filename}: ${codeMessage(f.code, f.params, f.error ?? '')}`)
         onOpenChange(false)
       },
       onError: (err) => toast.error(errorMessage(err, t('upload.failed'))),

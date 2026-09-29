@@ -134,7 +134,47 @@
     "email_disabled": "L'e-mail n'est pas configuré ici ; demandez un lien de mot de passe à un administrateur.",
     "registration_closed": "Les inscriptions sont fermées ; demandez une invitation à l'administrateur.",
     "email_not_verified": "Votre e-mail n'est pas encore vérifié.",
-    "tryLater": "Une erreur s'est produite, réessayez plus tard."
+    "tryLater": "Une erreur s'est produite, réessayez plus tard.",
+    "required": "Ce champ ne peut pas être vide.",
+    "too_long": "Au plus {{max}} caractères.",
+    "already_done": "Cette randonnée est déjà faite.",
+    "own_hike": "Vous êtes déjà sur votre propre randonnée.",
+    "not_friend": "Vous ne pouvez identifier que vos amis.",
+    "label_too_long": "Chaque étiquette peut faire au plus {{max}} caractères.",
+    "too_many_labels": "Au plus {{max}} étiquettes par randonnée.",
+    "no_hikes_selected": "Sélectionnez au moins une randonnée.",
+    "too_many_hikes": "Sélectionnez au plus {{max}} randonnées.",
+    "banned_user": "Levez d'abord son bannissement.",
+    "invalid_email": "Cette adresse e-mail n'est pas valide.",
+    "password_too_short": "Le mot de passe doit faire au moins {{min}} caractères.",
+    "password_too_long": "Le mot de passe peut faire au plus {{max}} caractères.",
+    "wrong_password": "Le mot de passe est incorrect.",
+    "only_admin": "Vous êtes le seul administrateur ; nommez-en un autre d'abord.",
+    "current_session": "C'est votre session actuelle ; déconnectez-vous plutôt.",
+    "invalid_visibility": "Choisissez privé, amis ou public.",
+    "invalid_language": "Cette langue n'est pas prise en charge.",
+    "self_friend": "Vous ne pouvez pas être votre propre ami.",
+    "search_too_long": "La recherche est trop longue.",
+    "no_pending_invite": "Cette personne n'a pas d'invitation en attente ; bannissez-la plutôt.",
+    "has_hikes": "Ce compte a des randonnées ; bannissez-le plutôt.",
+    "reason_required": "Dites-lui pourquoi.",
+    "admin_user": "Retirez d'abord son rôle d'administrateur.",
+    "self": "Vous ne pouvez pas faire cela à votre propre compte.",
+    "not_found": "Introuvable.",
+    "invalid_credentials": "E-mail ou mot de passe incorrect.",
+    "invalid_token": "Ce lien est invalide ou a expiré.",
+    "unauthorized": "Veuillez vous reconnecter.",
+    "email_taken": "Cet e-mail est déjà inscrit.",
+    "conflict": "Cela entre en conflit avec quelque chose qui existe déjà.",
+    "invalid_gpx": "Ce n'est pas un fichier GPX valide.",
+    "internal": "Une erreur s'est produite de notre côté.",
+    "invalid_body": "La requête n'a pas été comprise.",
+    "too_many_files": "Au plus {{max}} fichiers par import.",
+    "upload_failed": "L'import n'a pas pu être lu.",
+    "no_files": "Aucun fichier n'a été envoyé.",
+    "file_too_large": "Le fichier dépasse {{max}} Mo.",
+    "admins_only": "Seuls les administrateurs peuvent faire cela.",
+    "rate_limited": "Trop de tentatives. Réessayez dans {{minutes}} min."
   },
   "auth": {
     "login": {
@@ -654,5 +694,71 @@
     "night": "Nuit",
     "dawn": "Aube",
     "dusk": "Crépuscule"
+  },
+  "home": {
+    "meta": {
+      "title": "GPX Viewer : toutes vos randonnées sur une carte",
+      "description": "Importez les fichiers GPX de votre montre ou de votre téléphone et voyez toutes vos randonnées sur une carte. Graphiques d'altitude, de vitesse, de fréquence cardiaque et de cadence, relecture du parcours, calendrier de randonnée et partage avec vos amis.",
+      "ogDescription": "Importez les fichiers GPX de votre montre ou de votre téléphone et voyez toutes vos randonnées sur une carte, avec graphiques d'altitude et de fréquence cardiaque, relecture du parcours et calendrier de randonnée.",
+      "appDescription": "Importez des fichiers GPX et voyez toutes vos randonnées sur une carte, avec graphiques d'altitude, de vitesse et de fréquence cardiaque, relecture du parcours, calendrier de randonnée et partage avec vos amis."
+    },
+    "account": "Compte",
+    "createAnAccount": "Créer un compte",
+    "hero": {
+      "title": "Toutes vos randonnées, sur une seule carte.",
+      "text": "Importez les fichiers GPX de votre montre ou de votre téléphone. GPX Viewer trace tous vos parcours ensemble, puis vous laisse ouvrir chacun pour voir comment la montée s'est vraiment passée."
+    },
+    "mapAlt": "Carte topographique avec cinq traces de randonnée, dont une en évidence qui passe par le sommet principal",
+    "distance": "Distance",
+    "ascent": "Montée",
+    "moving": "En mouvement",
+    "highest": "Point culminant",
+    "movingTime": "Temps en mouvement",
+    "detail": {
+      "title": "Ouvrez une randonnée pour voir comment elle s'est passée",
+      "charts": "Altitude, vitesse, fréquence cardiaque, cadence et température, tracées le long du parcours à partir de ce que votre appareil a enregistré.",
+      "replay": "Glissez sur un graphique pour mesurer une montée. Lancez la lecture pour rejouer la randonnée sur la carte jusqu'à 600 fois plus vite qu'en vrai."
+    },
+    "profileAlt": "Profil d'altitude et de fréquence cardiaque d'une randonnée, avec une montée sélectionnée",
+    "climb": "+{{gain}} sur {{distance}}",
+    "season": {
+      "title": "Votre saison, mois par mois",
+      "summary": "12 randonnées, 148 km",
+      "text": "Le calendrier range vos randonnées par jour : un mois de juin chargé ou un hiver calme sautent aux yeux. Choisissez un jour pour ouvrir la randonnée."
+    },
+    "together": {
+      "title": "Partagez le sentier avec ceux qui l'ont parcouru",
+      "tagged": "Identifiés sur cette randonnée",
+      "taggedText": "Elle apparaît aussi sur leur carte.",
+      "who": "Qui peut voir vos randonnées",
+      "private": "Vous seul, et les amis que vous identifiez sur une randonnée.",
+      "friends": "Vos amis voient votre carte, votre calendrier et toutes vos randonnées.",
+      "public": "Toute personne ayant le lien de votre profil, sans compte.",
+      "text": "Ajoutez des amis grâce à leur identifiant et identifiez-les sur les randonnées faites ensemble. Vous choisissez qui voit vos randonnées, et pouvez changer d'avis à tout moment."
+    },
+    "details": {
+      "title": "Directement depuis votre montre",
+      "tracks": {
+        "term": "Traces et itinéraires",
+        "text": "GPX de Garmin, Suunto, Coros, exports Strava et applications mobiles. Importez plusieurs fichiers à la fois."
+      },
+      "sensors": {
+        "term": "Données des capteurs",
+        "text": "Fréquence cardiaque, cadence et température sont lues dans les extensions de points de trace Garmin."
+      },
+      "original": {
+        "term": "Votre fichier d'origine",
+        "text": "Chaque import est conservé tel quel : rien de ce que votre appareil a enregistré n'est perdu."
+      },
+      "maps": {
+        "term": "Fonds de carte",
+        "text": "Plan, topographique ou satellite, avec le relief en 3D quand vous voulez le voir."
+      }
+    },
+    "closing": {
+      "title": "Ramenez vos traces à la maison.",
+      "text": "Créez un compte, déposez vos fichiers GPX et regardez la carte se remplir."
+    },
+    "source": "Code source sur GitHub"
   }
 }

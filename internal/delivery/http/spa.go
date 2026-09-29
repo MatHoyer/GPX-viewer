@@ -19,7 +19,18 @@ import (
 )
 
 // homeFile is the prerendered landing page, shown at / to signed-out visitors.
+// Other languages have their own file, e.g. home.fr.html.
 const homeFile = "home.html"
+
+// langCookie holds the language a visitor picked, shared with the web app.
+const langCookie = "lang"
+
+func homeFileFor(lang domain.Language) string {
+	if lang == domain.LanguageEnglish {
+		return homeFile
+	}
+	return "home." + string(lang) + ".html"
+}
 
 // spaHandler serves static files and falls back to index.html for client-side routes.
 func spaHandler(static fs.FS) http.Handler {
@@ -29,7 +40,7 @@ func spaHandler(static fs.FS) http.Handler {
 		if name == "" {
 			name = "index.html"
 		}
-		if name == homeFile {
+		if name == homeFile || (strings.HasPrefix(name, "home.") && strings.HasSuffix(name, ".html")) {
 			http.Redirect(w, r, "/", http.StatusMovedPermanently)
 			return
 		}
@@ -54,14 +65,26 @@ func spaHandler(static fs.FS) http.Handler {
 
 // rootHandler serves the app to signed-in users and the landing page to
 // everyone else, falling back to the app when the frontend has no home page.
-// Expects OptionalAuth in front of it.
+// The landing page is in the language the visitor picked, else the one their
+// browser asks for; /?lang=fr picks one. Expects OptionalAuth in front of it.
 func rootHandler(static fs.FS, appURL string) http.Handler {
-	home, err := fs.ReadFile(static, homeFile)
-	if err == nil {
-		home = bytes.ReplaceAll(home, []byte("{{APP_URL}}"), []byte(strings.TrimRight(appURL, "/")))
+	homes := map[domain.Language][]byte{}
+	for _, lang := range domain.Languages {
+		if page, err := fs.ReadFile(static, homeFileFor(lang)); err == nil {
+			homes[lang] = bytes.ReplaceAll(page, []byte("{{APP_URL}}"), []byte(strings.TrimRight(appURL, "/")))
+		}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Vary", "Cookie")
+		if lang := domain.Language(r.URL.Query().Get("lang")); lang.Valid() {
+			http.SetCookie(w, &http.Cookie{Name: langCookie, Value: string(lang), Path: "/", MaxAge: 365 * 24 * 3600, SameSite: http.SameSiteLaxMode})
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+		w.Header().Set("Vary", "Cookie, Accept-Language")
+		home := homes[visitorLanguage(r)]
+		if home == nil {
+			home = homes[domain.LanguageEnglish]
+		}
 		if home == nil || middleware.UserFrom(r.Context()) != nil {
 			serveIndex(w, r, static)
 			return
@@ -70,6 +93,23 @@ func rootHandler(static fs.FS, appURL string) http.Handler {
 		w.Header().Set("Cache-Control", "no-cache")
 		_, _ = w.Write(home)
 	})
+}
+
+// visitorLanguage is the language picked on this device, else the first
+// supported one the browser lists, else English.
+func visitorLanguage(r *http.Request) domain.Language {
+	if c, err := r.Cookie(langCookie); err == nil && domain.Language(c.Value).Valid() {
+		return domain.Language(c.Value)
+	}
+	// Browsers list languages by preference, so the q-values are not needed.
+	for _, tag := range strings.Split(r.Header.Get("Accept-Language"), ",") {
+		tag, _, _ = strings.Cut(strings.TrimSpace(tag), ";")
+		base, _, _ := strings.Cut(tag, "-")
+		if lang := domain.Language(strings.ToLower(base)); lang.Valid() {
+			return lang
+		}
+	}
+	return domain.LanguageEnglish
 }
 
 func robotsHandler(appURL string) http.HandlerFunc {

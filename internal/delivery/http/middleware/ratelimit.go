@@ -86,9 +86,11 @@ func (l *Limiter) limited(w http.ResponseWriter, r *http.Request, key string) bo
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusTooManyRequests)
 	_ = json.NewEncoder(w).Encode(struct {
-		Error      string `json:"error"`
-		RetryAfter int    `json:"retryAfter"`
-	}{l.message, seconds})
+		Error      string         `json:"error"`
+		Code       string         `json:"code"`
+		Params     map[string]any `json:"params"`
+		RetryAfter int            `json:"retryAfter"`
+	}{l.message, "rate_limited", map[string]any{"minutes": (seconds + 59) / 60}, seconds})
 	return true
 }
 

@@ -13,6 +13,14 @@ type Credentials struct {
 	Password string `json:"password"`
 }
 
+type Register struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	// Language is what the verification email is written in, and the
+	// account's language from then on.
+	Language string `json:"language"`
+}
+
 type VerifyEmail struct {
 	Token string `json:"token"`
 }
@@ -131,6 +139,8 @@ type Error struct {
 	Code string `json:"code,omitempty"`
 	// Reason is why an admin banned the account.
 	Reason string `json:"reason,omitempty"`
+	// Params fill in the message for Code, e.g. a length limit.
+	Params map[string]any `json:"params,omitempty"`
 }
 
 type Hike struct {
@@ -244,6 +254,9 @@ type UploadResult struct {
 	Filename string `json:"filename"`
 	Hike     *Hike  `json:"hike,omitempty"`
 	Error    string `json:"error,omitempty"`
+	// Code and Params are set with Error, as in dto.Error.
+	Code   string         `json:"code,omitempty"`
+	Params map[string]any `json:"params,omitempty"`
 }
 
 // GeoJSON FeatureCollection of MultiLineStrings.

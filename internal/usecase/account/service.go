@@ -25,7 +25,7 @@ func NewService(users domain.AccountRepository) *Service {
 func (s *Service) UpdateName(ctx context.Context, userID uuid.UUID, name string) (*domain.User, error) {
 	name = strings.TrimSpace(name)
 	if utf8.RuneCountInString(name) > MaxNameLength {
-		return nil, &domain.ValidationError{Field: "name", Message: fmt.Sprintf("must be at most %d characters", MaxNameLength)}
+		return nil, &domain.ValidationError{Field: "name", Message: fmt.Sprintf("must be at most %d characters", MaxNameLength), Code: "too_long", Params: map[string]any{"max": MaxNameLength}}
 	}
 	if err := s.users.UpdateName(ctx, userID, name); err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (s *Service) UpdateName(ctx context.Context, userID uuid.UUID, name string)
 // UpdateVisibility sets who can see the user's profile and hikes.
 func (s *Service) UpdateVisibility(ctx context.Context, userID uuid.UUID, v domain.Visibility) (*domain.User, error) {
 	if !v.Valid() {
-		return nil, &domain.ValidationError{Field: "visibility", Message: "must be private, friends or public"}
+		return nil, &domain.ValidationError{Field: "visibility", Message: "must be private, friends or public", Code: "invalid_visibility"}
 	}
 	if err := s.users.UpdateVisibility(ctx, userID, v); err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func (s *Service) UpdateVisibility(ctx context.Context, userID uuid.UUID, v doma
 // UpdateLanguage sets the language the user reads the app and its emails in.
 func (s *Service) UpdateLanguage(ctx context.Context, userID uuid.UUID, l domain.Language) (*domain.User, error) {
 	if !l.Valid() {
-		return nil, &domain.ValidationError{Field: "language", Message: "unsupported language"}
+		return nil, &domain.ValidationError{Field: "language", Message: "unsupported language", Code: "invalid_language"}
 	}
 	if err := s.users.UpdateLanguage(ctx, userID, l); err != nil {
 		return nil, err

@@ -53,6 +53,9 @@ export type UploadResult = {
   filename: string
   hike?: Hike
   error?: string
+  /** Set with error, to show it in the user's language. */
+  code?: string
+  params?: Record<string, string | number>
 }
 
 export function listHikes() {
@@ -115,8 +118,8 @@ export async function exportHikes(ids: string[]) {
     body: JSON.stringify({ ids }),
   })
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new ApiError(res.status, body.error ?? res.statusText)
+    const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string; params?: Record<string, string | number> }
+    throw new ApiError(res.status, body.error ?? res.statusText, { code: body.code, params: body.params })
   }
   const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? 'hikes.zip'
   const url = URL.createObjectURL(await res.blob())
