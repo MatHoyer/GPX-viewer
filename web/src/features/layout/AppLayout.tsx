@@ -22,13 +22,24 @@ import { NavUser } from '@/features/account/NavUser'
 import { UploadDialog } from '@/features/hikes/UploadDialog'
 import { useConnections } from '@/features/social/useSocial'
 
-const views = [
-  { to: '/', label: 'map', icon: MapIcon },
-  { to: '/hikes', label: 'hikes', icon: TableProperties },
-  { to: '/calendar', label: 'calendar', icon: CalendarDays },
-  { to: '/stats', label: 'stats', icon: ChartColumn },
-  { to: '/feed', label: 'activity', icon: Activity },
-  { to: '/friends', label: 'friends', icon: UsersRound },
+// Your own hikes, then what friends share; labels are under nav.
+const groups = [
+  {
+    label: 'yourHikes',
+    items: [
+      { to: '/', label: 'map', icon: MapIcon },
+      { to: '/hikes', label: 'hikes', icon: TableProperties },
+      { to: '/calendar', label: 'calendar', icon: CalendarDays },
+      { to: '/stats', label: 'stats', icon: ChartColumn },
+    ],
+  },
+  {
+    label: 'social',
+    items: [
+      { to: '/feed', label: 'activity', icon: Activity },
+      { to: '/friends', label: 'friends', icon: UsersRound },
+    ],
+  },
 ] as const
 
 export function AppLayout() {
@@ -45,12 +56,14 @@ export function AppLayout() {
           <UploadDialog />
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>{t('nav.views')}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <ViewNav />
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {groups.map((group) => (
+            <SidebarGroup key={group.label}>
+              <SidebarGroupLabel>{t(`nav.${group.label}`)}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <ViewNav items={group.items} />
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
         </SidebarContent>
         <SidebarFooter>
           <NavUser />
@@ -65,7 +78,7 @@ export function AppLayout() {
   )
 }
 
-function ViewNav() {
+function ViewNav({ items }: { items: (typeof groups)[number]['items'] }) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const { setOpenMobile } = useSidebar()
@@ -73,7 +86,7 @@ function ViewNav() {
 
   return (
     <SidebarMenu>
-      {views.map(({ to, label, icon: Icon }) => (
+      {items.map(({ to, label, icon: Icon }) => (
         <SidebarMenuItem key={to}>
           <SidebarMenuButton asChild isActive={pathname === to}>
             <NavLink to={to} onClick={() => setOpenMobile(false)}>
