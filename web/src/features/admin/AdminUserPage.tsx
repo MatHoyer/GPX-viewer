@@ -1,6 +1,6 @@
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
@@ -245,7 +245,14 @@ function SessionsCard({ user }: { user: AdminUser }) {
       <CardHeader>
         <CardTitle>{t('admin.sessions')}</CardTitle>
         <CardDescription>
-          {self ? t('admin.sessionsSelf') : t('admin.sessionsDescription')}
+          {self ? (
+            <Trans
+              i18nKey="admin.sessionsSelf"
+              components={{ settings: <Link to="/settings/security" className="text-foreground underline underline-offset-4" /> }}
+            />
+          ) : (
+            t('admin.sessionsDescription')
+          )}
         </CardDescription>
         {!self && sessions.data && sessions.data.length > 0 && (
           <CardAction>

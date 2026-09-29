@@ -2,7 +2,7 @@ import { Download, ExternalLink, Globe, Lock, UsersRound } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useState, type ComponentType, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, Navigate, NavLink, useParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 
 import { MAX_NAME_LENGTH } from './api'
 import { DeleteAccountDialog } from './DeleteAccountDialog'
+import { settingsSections } from './settingsSections'
 import { useUpdateAccount } from './useAccount'
 import { useSetLanguage } from './useLanguage'
 import { themes } from './themes'
@@ -28,7 +29,10 @@ import { UserAvatar } from './UserAvatar'
 
 export function SettingsPage() {
   const { t } = useTranslation()
+  const { section = 'profile' } = useParams()
   const me = useMe()
+  const current = settingsSections.find((s) => s.value === section)
+  if (!current) return <Navigate to="/settings" replace />
 
   return (
     <div className="flex h-full flex-col">
@@ -36,21 +40,71 @@ export function SettingsPage() {
         <SidebarTrigger />
         <h1 className="text-lg font-semibold">{t('settings.title')}</h1>
       </header>
-      <main className="flex-1 overflow-y-auto">
-        {me.data && (
-          <div className="mx-auto max-w-2xl space-y-4 p-4">
-            {/* Keyed so the form resets if the saved name changes elsewhere. */}
-            <DetailsCard key={me.data.name} user={me.data} />
-            <PasswordCard user={me.data} />
-            <SessionsCard />
-            <VisibilityCard user={me.data} />
-            <ExportCard />
-            <AppearanceCard />
-            <DangerZoneCard user={me.data} />
-          </div>
-        )}
-      </main>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <SectionNav />
+        <main className="flex-1 overflow-y-auto">
+          {me.data && (
+            <div className="mx-auto max-w-2xl space-y-4 p-4">
+              <h2 className="sr-only">{t(`settings.sections.${current.value}`)}</h2>
+              {current.value === 'profile' && (
+                <>
+                  {/* Keyed so the form resets if the saved name changes elsewhere. */}
+                  <DetailsCard key={me.data.name} user={me.data} />
+                  <VisibilityCard user={me.data} />
+                </>
+              )}
+              {current.value === 'security' && (
+                <>
+                  <PasswordCard user={me.data} />
+                  <SessionsCard />
+                </>
+              )}
+              {current.value === 'preferences' && (
+                <>
+                  <ThemeCard />
+                  <LanguageCard />
+                </>
+              )}
+              {current.value === 'account' && (
+                <>
+                  <ExportCard />
+                  <DangerZoneCard user={me.data} />
+                </>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
     </div>
+  )
+}
+
+/** Tabs over the content, lined up with it. On phones they share the width and drop their icons to fit. */
+function SectionNav() {
+  const { t } = useTranslation()
+  return (
+    <nav aria-label={t('settings.title')} className="shrink-0 border-b">
+      <div className="mx-auto flex max-w-2xl px-2 sm:gap-1 sm:px-4">
+        {settingsSections.map(({ value, path, icon: Icon }) => (
+          <NavLink
+            key={value}
+            to={path}
+            end
+            className={({ isActive }) =>
+              cn(
+                'focus-visible:ring-ring/50 -mb-px flex min-w-0 flex-auto items-center justify-center gap-2 border-b-2 px-1 py-2.5 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-3 sm:flex-none sm:px-3',
+                isActive
+                  ? 'border-primary text-foreground'
+                  : 'text-muted-foreground hover:text-foreground border-transparent',
+              )
+            }
+          >
+            <Icon className="size-4 max-sm:hidden" />
+            <span className="truncate">{t(`settings.sections.${value}`)}</span>
+          </NavLink>
+        ))}
+      </div>
+    </nav>
   )
 }
 
@@ -270,16 +324,31 @@ function DangerZoneCard({ user }: { user: User }) {
   )
 }
 
-function AppearanceCard() {
-  const { t, i18n } = useTranslation()
+function ThemeCard() {
+  const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
-  const setLanguage = useSetLanguage()
   const themeOptions: Option<string>[] = themes.map(({ value, icon }) => ({
     value,
     label: t(`theme.${value}`),
     description: t(`theme.${value}Description`),
     icon,
   }))
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('settings.theme')}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <OptionCards label={t('settings.theme')} options={themeOptions} value={theme ?? 'system'} onChange={setTheme} />
+      </CardContent>
+    </Card>
+  )
+}
+
+function LanguageCard() {
+  const { t, i18n } = useTranslation()
+  const setLanguage = useSetLanguage()
   const languageCards: Option<string>[] = languageOptions.map(({ value, label, flag: Flag }) => ({
     value,
     label,
@@ -291,10 +360,10 @@ function AppearanceCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('settings.appearance')}</CardTitle>
+        <CardTitle>{t('settings.language')}</CardTitle>
+        <CardDescription>{t('settings.languageDescription')}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <OptionCards label={t('settings.theme')} options={themeOptions} value={theme ?? 'system'} onChange={setTheme} />
+      <CardContent>
         <OptionCards
           label={t('settings.language')}
           options={languageCards}
