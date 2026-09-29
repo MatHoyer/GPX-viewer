@@ -88,11 +88,17 @@
     "export": "Export",
     "exportDescription": "Téléchargez les fichiers GPX d'origine de toutes vos randonnées dans un zip. Les randonnées où vous êtes identifié restent à leur propriétaire.",
     "exportButton": "Télécharger mes randonnées",
-    "appearance": "Apparence",
     "theme": "Thème",
     "language": "Langue",
     "dangerZone": "Zone de danger",
-    "dangerDescription": "Supprimer votre compte efface définitivement vos randonnées, identifications, amis, bravos et commentaires. C'est irréversible."
+    "dangerDescription": "Supprimer votre compte efface définitivement vos randonnées, identifications, amis, bravos et commentaires. C'est irréversible.",
+    "sections": {
+      "profile": "Profil",
+      "security": "Sécurité",
+      "preferences": "Préférences",
+      "account": "Compte"
+    },
+    "languageDescription": "Utilisée aussi pour les e-mails que nous vous envoyons."
   },
   "deleteAccount": {
     "trigger": "Supprimer mon compte",
@@ -113,7 +119,6 @@
   "sessions": {
     "title": "Sessions actives",
     "description": "Les appareils connectés à votre compte. Déconnectez ceux que vous ne reconnaissez pas.",
-    "signOutOthers": "Déconnecter les autres",
     "signedOutOthers": "Vos autres appareils ont été déconnectés",
     "signOutOthersFailed": "Impossible de déconnecter vos autres appareils",
     "signOutFailed": "Impossible de déconnecter cet appareil",
@@ -126,7 +131,14 @@
     "signOut": "Déconnecter",
     "signingOut": "Déconnexion…",
     "unknownDevice": "Appareil inconnu",
-    "browserOn": "{{browser}} sur {{os}}"
+    "browserOn": "{{browser}} sur {{os}}",
+    "signOutOthers_one": "Déconnecter {{count}} autre appareil",
+    "signOutOthers_other": "Déconnecter {{count}} autres appareils",
+    "signOutOthers_many": "Déconnecter {{count}} autres appareils",
+    "showAll_one": "Tout afficher ({{count}})",
+    "showAll_other": "Tout afficher ({{count}})",
+    "showAll_many": "Tout afficher ({{count}})",
+    "showFewer": "Afficher moins"
   },
   "errors": {
     "generic": "Une erreur s'est produite",
@@ -312,7 +324,7 @@
     "banEllipsis": "Bannir…",
     "revokeEllipsis": "Révoquer l'invitation…",
     "sessions": "Sessions",
-    "sessionsSelf": "Gérez vos propres sessions depuis les Paramètres.",
+    "sessionsSelf": "Gérez vos propres sessions depuis <settings>Paramètres › Sécurité</settings>.",
     "sessionsDescription": "Les appareils sur lesquels cet utilisateur est connecté. Le déconnecter ne l'empêche pas de se reconnecter ; bannissez-le pour cela.",
     "signedOutEverywhere": "{{name}} est déconnecté partout",
     "signOutFailed": "Impossible de le déconnecter",

@@ -56,6 +56,7 @@ export default function App() {
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/feed" element={<FeedPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/settings/:section" element={<SettingsPage />} />
                 <Route path="/friends" element={<FriendsPage />} />
                 <Route path="/admin" element={<AdminOnly><AdminPage /></AdminOnly>} />
                 <Route path="/admin/users/:id" element={<AdminOnly><AdminUserPage /></AdminOnly>} />

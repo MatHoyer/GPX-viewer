@@ -9,6 +9,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
@@ -17,6 +20,7 @@ import { useLogout, useMe } from '@/features/auth/useAuth'
 
 import { displayName } from './displayName'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { settingsSections } from './settingsSections'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { UserAvatar } from './UserAvatar'
 
@@ -65,12 +69,23 @@ export function NavUser() {
                   {t('nav.profile')}
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className={itemClass}>
-                <Link to="/settings" onClick={() => setOpenMobile(false)}>
+              {/* Straight to a part of Settings, e.g. to sign out a lost device. */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className={itemClass}>
                   <Settings />
                   {t('nav.settings')}
-                </Link>
-              </DropdownMenuItem>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="min-w-44">
+                  {settingsSections.map(({ value, path, icon: Icon }) => (
+                    <DropdownMenuItem key={value} asChild className={itemClass}>
+                      <Link to={path} onClick={() => setOpenMobile(false)}>
+                        <Icon />
+                        {t(`settings.sections.${value}`)}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               {user.isAdmin && (
                 <DropdownMenuItem asChild className={itemClass}>
                   <Link to="/admin" onClick={() => setOpenMobile(false)}>

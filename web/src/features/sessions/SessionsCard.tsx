@@ -36,7 +36,7 @@ export function SessionsCard() {
                 })
               }
             >
-              {t('sessions.signOutOthers')}
+              {t('sessions.signOutOthers', { count: others })}
             </Button>
           </CardAction>
         )}

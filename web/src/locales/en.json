@@ -87,11 +87,17 @@
     "export": "Export",
     "exportDescription": "Download the original GPX files of all your hikes as a zip. Hikes you are tagged on stay with their owner.",
     "exportButton": "Download my hikes",
-    "appearance": "Appearance",
     "theme": "Theme",
     "language": "Language",
     "dangerZone": "Danger zone",
-    "dangerDescription": "Deleting your account removes your hikes, tags, friends, kudos and comments for good. It cannot be undone."
+    "dangerDescription": "Deleting your account removes your hikes, tags, friends, kudos and comments for good. It cannot be undone.",
+    "sections": {
+      "profile": "Profile",
+      "security": "Security",
+      "preferences": "Preferences",
+      "account": "Account"
+    },
+    "languageDescription": "Also used for the emails we send you."
   },
   "deleteAccount": {
     "trigger": "Delete my account",
@@ -112,7 +118,6 @@
   "sessions": {
     "title": "Active sessions",
     "description": "Devices signed in to your account. Sign out any you don't recognise.",
-    "signOutOthers": "Sign out others",
     "signedOutOthers": "Signed out of your other devices",
     "signOutOthersFailed": "Could not sign out your other devices",
     "signOutFailed": "Could not sign out that device",
@@ -125,7 +130,12 @@
     "signOut": "Sign out",
     "signingOut": "Signing out…",
     "unknownDevice": "Unknown device",
-    "browserOn": "{{browser}} on {{os}}"
+    "browserOn": "{{browser}} on {{os}}",
+    "signOutOthers_one": "Sign out {{count}} other device",
+    "signOutOthers_other": "Sign out {{count}} other devices",
+    "showAll_one": "Show all ({{count}})",
+    "showAll_other": "Show all ({{count}})",
+    "showFewer": "Show fewer"
   },
   "errors": {
     "generic": "Something went wrong",
@@ -311,7 +321,7 @@
     "banEllipsis": "Ban…",
     "revokeEllipsis": "Revoke invite…",
     "sessions": "Sessions",
-    "sessionsSelf": "Manage your own sessions from Settings.",
+    "sessionsSelf": "Manage your own sessions from <settings>Settings › Security</settings>.",
     "sessionsDescription": "Devices this user is signed in on. Signing them out does not stop them signing in again; ban them for that.",
     "signedOutEverywhere": "{{name}} is signed out everywhere",
     "signOutFailed": "Could not sign them out",
