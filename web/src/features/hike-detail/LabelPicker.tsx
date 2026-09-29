@@ -1,5 +1,6 @@
 import { Check, Plus, Tag, X } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -21,6 +22,7 @@ type Props = {
 
 /** A hike's labels as chips; owners pick from their existing labels or create one. */
 export function LabelPicker({ labels, onChange, disabled }: Props) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const known = useLabels()
@@ -51,7 +53,7 @@ export function LabelPicker({ labels, onChange, disabled }: Props) {
               type="button"
               onClick={() => toggle(l)}
               disabled={disabled}
-              aria-label={`Remove label ${l}`}
+              aria-label={t('labels.remove', { label: l })}
               className="hover:bg-foreground/10 rounded-full p-0.5"
             >
               <X className="size-3" />
@@ -66,7 +68,7 @@ export function LabelPicker({ labels, onChange, disabled }: Props) {
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-7 rounded-full border-dashed text-xs" disabled={disabled}>
               <Plus />
-              Label
+              {t('labels.add')}
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-64 p-0">
@@ -74,13 +76,13 @@ export function LabelPicker({ labels, onChange, disabled }: Props) {
               <CommandInput
                 value={search}
                 onValueChange={setSearch}
-                placeholder="Find or create a label…"
+                placeholder={t('labels.placeholder')}
                 maxLength={MAX_LABEL_LENGTH}
               />
               <CommandList>
-                <CommandEmpty>{all.length === 0 ? 'Type to create your first label.' : 'No matching label.'}</CommandEmpty>
+                <CommandEmpty>{all.length === 0 ? t('labels.typeToCreate') : t('labels.noMatch')}</CommandEmpty>
                 {all.length > 0 && (
-                  <CommandGroup heading="Your labels">
+                  <CommandGroup heading={t('labels.yours')}>
                     {all.map((l) => {
                       const on = labels.includes(l)
                       return (
@@ -96,13 +98,13 @@ export function LabelPicker({ labels, onChange, disabled }: Props) {
                   <CommandGroup forceMount>
                     <CommandItem value={`create:${typed}`} onSelect={() => toggle(typed)} disabled={full} forceMount>
                       <Plus />
-                      Create “{typed}”
+                      {t('labels.create', { label: typed })}
                     </CommandItem>
                   </CommandGroup>
                 )}
               </CommandList>
             </Command>
-            {full && <p className="text-muted-foreground border-t px-3 py-2 text-xs">At most {MAX_LABELS} labels per hike.</p>}
+            {full && <p className="text-muted-foreground border-t px-3 py-2 text-xs">{t('labels.max', { count: MAX_LABELS })}</p>}
           </PopoverContent>
         </Popover>
       )}

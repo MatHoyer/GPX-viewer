@@ -15,6 +15,7 @@ import {
 } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ChevronsUpDown, Download, Loader2, Trash2, X } from 'lucide-react'
 import { createContext, use, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 
@@ -23,7 +24,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMe } from '@/features/auth/useAuth'
-import { ApiError } from '@/lib/api'
+import i18n from '@/i18n'
+import { errorMessage } from '@/lib/errors'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -68,14 +70,14 @@ function sizeOf(id: (typeof optionalColumns)[number]['id']) {
 const columns = helper.columns([
   helper.display({ id: 'select', size: 44, header: SelectAllHeader, cell: SelectCell }),
   helper.accessor('name', {
-    header: 'Name',
+    header: () => i18n.t('hikes.columns.name'),
     sortFn: 'alphanumeric',
     sortDescFirst: false,
     cell: NameCell,
   }),
   helper.accessor((h) => (h.startedAt ? Date.parse(h.startedAt) : undefined), {
     id: 'date',
-    header: 'Date',
+    header: () => i18n.t('hikes.columns.date'),
     size: sizeOf('date'),
     sortUndefined: 'last',
     sortDescFirst: true,
@@ -83,27 +85,32 @@ const columns = helper.columns([
   }),
   helper.accessor('distanceM', {
     id: 'distance',
-    header: 'Distance',
+    header: () => i18n.t('hike.distance'),
     size: sizeOf('distance'),
     sortDescFirst: true,
     cell: ({ getValue }) => formatDistance(getValue()),
   }),
   helper.accessor('elevationGainM', {
     id: 'elevation',
-    header: 'D+',
+    header: () => i18n.t('hikes.columns.gain'),
     size: sizeOf('elevation'),
     sortDescFirst: true,
     cell: ({ getValue }) => formatElevation(getValue()),
   }),
   helper.accessor((h) => (h.durationS > 0 ? h.durationS : undefined), {
     id: 'duration',
-    header: 'Duration',
+    header: () => i18n.t('hikes.columns.duration'),
     size: sizeOf('duration'),
     sortUndefined: 'last',
     sortDescFirst: true,
     cell: ({ getValue }) => formatDuration(getValue() ?? 0),
   }),
-  helper.accessor('labels', { header: 'Labels', size: sizeOf('labels'), enableSorting: false, cell: LabelsCell }),
+  helper.accessor('labels', {
+    header: () => i18n.t('hikes.columns.labels'),
+    size: sizeOf('labels'),
+    enableSorting: false,
+    cell: LabelsCell,
+  }),
   helper.display({ id: 'actions', size: 52, cell: ({ row }) => <HikeActionsMenu hike={row.original} /> }),
 ])
 
@@ -129,6 +136,7 @@ function useColumnVisibility(ref: RefObject<HTMLElement | null>): ColumnVisibili
 
 /** Your hikes and those you were tagged on, as a sortable table with bulk export and delete. */
 export function HikesPage() {
+  const { t } = useTranslation()
   const hikes = useHikes()
   const me = useMe()
   const userId = me.data?.id
@@ -162,7 +170,7 @@ export function HikesPage() {
   function exportSelected(rows: HikeRow[]) {
     exportHikes.mutate(
       rows.map((r) => r.original.id),
-      { onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not export') },
+      { onError: (err) => toast.error(errorMessage(err, t('hikes.exportFailed'))) },
     )
   }
 
@@ -171,7 +179,7 @@ export function HikesPage() {
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
         <SidebarTrigger />
-        <h1 className="text-lg font-semibold">Hikes</h1>
+        <h1 className="text-lg font-semibold">{t('nav.hikes')}</h1>
       </header>
 
       {all.length > 0 && (
@@ -185,19 +193,19 @@ export function HikesPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Clear selection"
+                    aria-label={t('hikes.clearSelection')}
                     onClick={() => table.resetRowSelection(true)}
                   >
                     <X />
                   </Button>
-                  <span className="flex-1 text-sm font-medium tabular-nums">{selected.length} selected</span>
+                  <span className="flex-1 text-sm font-medium tabular-nums">{t('hikes.selected', { count: selected.length })}</span>
                   <Button variant="outline" size="sm" onClick={() => exportSelected(selected)} disabled={exportHikes.isPending}>
                     {exportHikes.isPending ? <Loader2 className="animate-spin" /> : <Download />}
-                    Export GPX
+                    {t('hikes.exportGpx')}
                   </Button>
                   <Button variant="destructive" size="sm" onClick={() => setDeleting(selected.map((r) => r.original))}>
                     <Trash2 />
-                    Delete
+                    {t('common.delete')}
                   </Button>
                 </div>
               ) : (
@@ -217,12 +225,12 @@ export function HikesPage() {
           </div>
         ) : hikes.isError ? (
           <p role="alert" className="text-destructive p-4 text-sm">
-            Could not load your hikes.
+            {t('hikes.loadFailed')}
           </p>
         ) : all.length === 0 ? (
-          <p className="text-muted-foreground p-8 text-center text-sm">No hikes yet. Import GPX files to see them here.</p>
+          <p className="text-muted-foreground p-8 text-center text-sm">{t('hikes.empty')}</p>
         ) : rows.length === 0 ? (
-          <p className="text-muted-foreground p-8 text-center text-sm">No hikes match your filters.</p>
+          <p className="text-muted-foreground p-8 text-center text-sm">{t('hikes.noMatch')}</p>
         ) : (
           <HikeTableContext value={context}>
             <table className="w-full table-fixed text-sm">
@@ -326,7 +334,7 @@ function SelectAllHeader({ table }: { table: HikeRow['table'] }) {
         const some = table.getIsSomeRowsSelected()
         return (
           <Checkbox
-            aria-label="Select all your hikes shown"
+            aria-label={i18n.t('hikes.selectAll')}
             checked={all ? true : some ? 'indeterminate' : false}
             onCheckedChange={(v) => table.toggleAllRowsSelected(v === true)}
             disabled={!table.getRowModel().rows.some((r) => r.getCanSelect())}
@@ -343,10 +351,10 @@ function SelectCell({ row }: { row: HikeRow }) {
     <Subscribe source={row.table.atoms.rowSelection} selector={(s) => !!s[row.id]}>
       {(selected) => (
         <Checkbox
-          aria-label={`Select ${row.original.name}`}
+          aria-label={i18n.t('hikes.select', { name: row.original.name })}
           checked={selected}
           disabled={!canSelect}
-          title={canSelect ? undefined : 'Only its owner can export or delete this hike'}
+          title={canSelect ? undefined : i18n.t('hikes.ownerOnly')}
           // Through the table's handler so Shift+click selects a range. The
           // checkbox is a button, so its next state is passed as target.checked.
           onClick={(e) => row.getToggleSelectedHandler()({ shiftKey: e.shiftKey, target: { checked: !selected } })}
@@ -362,7 +370,7 @@ function NameCell({ row }: { row: HikeRow }) {
   const hike = row.original
   // Shown when the date and distance columns are hidden, on phones.
   const summary = !row.table.getColumn('date')?.getIsVisible()
-    ? [formatDate(hike.startedAt), formatDistance(hike.distanceM), `${formatElevation(hike.elevationGainM)} D+`].filter(Boolean)
+    ? [formatDate(hike.startedAt), formatDistance(hike.distanceM), i18n.t('hike.gainValue', { value: formatElevation(hike.elevationGainM) })].filter(Boolean)
     : null
 
   return (

@@ -1,5 +1,6 @@
 import { ZoomOut } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -15,13 +16,16 @@ import { lightBands } from './sun'
 
 /** startedAt places the profile's relative times in the day, to shade night. */
 export function ProfileCharts({ profile, startedAt }: { profile: Profile; startedAt: string | null }) {
+  const { t, i18n } = useTranslation()
   const axis = useReplay((s) => s.axis)
   const range = useReplay((s) => s.range)
   const count = useReplay((s) => s.count)
   const [speedUnit, setSpeedUnit] = useState<SpeedUnit>('kmh')
 
   const xs = useMemo(() => xValues(profile, axis), [profile, axis])
-  const series = useMemo(() => buildSeries(profile, speedUnit), [profile, speedUnit])
+  // Labels and units follow the language.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const series = useMemo(() => buildSeries(profile, speedUnit), [profile, speedUnit, i18n.language])
   const bands = useMemo(() => lightBands(profile, startedAt), [profile, startedAt])
   const [lo, hi] = visibleSpan({ range, count })
   const domain = useMemo<[number, number]>(() => [xAt(xs, lo), xAt(xs, hi)], [xs, lo, hi])
@@ -35,21 +39,21 @@ export function ProfileCharts({ profile, startedAt }: { profile: Profile; starte
           variant="outline"
           value={axis}
           onValueChange={(v) => v && useReplay.getState().setAxis(v as Axis)}
-          aria-label="X axis"
+          aria-label={t('charts.xAxis')}
         >
-          <ToggleGroupItem value="dist">Distance</ToggleGroupItem>
+          <ToggleGroupItem value="dist">{t('hike.distance')}</ToggleGroupItem>
           <ToggleGroupItem value="time" disabled={!profile.has.time}>
-            Time
+            {t('charts.time')}
           </ToggleGroupItem>
         </ToggleGroup>
         <Button variant="ghost" size="sm" disabled={!range} onClick={() => useReplay.getState().setRange(null)}>
           <ZoomOut />
-          Reset zoom
+          {t('charts.resetZoom')}
         </Button>
       </div>
 
       {series.length === 0 && (
-        <p className="text-muted-foreground py-8 text-center text-sm">This GPX has no elevation, time or sensor data to chart.</p>
+        <p className="text-muted-foreground py-8 text-center text-sm">{t('charts.noData')}</p>
       )}
 
       {series.map((s, i) => (
@@ -65,7 +69,7 @@ export function ProfileCharts({ profile, startedAt }: { profile: Profile; starte
                   value={speedUnit}
                   onValueChange={(v) => v && setSpeedUnit(v as SpeedUnit)}
                   className="h-6"
-                  aria-label="Speed unit"
+                  aria-label={t('charts.speedUnit')}
                 >
                   <ToggleGroupItem value="kmh" className="h-6 px-2 text-xs">
                     km/h

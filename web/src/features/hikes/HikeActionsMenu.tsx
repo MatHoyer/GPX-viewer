@@ -1,5 +1,6 @@
 import { CalendarCheck, Download, ExternalLink, MoreHorizontal, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ type Props = {
 
 /** The actions on a hike, behind an ellipsis button. Owner-only ones are hidden from participants. */
 export function HikeActionsMenu({ hike, className, hideOpen, size = 'icon-sm', onDeleted }: Props) {
+  const { t } = useTranslation()
   const isOwner = useMe().data?.id === hike.userId
   const [dialog, setDialog] = useState<'done' | 'delete' | null>(null)
 
@@ -35,7 +37,7 @@ export function HikeActionsMenu({ hike, className, hideOpen, size = 'icon-sm', o
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size={size} className={cn('shrink-0', className)} aria-label={`Actions for ${hike.name}`}>
+          <Button variant="ghost" size={size} className={cn('shrink-0', className)} aria-label={t('hikeActions.label', { name: hike.name })}>
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
@@ -44,20 +46,20 @@ export function HikeActionsMenu({ hike, className, hideOpen, size = 'icon-sm', o
             <DropdownMenuItem asChild>
               <Link to={`/hikes/${hike.id}`}>
                 <ExternalLink />
-                Open
+                {t('hikeActions.open')}
               </Link>
             </DropdownMenuItem>
           )}
           <DropdownMenuItem asChild>
             <a href={`/api/hikes/${hike.id}/gpx`} download>
               <Download />
-              Download GPX
+              {t('hikeActions.download')}
             </a>
           </DropdownMenuItem>
           {isOwner && hike.planned && (
             <DropdownMenuItem onSelect={() => setDialog('done')}>
               <CalendarCheck />
-              Mark as done…
+              {t('hikeActions.markDone')}
             </DropdownMenuItem>
           )}
           {isOwner && (
@@ -65,7 +67,7 @@ export function HikeActionsMenu({ hike, className, hideOpen, size = 'icon-sm', o
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onSelect={() => setDialog('delete')}>
                 <Trash2 />
-                Delete…
+                {t('hikeActions.delete')}
               </DropdownMenuItem>
             </>
           )}

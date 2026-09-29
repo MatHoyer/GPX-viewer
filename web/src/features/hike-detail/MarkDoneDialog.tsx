@@ -1,5 +1,6 @@
 import { CalendarCheck, FileUp, X } from 'lucide-react'
 import { useRef, useState, type DragEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -13,7 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useMarkHikeDone } from '@/features/hikes/useHikes'
-import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -25,6 +26,7 @@ type Props = {
 
 /** Marks a planned hike as walked, optionally with the GPX recorded on the walk. */
 export function MarkDoneDialog({ id, open: controlledOpen, onOpenChange: setControlledOpen }: Props) {
+  const { t } = useTranslation()
   const [ownOpen, setOwnOpen] = useState(false)
   const controlled = controlledOpen !== undefined
   const open = controlled ? controlledOpen : ownOpen
@@ -38,7 +40,7 @@ export function MarkDoneDialog({ id, open: controlledOpen, onOpenChange: setCont
     const f = list?.[0]
     if (!f) return
     if (!f.name.toLowerCase().endsWith('.gpx')) {
-      toast.warning('Only .gpx files are supported')
+      toast.warning(t('upload.onlyGpx'))
       return
     }
     setFile(f)
@@ -63,10 +65,10 @@ export function MarkDoneDialog({ id, open: controlledOpen, onOpenChange: setCont
       { id, file },
       {
         onSuccess: () => {
-          toast.success('Marked as done')
+          toast.success(t('markDone.done'))
           onOpenChange(false)
         },
-        onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not update hike'),
+        onError: (err) => toast.error(errorMessage(err, t('markDone.failed'))),
       },
     )
   }
@@ -77,23 +79,22 @@ export function MarkDoneDialog({ id, open: controlledOpen, onOpenChange: setCont
         <DialogTrigger asChild>
           <Button variant="outline" size="sm">
             <CalendarCheck />
-            <span className="hidden sm:inline">Mark as done</span>
+            <span className="hidden sm:inline">{t('markDone.title')}</span>
           </Button>
         </DialogTrigger>
       )}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Mark as done</DialogTitle>
+          <DialogTitle>{t('markDone.title')}</DialogTitle>
           <DialogDescription>
-            Add the GPX your watch or app recorded to get your own times, speed and heart rate. Without one, the planned
-            route is kept as walked.
+            {t('markDone.description')}
           </DialogDescription>
         </DialogHeader>
 
         {file ? (
           <div className="flex items-center justify-between gap-2 rounded-lg border p-3 text-sm">
             <span className="truncate">{file.name}</span>
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => setFile(undefined)} aria-label="Remove file">
+            <Button variant="ghost" size="icon" className="size-7" onClick={() => setFile(undefined)} aria-label={t('markDone.removeFile')}>
               <X />
             </Button>
           </div>
@@ -113,7 +114,7 @@ export function MarkDoneDialog({ id, open: controlledOpen, onOpenChange: setCont
             )}
           >
             <FileUp className="size-7" />
-            <span>Recorded GPX (optional)</span>
+            <span>{t('markDone.recorded')}</span>
           </button>
         )}
         <input
@@ -129,10 +130,10 @@ export function MarkDoneDialog({ id, open: controlledOpen, onOpenChange: setCont
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button onClick={submit} disabled={markDone.isPending}>
-            {markDone.isPending ? 'Saving…' : file ? 'Replace route and mark done' : 'Mark as done'}
+            {markDone.isPending ? t('common.saving') : file ? t('markDone.replace') : t('markDone.title')}
           </Button>
         </DialogFooter>
       </DialogContent>

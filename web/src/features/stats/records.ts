@@ -1,5 +1,6 @@
 import type { Hike } from '@/features/hikes/api'
-import { formatDistance, formatDuration, formatElevation, formatPace } from '@/lib/format'
+import i18n from '@/i18n'
+import { formatDistance, formatDuration, formatElevation, formatNumber, formatPace } from '@/lib/format'
 
 export type PersonalRecord = {
   key: string
@@ -12,7 +13,7 @@ export type PersonalRecord = {
 type Candidate = { key: string; label: string; score: (h: Hike) => number | null; show: (h: Hike) => Pick<PersonalRecord, 'value' | 'detail'> }
 
 /** 1000 → "Fastest 1 km", 21097 → "Fastest 21.1 km". */
-const effortLabel = (m: number) => `Fastest ${Number((m / 1000).toFixed(1))} km`
+const effortLabel = (m: number) => i18n.t('records.fastest', { km: formatNumber(m / 1000, { maximumFractionDigits: 1 }) })
 
 function effort(h: Hike, distanceM: number) {
   return h.bestEfforts.find((e) => e.distanceM === distanceM)
@@ -23,25 +24,25 @@ function candidates(hikes: Hike[]): Candidate[] {
   return [
     {
       key: 'distance',
-      label: 'Longest hike',
+      label: i18n.t('records.longest'),
       score: (h) => h.distanceM,
       show: (h) => ({ value: formatDistance(h.distanceM) }),
     },
     {
       key: 'gain',
-      label: 'Most elevation gain',
+      label: i18n.t('records.mostGain'),
       score: (h) => h.elevationGainM,
       show: (h) => ({ value: `+${formatElevation(h.elevationGainM)}` }),
     },
     {
       key: 'highest',
-      label: 'Highest point',
+      label: i18n.t('stat.highest'),
       score: (h) => h.maxEleM,
       show: (h) => ({ value: formatElevation(h.maxEleM ?? 0) }),
     },
     {
       key: 'duration',
-      label: 'Longest time out',
+      label: i18n.t('records.longestTime'),
       score: (h) => (h.durationS > 0 ? h.durationS : null),
       show: (h) => ({ value: formatDuration(h.durationS) }),
     },

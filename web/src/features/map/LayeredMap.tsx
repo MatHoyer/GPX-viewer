@@ -1,5 +1,6 @@
 import { Box, Flame, Grid3x3, Layers, Map as MapIcon, Mountain, Satellite } from 'lucide-react'
 import { forwardRef, useEffect, useRef, type ComponentProps } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import {
   DropdownMenu,
@@ -63,13 +64,15 @@ function Terrain({ enabled }: { enabled: boolean }) {
   return null
 }
 
-const basemaps: { value: Basemap; label: string; icon: typeof MapIcon }[] = [
-  { value: 'streets', label: 'Streets', icon: MapIcon },
-  { value: 'topo', label: 'Topo', icon: Mountain },
-  { value: 'satellite', label: 'Satellite', icon: Satellite },
+// Labels are translated under map.<value>.
+const basemaps: { value: Basemap; icon: typeof MapIcon }[] = [
+  { value: 'streets', icon: MapIcon },
+  { value: 'topo', icon: Mountain },
+  { value: 'satellite', icon: Satellite },
 ]
 
 function LayersControl({ heatmapToggle, tilesToggle }: { heatmapToggle: boolean; tilesToggle: boolean }) {
+  const { t } = useTranslation()
   const { basemap, terrain, heatmap, tiles, setBasemap, setTerrain, setHeatmap, setTiles } = useMapView()
 
   return (
@@ -78,37 +81,37 @@ function LayersControl({ heatmapToggle, tilesToggle }: { heatmapToggle: boolean;
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label="Map layers"
+            aria-label={t('map.layers')}
             className="border-border bg-background hover:bg-accent dark:hover:bg-accent/40 focus-visible:ring-ring flex size-8 items-center justify-center rounded-md border shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
           >
             <Layers className="size-4" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuLabel>Background</DropdownMenuLabel>
+          <DropdownMenuLabel>{t('map.background')}</DropdownMenuLabel>
           <DropdownMenuRadioGroup value={basemap} onValueChange={(v) => setBasemap(v as Basemap)}>
-            {basemaps.map(({ value, label, icon: Icon }) => (
+            {basemaps.map(({ value, icon: Icon }) => (
               <DropdownMenuRadioItem key={value} value={value}>
                 <Icon />
-                {label}
+                {t(`map.${value}`)}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
           <DropdownMenuSeparator />
           <DropdownMenuCheckboxItem checked={terrain} onCheckedChange={(c) => setTerrain(c === true)}>
             <Box />
-            3D terrain
+            {t('map.terrain')}
           </DropdownMenuCheckboxItem>
           {heatmapToggle && (
             <DropdownMenuCheckboxItem checked={heatmap} onCheckedChange={(c) => setHeatmap(c === true)}>
               <Flame />
-              Heatmap
+              {t('map.heatmap')}
             </DropdownMenuCheckboxItem>
           )}
           {tilesToggle && (
             <DropdownMenuCheckboxItem checked={tiles} onCheckedChange={(c) => setTiles(c === true)}>
               <Grid3x3 />
-              Explored tiles
+              {t('stats.exploredTiles')}
             </DropdownMenuCheckboxItem>
           )}
         </DropdownMenuContent>

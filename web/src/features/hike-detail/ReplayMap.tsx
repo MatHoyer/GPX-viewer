@@ -1,5 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { MapControls, MapMarker, MapRoute, MarkerContent, useMap } from '@/components/ui/map'
 import { FitBounds } from '@/features/hikes/FitBounds'
@@ -79,17 +80,18 @@ function TraveledRoute({ profile }: { profile: Profile }) {
 }
 
 function StartEndMarkers({ profile }: { profile: Profile }) {
+  const { t } = useTranslation()
   const last = profile.lon.length - 1
   return (
     <>
       <MapMarker longitude={profile.lon[0]} latitude={profile.lat[0]}>
         <MarkerContent>
-          <span className="block size-3 rounded-full border-2 border-white bg-emerald-500 shadow" title="Start" />
+          <span className="block size-3 rounded-full border-2 border-white bg-emerald-500 shadow" title={t('replay.start')} />
         </MarkerContent>
       </MapMarker>
       <MapMarker longitude={profile.lon[last]} latitude={profile.lat[last]}>
         <MarkerContent>
-          <span className="block size-3 rounded-sm border-2 border-white bg-neutral-900 shadow" title="Finish" />
+          <span className="block size-3 rounded-sm border-2 border-white bg-neutral-900 shadow" title={t('replay.finish')} />
         </MarkerContent>
       </MapMarker>
     </>

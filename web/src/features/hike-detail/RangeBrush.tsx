@@ -1,4 +1,5 @@
 import { useMemo, useRef, type PointerEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { indexAt, xAt, type Series } from './profile'
 import { useReplay, visibleSpan } from './store'
@@ -19,6 +20,7 @@ const HANDLE_HIT = 10 // px
 
 /** Overview strip of the whole hike with a draggable zoom window. */
 export function RangeBrush({ xs, values }: Props) {
+  const { t } = useTranslation()
   const range = useReplay((s) => s.range)
   const count = useReplay((s) => s.count)
   const pos = useReplay((s) => s.pos)
@@ -87,7 +89,7 @@ export function RangeBrush({ xs, values }: Props) {
         onPointerCancel={onPointerUp}
         onDoubleClick={() => useReplay.getState().setRange(null)}
         role="slider"
-        aria-label="Zoom range"
+        aria-label={t('charts.zoomRange')}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(left * 100)}
@@ -114,7 +116,7 @@ export function RangeBrush({ xs, values }: Props) {
         />
       </div>
       <p className="text-muted-foreground text-[11px]">
-        Drag here or Shift + drag on a chart to zoom · double-click to reset
+        {t('charts.brushHint')}
       </p>
     </div>
   )

@@ -21,6 +21,7 @@ import { createPortal } from "react-dom";
 import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import i18n from "@/i18n";
 
 if (typeof window !== "undefined" && !MapLibreGL.getWorkerUrl()) {
   // Self-hosted: copied to public/ by the `copy-maplibre-worker` script.
@@ -615,7 +616,7 @@ function PopupCloseButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      aria-label="Close popup"
+      aria-label={i18n.t("ui.closePopup")}
       className="focus-visible:ring-ring hover:bg-muted text-foreground absolute top-1 right-1 z-10 inline-flex size-5 cursor-pointer items-center justify-center rounded-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
     >
       <X className="size-3.5" />
@@ -929,10 +930,10 @@ function MapControls({
     >
       {showZoom && (
         <ControlGroup>
-          <ControlButton onClick={handleZoomIn} label="Zoom in">
+          <ControlButton onClick={handleZoomIn} label={i18n.t("ui.zoomIn")}>
             <Plus className="size-4" />
           </ControlButton>
-          <ControlButton onClick={handleZoomOut} label="Zoom out">
+          <ControlButton onClick={handleZoomOut} label={i18n.t("ui.zoomOut")}>
             <Minus className="size-4" />
           </ControlButton>
         </ControlGroup>
@@ -946,7 +947,7 @@ function MapControls({
         <ControlGroup>
           <ControlButton
             onClick={handleLocate}
-            label="Find my location"
+            label={i18n.t("ui.locate")}
             disabled={waitingForLocation}
           >
             {waitingForLocation ? (
@@ -959,7 +960,7 @@ function MapControls({
       )}
       {showFullscreen && (
         <ControlGroup>
-          <ControlButton onClick={handleFullscreen} label="Toggle fullscreen">
+          <ControlButton onClick={handleFullscreen} label={i18n.t("ui.fullscreen")}>
             <Maximize className="size-4" />
           </ControlButton>
         </ControlGroup>
@@ -994,7 +995,7 @@ function CompassButton({ onClick }: { onClick: () => void }) {
   }, [map]);
 
   return (
-    <ControlButton onClick={onClick} label="Reset bearing to north">
+    <ControlButton onClick={onClick} label={i18n.t("ui.resetBearing")}>
       <svg
         ref={compassRef}
         viewBox="0 0 24 24"

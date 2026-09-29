@@ -1,4 +1,5 @@
 import { ThumbsUp } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,7 @@ type Props = {
 }
 
 export function KudosButton({ hike, viewerId }: Props) {
+  const { t } = useTranslation()
   const kudos = useKudos()
   const count = hike.interactions?.kudos ?? 0
   const kudoed = hike.interactions?.kudoed ?? false
@@ -22,7 +24,7 @@ export function KudosButton({ hike, viewerId }: Props) {
   if (!canGive) {
     if (count === 0) return null
     return (
-      <span className="text-muted-foreground inline-flex items-center gap-1 text-sm tabular-nums" aria-label={`${count} kudos`}>
+      <span className="text-muted-foreground inline-flex items-center gap-1 text-sm tabular-nums" aria-label={t('kudos.count', { count })}>
         <ThumbsUp className="size-4" />
         {count}
       </span>
@@ -35,12 +37,12 @@ export function KudosButton({ hike, viewerId }: Props) {
       aria-pressed={kudoed}
       disabled={kudos.isPending}
       onClick={() =>
-        kudos.mutate({ hikeId: hike.id, on: !kudoed }, { onError: () => toast.error('Could not update kudos') })
+        kudos.mutate({ hikeId: hike.id, on: !kudoed }, { onError: () => toast.error(t('kudos.failed')) })
       }
       className={cn('tabular-nums', kudoed && 'border-primary bg-primary/10')}
     >
       <ThumbsUp className={cn(kudoed && 'fill-current')} />
-      {kudoed ? 'Kudos given' : 'Give kudos'}
+      {kudoed ? t('kudos.given') : t('kudos.give')}
       {count > 0 && <span className="text-muted-foreground">· {count}</span>}
     </Button>
   )

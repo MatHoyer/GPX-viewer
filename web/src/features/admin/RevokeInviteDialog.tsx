@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import {
@@ -10,7 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 
 import type { AdminUser } from './api'
 import { useRevokeInvite } from './useAdmin'
@@ -24,6 +25,7 @@ type Props = {
 
 /** Confirms deleting a pending account, which voids its invite link. */
 export function RevokeInviteDialog({ user, onClose, onRevoked }: Props) {
+  const { t } = useTranslation()
   const revoke = useRevokeInvite()
 
   function onOpenChange(open: boolean) {
@@ -36,7 +38,7 @@ export function RevokeInviteDialog({ user, onClose, onRevoked }: Props) {
     if (!user) return
     revoke.mutate(user.id, {
       onSuccess: () => {
-        toast.success(`Invite for ${user.email} revoked`)
+        toast.success(t('admin.inviteRevoked', { email: user.email }))
         onClose()
         onRevoked?.()
       },
@@ -47,21 +49,24 @@ export function RevokeInviteDialog({ user, onClose, onRevoked }: Props) {
     <AlertDialog open={user !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Revoke this invite?</AlertDialogTitle>
+          <AlertDialogTitle>{t('admin.revokeTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            The link sent to <span className="text-foreground font-medium break-all">{user?.email}</span> stops working
-            and their pending account is deleted. You can invite this email again later.
+            <Trans
+              i18nKey="admin.revokeDescription"
+              values={{ email: user?.email }}
+              components={{ email: <span className="text-foreground font-medium break-all" /> }}
+            />
           </AlertDialogDescription>
         </AlertDialogHeader>
         {revoke.error && (
           <p role="alert" className="text-destructive text-sm">
-            {revoke.error instanceof ApiError ? revoke.error.message : 'Could not revoke the invite'}
+            {errorMessage(revoke.error, t('admin.revokeFailed'))}
           </p>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={revoke.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={revoke.isPending}>{t('common.cancel')}</AlertDialogCancel>
           <Button variant="destructive" onClick={onConfirm} disabled={revoke.isPending}>
-            {revoke.isPending ? 'Revoking…' : 'Revoke invite'}
+            {revoke.isPending ? t('admin.revoking') : t('admin.revoke')}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

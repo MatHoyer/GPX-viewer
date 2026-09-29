@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -6,7 +7,7 @@ import { MapPopup } from '@/components/ui/map'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 
 import type { Hike } from './api'
-import { ESTIMATE_NOTE, estimatedDurationS } from './estimate'
+import { estimateNote, estimatedDurationS } from './estimate'
 import { PlannedBadge } from './PlannedBadge'
 import { TaggedBy } from './TaggedBy'
 
@@ -27,6 +28,7 @@ type Props = {
 }
 
 export function HikePopup({ hike, userId, popup, color, onClose }: Props) {
+  const { t } = useTranslation()
   const date = formatDate(hike.startedAt)
   return (
     <MapPopup
@@ -47,17 +49,17 @@ export function HikePopup({ hike, userId, popup, color, onClose }: Props) {
           <TaggedBy hike={hike} userId={userId} />
         </div>
         <dl className="grid grid-cols-3 gap-2 text-center">
-          <Stat label="Distance" value={formatDistance(hike.distanceM)} />
-          <Stat label="D+" value={formatElevation(hike.elevationGainM)} />
+          <Stat label={t('hike.distance')} value={formatDistance(hike.distanceM)} />
+          <Stat label={t('hikes.columns.gain')} value={formatElevation(hike.elevationGainM)} />
           {hike.planned ? (
-            <Stat label="Est. time" value={`~${formatDuration(estimatedDurationS(hike.distanceM))}`} title={ESTIMATE_NOTE} />
+            <Stat label={t('hike.estTime')} value={`~${formatDuration(estimatedDurationS(hike.distanceM))}`} title={estimateNote()} />
           ) : (
-            <Stat label="Duration" value={formatDuration(hike.durationS)} />
+            <Stat label={t('hikes.columns.duration')} value={formatDuration(hike.durationS)} />
           )}
         </dl>
         <Button asChild size="sm" className="w-full">
           <Link to={`/hikes/${hike.id}`}>
-            See more
+            {t('hike.seeMore')}
             <ArrowRight />
           </Link>
         </Button>

@@ -1,4 +1,5 @@
 import { UsersRound } from 'lucide-react'
+import { Trans } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { cn } from '@/lib/utils'
@@ -23,14 +24,17 @@ export function TaggedBy({ hike, userId, link = true, className }: Props) {
     <p className={cn('text-muted-foreground flex min-w-0 items-center gap-1 text-xs', className)}>
       <UsersRound className="size-3 shrink-0" />
       <span className="truncate">
-        tagged by{' '}
-        {link ? (
-          <Link to={`/u/${hike.userId}`} className="text-foreground hover:underline">
-            {name}
-          </Link>
-        ) : (
-          <span className="text-foreground">{name}</span>
-        )}
+        <Trans
+          i18nKey="hike.taggedBy"
+          values={{ name }}
+          components={{
+            name: link ? (
+              <Link to={`/u/${hike.userId}`} className="text-foreground hover:underline" />
+            ) : (
+              <span className="text-foreground" />
+            ),
+          }}
+        />
       </span>
     </p>
   )

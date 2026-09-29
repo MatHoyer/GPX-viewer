@@ -1,5 +1,6 @@
 import { Trophy } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { doneHikes } from '@/features/hikes/api'
@@ -8,6 +9,7 @@ import { useHikes } from '@/features/hikes/useHikes'
 
 /** Shows which of the viewer's all-time records a hike holds, if it is one of theirs. */
 export function RecordBadge({ hikeId }: { hikeId: string }) {
+  const { t } = useTranslation()
   const hikes = useHikes()
   const held = useMemo(
     () => personalRecords(doneHikes(hikes.data ?? [])).filter((r) => r.hike.id === hikeId),
@@ -15,7 +17,7 @@ export function RecordBadge({ hikeId }: { hikeId: string }) {
   )
   if (held.length === 0) return null
 
-  const summary = held.length === 1 ? held[0].label : `${held.length} records`
+  const summary = held.length === 1 ? held[0].label : t('records.count', { count: held.length })
   return (
     <Tooltip>
       <TooltipTrigger asChild>

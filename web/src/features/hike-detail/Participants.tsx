@@ -1,5 +1,6 @@
 import { UserMinus, UserPlus } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 
@@ -17,7 +18,7 @@ import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import type { Hike } from '@/features/hikes/api'
 import { useConnections } from '@/features/social/useSocial'
-import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 
 import { useTagFriend, useUntag } from './api'
 
@@ -29,6 +30,7 @@ type Props = {
 
 /** The friends tagged on a hike, with tagging for the owner and self-untagging for them. */
 export function Participants({ hike, isOwner, viewerId }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const untag = useUntag()
   const participants = hike.participants ?? []
@@ -41,10 +43,10 @@ export function Participants({ hike, isOwner, viewerId }: Props) {
       { hikeId: hike.id, userId: viewerId! },
       {
         onSuccess: () => {
-          toast.success('Removed from this hike')
+          toast.success(t('participants.removed'))
           navigate(`/u/${hike.userId}`, { replace: true })
         },
-        onError: () => toast.error('Could not remove you from this hike'),
+        onError: () => toast.error(t('participants.removeFailed')),
       },
     )
   }
@@ -53,7 +55,7 @@ export function Participants({ hike, isOwner, viewerId }: Props) {
     <div className="flex items-center gap-2">
       {participants.length > 0 && (
         <>
-          <span className="text-muted-foreground text-sm">with</span>
+          <span className="text-muted-foreground text-sm">{t('participants.with')}</span>
           <div className="flex -space-x-2">
             {participants.map((p) => (
               <Tooltip key={p.id}>
@@ -72,7 +74,7 @@ export function Participants({ hike, isOwner, viewerId }: Props) {
       {tagged && !isOwner && (
         <Button variant="ghost" size="sm" disabled={untag.isPending} onClick={leave}>
           <UserMinus />
-          Remove me
+          {t('participants.removeMe')}
         </Button>
       )}
     </div>
@@ -80,6 +82,7 @@ export function Participants({ hike, isOwner, viewerId }: Props) {
 }
 
 function TagDialog({ hike }: { hike: Hike }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const friends = useConnections().data?.friends
   const tag = useTagFriend()
@@ -90,7 +93,7 @@ function TagDialog({ hike }: { hike: Hike }) {
     const mutation = taggedIds.has(userId) ? untag : tag
     mutation.mutate(
       { hikeId: hike.id, userId },
-      { onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not update the hike') },
+      { onError: (err) => toast.error(errorMessage(err, t('participants.updateFailed'))) },
     )
   }
 
@@ -99,21 +102,21 @@ function TagDialog({ hike }: { hike: Hike }) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <UserPlus />
-          Tag friends
+          {t('participants.tagFriends')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Who hiked with you?</DialogTitle>
+          <DialogTitle>{t('participants.title')}</DialogTitle>
           <DialogDescription>
-            Tagged friends get this hike on their map and profile, and anyone who can see their profile can see it.
+            {t('participants.description')}
           </DialogDescription>
         </DialogHeader>
         {friends?.length === 0 ? (
           <p className="text-muted-foreground py-4 text-center text-sm">
-            No friends yet.{' '}
+            {t('participants.noFriends')}{' '}
             <Link to="/friends" className="text-foreground underline">
-              Find hikers
+              {t('participants.findHikers')}
             </Link>
           </p>
         ) : (
@@ -130,7 +133,7 @@ function TagDialog({ hike }: { hike: Hike }) {
                     disabled={tag.isPending || untag.isPending}
                     onClick={() => toggle(f.id)}
                   >
-                    {isTagged ? 'Untag' : 'Tag'}
+                    {isTagged ? t('participants.untag') : t('participants.tag')}
                   </Button>
                 </li>
               )

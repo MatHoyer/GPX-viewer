@@ -1,8 +1,9 @@
 import { Moon, Sun, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { FloatingInput } from '@/components/ui/floating-input'
-import { ESTIMATE_NOTE, estimatedDurationS } from '@/features/hikes/estimate'
+import { estimateNote, estimatedDurationS } from '@/features/hikes/estimate'
 import { formatDuration, formatTime } from '@/lib/format'
 
 import { plannedFinish } from './sun'
@@ -23,6 +24,7 @@ function defaultStart(timeZone?: string): string {
 
 /** Picks a start time for a planned route and tells whether it ends before dark. */
 export function PlannedStart({ distanceM, start: [lon, lat], timeZone }: Props) {
+  const { t } = useTranslation()
   const [value, setValue] = useState(() => defaultStart(timeZone))
   const startAt = fromLocalInput(value, timeZone)
   const durationS = estimatedDurationS(distanceM)
@@ -31,7 +33,7 @@ export function PlannedStart({ distanceM, start: [lon, lat], timeZone }: Props) 
   return (
     <div className="bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3 py-2.5">
       <FloatingInput
-        label="Start at"
+        label={t('planned.startAt')}
         type="datetime-local"
         size="sm"
         className="w-52"
@@ -41,24 +43,24 @@ export function PlannedStart({ distanceM, start: [lon, lat], timeZone }: Props) 
       {f && (
         <div className="space-y-0.5 text-sm">
           <p className="tabular-nums">
-            Finish ~{formatTime(f.finish, timeZone)}
-            <span className="text-muted-foreground" title={ESTIMATE_NOTE}>
+            {t('planned.finish', { time: formatTime(f.finish, timeZone) })}
+            <span className="text-muted-foreground" title={estimateNote()}>
               {' '}
-              after ~{formatDuration(durationS)}
+              {t('planned.after', { duration: formatDuration(durationS) })}
             </span>
             {f.dusk && !f.alwaysUp && !f.alwaysDown && (
-              <span className="text-muted-foreground"> · dusk {formatTime(f.dusk, timeZone)}</span>
+              <span className="text-muted-foreground"> · {t('planned.dusk', { time: formatTime(f.dusk, timeZone) })}</span>
             )}
           </p>
           {f.alwaysDown ? (
             <Note icon={Moon} warn>
-              Polar night: no daylight that day
+              {t('planned.polarNight')}
             </Note>
           ) : f.alwaysUp ? (
-            <Note icon={Sun}>Midnight sun: daylight all day</Note>
+            <Note icon={Sun}>{t('planned.midnightSun')}</Note>
           ) : f.afterDusk ? (
             <Note icon={TriangleAlert} warn>
-              Finishes after dusk, in the dark
+              {t('planned.afterDusk')}
             </Note>
           ) : null}
         </div>

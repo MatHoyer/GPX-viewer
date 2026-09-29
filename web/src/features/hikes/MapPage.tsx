@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useMe } from '@/features/auth/useAuth'
@@ -9,6 +10,7 @@ import { HikesMapView } from './HikesMapView'
 import { useHikes, useTracks } from './useHikes'
 
 export function MapPage() {
+  const { t } = useTranslation()
   const me = useMe()
   const hikes = useHikes()
   const tracks = useTracks()
@@ -31,7 +33,7 @@ export function MapPage() {
       </div>
       {all.length > 0 && shown.length === 0 && (
         <p className="bg-background/90 text-muted-foreground absolute top-14 left-1/2 z-10 -translate-x-1/2 rounded-lg border px-3 py-1.5 text-sm shadow-sm">
-          No hikes match these filters.
+          {t('hikes.noMatch')}
         </p>
       )}
       <HikesMapView hikes={shown} colorFrom={all} tracks={shownTracks} userId={userId} list />

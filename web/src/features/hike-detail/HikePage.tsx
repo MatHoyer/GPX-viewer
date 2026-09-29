@@ -1,5 +1,6 @@
 import { ArrowLeft, Download, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
@@ -36,6 +37,7 @@ import { useReplay } from './store'
 import { useReplayClock } from './useReplayClock'
 
 export function HikePage() {
+  const { t } = useTranslation()
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -67,10 +69,10 @@ export function HikePage() {
   if (notFound) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
-        <p className="text-lg font-semibold">Hike not found</p>
+        <p className="text-lg font-semibold">{t('hike.notFound')}</p>
         <Button asChild variant="outline">
           <Link to="/">
-            <ArrowLeft /> Back to map
+            <ArrowLeft /> {t('hike.backToMap')}
           </Link>
         </Button>
       </div>
@@ -90,7 +92,7 @@ export function HikePage() {
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Back"
+            aria-label={t('common.back')}
             onClick={() => {
               if (location.key !== 'default') navigate(-1)
               else navigate(ownerId && !isOwner ? `/u/${ownerId}` : '/')
@@ -114,7 +116,7 @@ export function HikePage() {
                       to={`/u/${hike.data.userId}`}
                       className="text-muted-foreground flex items-center gap-1.5 text-sm hover:underline"
                     >
-                      by
+                      {t('hike.by')}
                       <UserAvatar user={hike.data.owner} className="size-5" />
                       <span className="text-foreground font-medium">{displayName(hike.data.owner)}</span>
                     </Link>
@@ -129,7 +131,7 @@ export function HikePage() {
             )}
           </div>
           {hike.data && (
-            <Button asChild variant="outline" size="icon" aria-label="Download GPX" title="Download GPX">
+            <Button asChild variant="outline" size="icon" aria-label={t('hikeActions.download')} title={t('hikeActions.download')}>
               <a href={`/api/hikes/${id}/gpx`} download>
                 <Download />
               </a>
@@ -137,7 +139,7 @@ export function HikePage() {
           )}
           {isOwner && hike.data?.planned && <MarkDoneDialog id={id} />}
           {isOwner && (
-            <Button variant="destructive" size="icon" onClick={() => setConfirmDelete(true)} aria-label="Delete hike">
+            <Button variant="destructive" size="icon" onClick={() => setConfirmDelete(true)} aria-label={t('hike.delete')}>
               <Trash2 />
             </Button>
           )}
@@ -164,7 +166,7 @@ export function HikePage() {
                 onChange={
                   isOwner
                     ? (labels) =>
-                        update.mutate({ id, labels }, { onError: () => toast.error('Could not update labels') })
+                        update.mutate({ id, labels }, { onError: () => toast.error(t('labels.updateFailed')) })
                     : undefined
                 }
               />
