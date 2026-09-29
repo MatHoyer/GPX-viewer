@@ -62,10 +62,10 @@ func (s *Service) Comment(ctx context.Context, userID, hikeID uuid.UUID, body st
 	}
 	body = strings.TrimSpace(body)
 	if body == "" {
-		return nil, &domain.ValidationError{Field: "body", Message: "must not be empty"}
+		return nil, &domain.ValidationError{Field: "body", Message: "must not be empty", Code: "required"}
 	}
 	if utf8.RuneCountInString(body) > MaxCommentLength {
-		return nil, &domain.ValidationError{Field: "body", Message: fmt.Sprintf("must be at most %d characters", MaxCommentLength)}
+		return nil, &domain.ValidationError{Field: "body", Message: fmt.Sprintf("must be at most %d characters", MaxCommentLength), Code: "too_long", Params: map[string]any{"max": MaxCommentLength}}
 	}
 	c := &domain.Comment{ID: uuid.New(), HikeID: hikeID, UserID: userID, Body: body, CreatedAt: s.now().UTC()}
 	if err := s.repo.CreateComment(ctx, c); err != nil {

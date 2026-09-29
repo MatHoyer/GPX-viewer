@@ -25,7 +25,7 @@ const (
 // Inviter creates accounts that finish signing up through an invite link, and
 // hands out links to choose a password.
 type Inviter interface {
-	Invite(ctx context.Context, email, name string, send bool) (*domain.User, string, bool, error)
+	Invite(ctx context.Context, email, name string, lang domain.Language, send bool) (*domain.User, string, bool, error)
 	PasswordLink(ctx context.Context, userID uuid.UUID, send bool) (string, bool, error)
 	// RequiresVerifiedEmail reports whether unverified accounts cannot sign in.
 	RequiresVerifiedEmail() bool
@@ -63,7 +63,7 @@ type UserPage struct {
 func (s *Service) ListUsers(ctx context.Context, query string, page int) (*UserPage, error) {
 	query = strings.TrimSpace(query)
 	if utf8.RuneCountInString(query) > maxQueryLength {
-		return nil, &domain.ValidationError{Field: "q", Message: "search is too long"}
+		return nil, &domain.ValidationError{Field: "q", Message: "search is too long", Code: "search_too_long"}
 	}
 	page = max(page, 1)
 	users, total, err := s.users.ListUsers(ctx, query, PageSize, (page-1)*PageSize)
@@ -101,12 +101,12 @@ func (s *Service) RevokeSessions(ctx context.Context, userID uuid.UUID) error {
 
 // Invite creates an account and returns the link where its owner chooses a
 // password, emailing it when send is set.
-func (s *Service) Invite(ctx context.Context, email, name string, send bool) (*domain.User, string, bool, error) {
+func (s *Service) Invite(ctx context.Context, email, name string, lang domain.Language, send bool) (*domain.User, string, bool, error) {
 	name = strings.TrimSpace(name)
 	if utf8.RuneCountInString(name) > account.MaxNameLength {
-		return nil, "", false, &domain.ValidationError{Field: "name", Message: fmt.Sprintf("must be at most %d characters", account.MaxNameLength)}
+		return nil, "", false, &domain.ValidationError{Field: "name", Message: fmt.Sprintf("must be at most %d characters", account.MaxNameLength), Code: "too_long", Params: map[string]any{"max": account.MaxNameLength}}
 	}
-	return s.inviter.Invite(ctx, email, name, send)
+	return s.inviter.Invite(ctx, email, name, lang, send)
 }
 
 // PasswordLink issues a link where the user chooses a password: their invite
@@ -145,11 +145,11 @@ func (s *Service) RevokeInvite(ctx context.Context, targetID uuid.UUID) error {
 		return err
 	}
 	if u.InvitedAt == nil {
-		return &domain.ValidationError{Field: "user", Message: "they have no pending invite; ban them instead"}
+		return &domain.ValidationError{Field: "user", Message: "they have no pending invite; ban them instead", Code: "no_pending_invite"}
 	}
 	err = s.users.DeletePending(ctx, u.ID)
 	if errors.Is(err, domain.ErrConflict) {
-		return &domain.ValidationError{Field: "user", Message: "this account has hikes; ban it instead"}
+		return &domain.ValidationError{Field: "user", Message: "this account has hikes; ban it instead", Code: "has_hikes"}
 	}
 	return err
 }
@@ -159,17 +159,17 @@ func (s *Service) RevokeInvite(ctx context.Context, targetID uuid.UUID) error {
 func (s *Service) Ban(ctx context.Context, actorID, targetID uuid.UUID, reason string) error {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
-		return &domain.ValidationError{Field: "reason", Message: "tell them why"}
+		return &domain.ValidationError{Field: "reason", Message: "tell them why", Code: "reason_required"}
 	}
 	if utf8.RuneCountInString(reason) > MaxBanReasonLength {
-		return &domain.ValidationError{Field: "reason", Message: fmt.Sprintf("must be at most %d characters", MaxBanReasonLength)}
+		return &domain.ValidationError{Field: "reason", Message: fmt.Sprintf("must be at most %d characters", MaxBanReasonLength), Code: "too_long", Params: map[string]any{"max": MaxBanReasonLength}}
 	}
 	u, err := s.other(ctx, actorID, targetID, "you cannot ban yourself")
 	if err != nil {
 		return err
 	}
 	if u.IsAdmin {
-		return &domain.ValidationError{Field: "user", Message: "remove their admin role first"}
+		return &domain.ValidationError{Field: "user", Message: "remove their admin role first", Code: "admin_user"}
 	}
 	now := s.now()
 	if err := s.users.SetBan(ctx, u.ID, &now, reason); err != nil {
@@ -191,7 +191,7 @@ func (s *Service) SetAdmin(ctx context.Context, actorID, targetID uuid.UUID, adm
 		return err
 	}
 	if admin && u.BannedAt != nil {
-		return &domain.ValidationError{Field: "user", Message: "lift their ban first"}
+		return &domain.ValidationError{Field: "user", Message: "lift their ban first", Code: "banned_user"}
 	}
 	return s.users.SetAdmin(ctx, u.ID, admin)
 }
@@ -199,7 +199,7 @@ func (s *Service) SetAdmin(ctx context.Context, actorID, targetID uuid.UUID, adm
 // other loads target, refusing when it is the actor.
 func (s *Service) other(ctx context.Context, actorID, targetID uuid.UUID, self string) (*domain.User, error) {
 	if actorID == targetID {
-		return nil, &domain.ValidationError{Field: "user", Message: self}
+		return nil, &domain.ValidationError{Field: "user", Message: self, Code: "self"}
 	}
 	return s.users.GetByID(ctx, targetID)
 }

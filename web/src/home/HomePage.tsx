@@ -1,6 +1,10 @@
 import { Blobatar } from '@blobatar/react'
 import { Activity, Gauge, Mountain, MountainSnow, Pause, Thermometer, TrendingUp } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
+import { I18nextProvider, useTranslation } from 'react-i18next'
+
+import i18n, { type Language } from '@/i18n'
+import { languageOptions } from '@/i18n/languages'
 
 import { ascent, contours, featured, others, sampleTrack, toPath, type Sample } from './terrain'
 
@@ -19,12 +23,32 @@ const movingHours = samples.reduce(
   0,
 )
 
-const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
-const km = (n: number) => `${n.toFixed(1)} km`
-const m = (n: number) => `${nf.format(n)} m`
-const duration = (h: number) => `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}`
+/** Number formats in the page's language. */
+function useFormat() {
+  const { i18n } = useTranslation()
+  return useMemo(() => {
+    const whole = new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 0 })
+    const tenth = new Intl.NumberFormat(i18n.language, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    return {
+      whole: (n: number) => whole.format(n),
+      km: (n: number) => `${tenth.format(n)} km`,
+      m: (n: number) => `${whole.format(n)} m`,
+      duration: (h: number) => `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}`,
+    }
+  }, [i18n.language])
+}
 
-export function HomePage() {
+/** The landing page in lang, prerendered once per language. */
+export function HomePage({ lang }: { lang: Language }) {
+  const instance = useMemo(() => i18n.cloneInstance({ lng: lang, initAsync: false }), [lang])
+  return (
+    <I18nextProvider i18n={instance}>
+      <Page />
+    </I18nextProvider>
+  )
+}
+
+function Page() {
   return (
     <div className="bg-paper text-ink font-sans antialiased">
       <Header />
@@ -42,18 +66,36 @@ export function HomePage() {
 }
 
 function Header() {
+  const { t, i18n } = useTranslation()
   return (
     <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-8">
       <a href="/" className="flex items-center gap-2 rounded-md font-display text-lg font-bold tracking-tight">
         <MountainSnow className="text-trail size-6" aria-hidden />
         GPX Viewer
       </a>
-      <nav className="flex items-center gap-1 text-sm font-medium" aria-label="Account">
+      <nav className="flex items-center gap-1 text-sm font-medium" aria-label={t('home.account')}>
+        {/* Plain links: the server remembers the choice and serves the page in that language. */}
+        <span className="mr-1 flex items-center">
+          {languageOptions.map(({ value, label, flag: Flag }) => (
+            <a
+              key={value}
+              href={`/?lang=${value}`}
+              hrefLang={value}
+              lang={value}
+              aria-label={label}
+              title={label}
+              aria-current={i18n.language === value ? 'true' : undefined}
+              className="hover:bg-ink/5 aria-[current]:bg-ink/10 grid h-9 w-10 place-items-center rounded-full"
+            >
+              <Flag className="h-3 w-4.5 rounded-[2px] shadow-[0_0_0_0.5px_rgb(0_0_0/0.25)]" />
+            </a>
+          ))}
+        </span>
         <a href="/login" className="hover:bg-ink/5 rounded-full px-3 py-2">
-          Sign in
+          {t('common.signIn')}
         </a>
         <a href="/register" className="bg-ink text-paper hover:bg-ink/85 rounded-full px-4 py-2">
-          Create account
+          {t('common.createAccount')}
         </a>
       </nav>
     </header>
@@ -61,22 +103,22 @@ function Header() {
 }
 
 function Hero() {
+  const { t } = useTranslation()
   return (
     <section className="relative -mt-[68px] overflow-hidden md:min-h-[min(820px,100svh)]">
       <div className="relative z-10 mx-auto flex max-w-7xl flex-col px-4 pt-28 sm:px-8 md:min-h-[min(820px,100svh)] md:justify-center md:pt-24 md:pb-40">
         <h1 className="font-display max-w-[11ch] text-[clamp(2.75rem,7.5vw,6.25rem)] leading-[0.92] font-bold tracking-[-0.035em] text-balance">
-          Every hike you've recorded, on one map.
+          {t('home.hero.title')}
         </h1>
         <p className="text-ink-soft mt-6 max-w-[34rem] text-lg leading-relaxed text-pretty">
-          Import the GPX files from your watch or phone. GPX Viewer draws all your trails together, then lets you open
-          any one to see how the climb really went.
+          {t('home.hero.text')}
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <a href="/register" className="bg-trail hover:bg-trail/90 rounded-full px-6 py-3 font-semibold text-white">
-            Create an account
+            {t('home.createAnAccount')}
           </a>
           <a href="/login" className="hover:bg-ink/5 rounded-full px-5 py-3 font-medium">
-            Sign in
+            {t('common.signIn')}
           </a>
         </div>
       </div>
@@ -95,6 +137,8 @@ function Hero() {
 const contourPaths = contours(MAP_W, MAP_H, 110, 70, 24)
 
 function TopoMap() {
+  const { t } = useTranslation()
+  const f = useFormat()
   const d = toPath(featured, MAP_W, MAP_H)
   const sx = summitPt[0] * MAP_W
   const sy = summitPt[1] * MAP_H
@@ -104,7 +148,7 @@ function TopoMap() {
       preserveAspectRatio="xMaxYMid slice"
       className="absolute inset-0 size-full"
       role="img"
-      aria-label="Topographic map with five hiking tracks, one highlighted crossing the main summit"
+      aria-label={t('home.mapAlt')}
     >
       <g fill="none" stroke="var(--contour)" strokeLinecap="round" strokeLinejoin="round">
         {contourPaths.map((c, k) => (
@@ -121,7 +165,7 @@ function TopoMap() {
       <g className="summit-label" transform={`translate(${sx} ${sy})`}>
         <path d="M0 -9 L8 5 L-8 5 Z" fill="var(--ink)" />
         <text x={14} y={5} className="font-display" fontSize={22} fontWeight={700} fill="var(--ink)">
-          {nf.format(summit.ele)}
+          {f.whole(summit.ele)}
         </text>
       </g>
     </svg>
@@ -129,6 +173,8 @@ function TopoMap() {
 }
 
 function HikeLabel() {
+  const { t } = useTranslation()
+  const f = useFormat()
   return (
     <div className="summit-label bg-paper/90 absolute right-4 bottom-4 rounded-2xl px-4 py-3 shadow-[0_1px_0_var(--line),0_12px_32px_-12px_rgb(28_42_34/0.35)] backdrop-blur sm:right-8 sm:bottom-8">
       <div className="flex items-center gap-2 text-sm font-semibold">
@@ -136,9 +182,9 @@ function HikeLabel() {
         Pointe de la Combe
       </div>
       <dl className="mt-2 grid grid-cols-3 gap-x-5 text-sm">
-        <Stat label="Distance" value={km(totalKm)} />
-        <Stat label="Ascent" value={m(ascent(samples))} />
-        <Stat label="Moving" value={duration(movingHours)} />
+        <Stat label={t('home.distance')} value={f.km(totalKm)} />
+        <Stat label={t('home.ascent')} value={f.m(ascent(samples))} />
+        <Stat label={t('home.moving')} value={f.duration(movingHours)} />
       </dl>
     </div>
   )
@@ -168,18 +214,14 @@ function Section({ title, children, aside, flip }: { title: string; children: Re
 }
 
 function HikeDetail() {
+  const { t } = useTranslation()
   return (
     <Section
-      title="Open a hike to see how it went"
+      title={t('home.detail.title')}
       aside={<ProfilePanel />}
     >
-      <p>
-        Elevation, speed, heart rate, cadence and temperature, charted along the trail from whatever your device
-        recorded.
-      </p>
-      <p>
-        Drag across a chart to measure one climb. Press play to replay the hike on the map up to 600 times faster than real time.
-      </p>
+      <p>{t('home.detail.charts')}</p>
+      <p>{t('home.detail.replay')}</p>
     </Section>
   )
 }
@@ -188,6 +230,8 @@ const CH_W = 640
 const CH_H = 220
 
 function ProfilePanel() {
+  const { t } = useTranslation()
+  const f = useFormat()
   const minE = 600
   const maxE = 3100
   const x = (s: Sample) => (s.km / totalKm) * CH_W
@@ -209,19 +253,19 @@ function ProfilePanel() {
 
   return (
     <figure className="border-line bg-paper-2 rounded-[28px] border p-5 sm:p-7">
-      <figcaption className="sr-only">Elevation and heart rate profile of a hike, with a climb selected</figcaption>
+      <figcaption className="sr-only">{t('home.profileAlt')}</figcaption>
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-        <PanelStat icon={<Activity />} label="Distance" value={km(totalKm)} />
-        <PanelStat icon={<TrendingUp />} label="Ascent" value={m(ascent(samples))} />
-        <PanelStat icon={<Mountain />} label="Highest point" value={m(summit.ele)} />
-        <PanelStat icon={<Gauge />} label="Moving time" value={duration(movingHours)} />
+        <PanelStat icon={<Activity />} label={t('home.distance')} value={f.km(totalKm)} />
+        <PanelStat icon={<TrendingUp />} label={t('home.ascent')} value={f.m(ascent(samples))} />
+        <PanelStat icon={<Mountain />} label={t('home.highest')} value={f.m(summit.ele)} />
+        <PanelStat icon={<Gauge />} label={t('home.movingTime')} value={f.duration(movingHours)} />
       </dl>
       <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium">
-        <SeriesChip color="var(--ele)" label="Elevation" on />
-        <SeriesChip color="var(--hr)" label="Heart rate" on />
-        <SeriesChip color="var(--speed)" label="Speed" />
-        <SeriesChip color="var(--cad)" label="Cadence" />
-        <SeriesChip color="var(--temp)" label="Temperature" icon={<Thermometer className="size-3" />} />
+        <SeriesChip color="var(--ele)" label={t('series.elevation')} on />
+        <SeriesChip color="var(--hr)" label={t('series.heartRate')} on />
+        <SeriesChip color="var(--speed)" label={t('series.speed')} />
+        <SeriesChip color="var(--cad)" label={t('series.cadence')} />
+        <SeriesChip color="var(--temp)" label={t('series.temperature')} icon={<Thermometer className="size-3" />} />
       </div>
       <div className="relative mt-4">
         <svg viewBox={`0 0 ${CH_W} ${CH_H}`} className="block h-auto w-full overflow-visible" aria-hidden>
@@ -241,7 +285,7 @@ function ProfilePanel() {
           className="bg-ink text-paper absolute -top-3 rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap tabular-nums"
           style={{ left: `${((bx0 + bx1) / 2 / CH_W) * 100}%`, transform: 'translateX(-50%)' }}
         >
-          +{m(gain)} in {km(rangeKm)}
+          {t('home.climb', { gain: f.m(gain), distance: f.km(rangeKm) })}
         </div>
       </div>
       <div className="mt-5 flex items-center gap-3 text-sm">
@@ -281,7 +325,7 @@ function SeriesChip({ color, label, on, icon }: { color: string; label: string; 
 }
 
 // A made-up month that starts on a Tuesday; days map to hike colors.
-const month = { name: 'June', offset: 1, days: 30 }
+const month = { index: 5, offset: 1, days: 30 }
 const hikeDays: Record<number, string[]> = {
   1: ['#2e86ab'],
   6: ['#e4572e'],
@@ -296,16 +340,22 @@ const hikeDays: Record<number, string[]> = {
 }
 
 function Season() {
+  const { t, i18n } = useTranslation()
+  const monthName = new Intl.DateTimeFormat(i18n.language, { month: 'long' }).format(new Date(2024, month.index, 1))
+  // 2024-01-01 is a Monday.
+  const weekdays = Array.from({ length: 7 }, (_, k) =>
+    new Intl.DateTimeFormat(i18n.language, { weekday: 'short' }).format(new Date(2024, 0, 1 + k)),
+  )
   const cells = [...Array(month.offset).fill(null), ...Array.from({ length: month.days }, (_, k) => k + 1)]
   return (
-    <Section title="Your season, month by month" flip aside={
+    <Section title={t('home.season.title')} flip aside={
       <figure className="border-line rounded-[28px] border p-5 sm:p-7">
         <figcaption className="font-display flex items-baseline justify-between text-2xl font-bold tracking-tight">
-          {month.name}
-          <span className="text-ink-soft font-sans text-sm font-medium">12 hikes, 148 km</span>
+          <span className="capitalize">{monthName}</span>
+          <span className="text-ink-soft font-sans text-sm font-medium">{t('home.season.summary')}</span>
         </figcaption>
         <div className="text-ink-soft mt-5 grid grid-cols-7 gap-1.5 text-center text-xs font-medium" aria-hidden>
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+          {weekdays.map((d) => (
             <div key={d}>{d}</div>
           ))}
         </div>
@@ -328,10 +378,7 @@ function Season() {
         </ol>
       </figure>
     }>
-      <p>
-        The calendar lays your hikes out by day, so a busy June or a quiet winter is plain to see. Pick a day to open
-        that hike.
-      </p>
+      <p>{t('home.season.text')}</p>
     </Section>
   )
 }
@@ -342,20 +389,17 @@ const friends = [
   { id: '5c02d8aa-trail-friend-3', name: 'Ines' },
 ]
 
-const visibility = [
-  { value: 'Private', text: 'Only you, and the friends you tag on a hike.' },
-  { value: 'Friends', text: 'Friends see your map, calendar and every hike.' },
-  { value: 'Public', text: 'Anyone with your profile link, no account needed.' },
-]
+const visibility = ['private', 'friends', 'public'] as const
 
 function Together() {
+  const { t } = useTranslation()
   return (
-    <Section title="Share the trail with the people on it" aside={
+    <Section title={t('home.together.title')} aside={
       <div className="grid gap-4">
         <figure className="border-line bg-paper-2 flex items-center justify-between gap-4 rounded-[28px] border p-5 sm:p-7">
           <figcaption>
-            <div className="font-semibold">Tagged on this hike</div>
-            <div className="text-ink-soft text-sm">It shows up on their map too.</div>
+            <div className="font-semibold">{t('home.together.tagged')}</div>
+            <div className="text-ink-soft text-sm">{t('home.together.taggedText')}</div>
           </figcaption>
           <ul className="flex -space-x-3">
             {friends.map((f) => (
@@ -366,9 +410,9 @@ function Together() {
           </ul>
         </figure>
         <fieldset className="border-line rounded-[28px] border p-2">
-          <legend className="sr-only">Who can see your hikes</legend>
+          <legend className="sr-only">{t('home.together.who')}</legend>
           {visibility.map((v, k) => (
-            <div key={v.value} className={`flex items-start gap-3 rounded-[20px] p-4 ${k === 1 ? 'bg-paper-2' : ''}`}>
+            <div key={v} className={`flex items-start gap-3 rounded-[20px] p-4 ${k === 1 ? 'bg-paper-2' : ''}`}>
               <span
                 className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2 ${k === 1 ? 'border-trail' : 'border-ink/25'}`}
                 aria-hidden
@@ -376,40 +420,34 @@ function Together() {
                 {k === 1 && <span className="bg-trail size-2 rounded-full" />}
               </span>
               <div>
-                <div className="font-semibold">{v.value}</div>
-                <div className="text-ink-soft text-sm">{v.text}</div>
+                <div className="font-semibold">{t(`settings.${v}`)}</div>
+                <div className="text-ink-soft text-sm">{t(`home.together.${v}`)}</div>
               </div>
             </div>
           ))}
         </fieldset>
       </div>
     }>
-      <p>
-        Add friends by their ID and tag them on the hikes you did together. You choose who sees your hikes, and can
-        change it any time.
-      </p>
+      <p>{t('home.together.text')}</p>
     </Section>
   )
 }
 
-const details = [
-  { term: 'Tracks and routes', text: 'GPX from Garmin, Suunto, Coros, Strava exports and phone apps. Import many files at once.' },
-  { term: 'Sensor data', text: 'Heart rate, cadence and temperature are read from Garmin track point extensions.' },
-  { term: 'Your original file', text: 'Every upload is kept as is, so nothing your device recorded is lost.' },
-  { term: 'Map backgrounds', text: 'Streets, topographic or satellite, with 3D terrain when you want to see the relief.' },
-]
+// Translated under home.details.<key>.
+const details = ['tracks', 'sensors', 'original', 'maps'] as const
 
 function Details() {
+  const { t } = useTranslation()
   return (
     <section className="border-line mx-auto max-w-7xl border-t px-4 py-20 sm:px-8 md:py-28">
       <h2 className="font-display max-w-[16ch] text-[clamp(2rem,4vw,3.25rem)] leading-[1] font-bold tracking-[-0.03em] text-balance">
-        Straight from your watch
+        {t('home.details.title')}
       </h2>
       <dl className="mt-12 grid gap-x-12 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
         {details.map((d) => (
-          <div key={d.term}>
-            <dt className="font-display text-xl font-semibold tracking-tight">{d.term}</dt>
-            <dd className="text-ink-soft mt-2 leading-relaxed">{d.text}</dd>
+          <div key={d}>
+            <dt className="font-display text-xl font-semibold tracking-tight">{t(`home.details.${d}.term`)}</dt>
+            <dd className="text-ink-soft mt-2 leading-relaxed">{t(`home.details.${d}.text`)}</dd>
           </div>
         ))}
       </dl>
@@ -418,6 +456,7 @@ function Details() {
 }
 
 function Closing() {
+  const { t } = useTranslation()
   return (
     <section className="relative overflow-hidden">
       <svg
@@ -434,13 +473,13 @@ function Closing() {
       </svg>
       <div className="relative mx-auto flex max-w-7xl flex-col items-start px-4 py-24 sm:px-8 md:py-36">
         <h2 className="font-display max-w-[14ch] text-[clamp(2.5rem,6vw,5rem)] leading-[0.95] font-bold tracking-[-0.035em] text-balance">
-          Bring your tracks home.
+          {t('home.closing.title')}
         </h2>
         <p className="text-ink-soft mt-5 max-w-[30rem] text-lg leading-relaxed">
-          Create an account, drop in your GPX files and watch the map fill up.
+          {t('home.closing.text')}
         </p>
         <a href="/register" className="bg-trail hover:bg-trail/90 mt-8 rounded-full px-6 py-3 font-semibold text-white">
-          Create an account
+          {t('home.createAnAccount')}
         </a>
       </div>
     </section>
@@ -448,6 +487,7 @@ function Closing() {
 }
 
 function Footer() {
+  const { t } = useTranslation()
   return (
     <footer className="border-line text-ink-soft mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 border-t px-4 py-8 text-sm sm:px-8">
       <span className="flex items-center gap-2">
@@ -455,7 +495,7 @@ function Footer() {
         GPX Viewer
       </span>
       <a href="https://github.com/MatHoyer/gpx-viewer" className="hover:text-ink rounded underline-offset-4 hover:underline">
-        Source on GitHub
+        {t('home.source')}
       </a>
     </footer>
   )

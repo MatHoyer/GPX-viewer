@@ -33,6 +33,9 @@ const (
 	LanguageFrench  Language = "fr"
 )
 
+// Languages lists every supported language, English first as the fallback.
+var Languages = []Language{LanguageEnglish, LanguageFrench}
+
 func (l Language) Valid() bool {
 	switch l {
 	case LanguageEnglish, LanguageFrench:

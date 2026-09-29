@@ -25,10 +25,13 @@ func (e *BannedError) Error() string {
 	return "account banned: " + e.Reason
 }
 
-// ValidationError reports invalid user input.
+// ValidationError reports invalid user input. Code names the problem for
+// clients that show it in the user's language, with Params filling it in.
 type ValidationError struct {
 	Field   string
 	Message string
+	Code    string
+	Params  map[string]any
 }
 
 func (e *ValidationError) Error() string {

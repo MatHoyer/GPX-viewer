@@ -133,7 +133,47 @@
     "email_disabled": "Email is not set up here; ask an admin for a password link.",
     "registration_closed": "Sign-up is closed; ask the admin for an invite.",
     "email_not_verified": "Your email is not verified yet.",
-    "tryLater": "Something went wrong, try again later."
+    "tryLater": "Something went wrong, try again later.",
+    "required": "This can't be empty.",
+    "too_long": "At most {{max}} characters.",
+    "already_done": "This hike is already done.",
+    "own_hike": "You are already on your own hike.",
+    "not_friend": "You can only tag your friends.",
+    "label_too_long": "Each label can be at most {{max}} characters.",
+    "too_many_labels": "At most {{max}} labels per hike.",
+    "no_hikes_selected": "Select at least one hike.",
+    "too_many_hikes": "Select at most {{max}} hikes.",
+    "banned_user": "Lift their ban first.",
+    "invalid_email": "That email address is not valid.",
+    "password_too_short": "The password needs at least {{min}} characters.",
+    "password_too_long": "The password can be at most {{max}} characters.",
+    "wrong_password": "The password is incorrect.",
+    "only_admin": "You are the only admin; make someone else an admin first.",
+    "current_session": "This is your current session; sign out instead.",
+    "invalid_visibility": "Pick private, friends or public.",
+    "invalid_language": "That language is not supported.",
+    "self_friend": "You can't befriend yourself.",
+    "search_too_long": "The search is too long.",
+    "no_pending_invite": "They have no pending invite; ban them instead.",
+    "has_hikes": "This account has hikes; ban it instead.",
+    "reason_required": "Tell them why.",
+    "admin_user": "Remove their admin role first.",
+    "self": "You can't do that to your own account.",
+    "not_found": "Not found.",
+    "invalid_credentials": "Invalid email or password.",
+    "invalid_token": "This link is invalid or has expired.",
+    "unauthorized": "Please sign in again.",
+    "email_taken": "This email is already registered.",
+    "conflict": "That conflicts with something that already exists.",
+    "invalid_gpx": "Not a valid GPX file.",
+    "internal": "Something went wrong on our side.",
+    "invalid_body": "The request was not understood.",
+    "too_many_files": "At most {{max}} files per upload.",
+    "upload_failed": "The upload could not be read.",
+    "no_files": "No files were sent.",
+    "file_too_large": "The file is larger than {{max}} MB.",
+    "admins_only": "Only admins can do that.",
+    "rate_limited": "Too many attempts. Try again in {{minutes}} min."
   },
   "auth": {
     "login": {
@@ -637,5 +677,71 @@
     "night": "Night",
     "dawn": "Dawn",
     "dusk": "Dusk"
+  },
+  "home": {
+    "meta": {
+      "title": "GPX Viewer: all your hikes on one map",
+      "description": "Import GPX files from your watch or phone and see every hike on one map. Elevation, speed, heart rate and cadence charts, route replay, a hiking calendar and sharing with friends.",
+      "ogDescription": "Import GPX files from your watch or phone and see every hike on one map, with elevation and heart rate charts, route replay and a hiking calendar.",
+      "appDescription": "Import GPX files and see every hike on one map, with elevation, speed and heart rate charts, route replay, a hiking calendar and sharing with friends."
+    },
+    "account": "Account",
+    "createAnAccount": "Create an account",
+    "hero": {
+      "title": "Every hike you've recorded, on one map.",
+      "text": "Import the GPX files from your watch or phone. GPX Viewer draws all your trails together, then lets you open any one to see how the climb really went."
+    },
+    "mapAlt": "Topographic map with five hiking tracks, one highlighted crossing the main summit",
+    "distance": "Distance",
+    "ascent": "Ascent",
+    "moving": "Moving",
+    "highest": "Highest point",
+    "movingTime": "Moving time",
+    "detail": {
+      "title": "Open a hike to see how it went",
+      "charts": "Elevation, speed, heart rate, cadence and temperature, charted along the trail from whatever your device recorded.",
+      "replay": "Drag across a chart to measure one climb. Press play to replay the hike on the map up to 600 times faster than real time."
+    },
+    "profileAlt": "Elevation and heart rate profile of a hike, with a climb selected",
+    "climb": "+{{gain}} in {{distance}}",
+    "season": {
+      "title": "Your season, month by month",
+      "summary": "12 hikes, 148 km",
+      "text": "The calendar lays your hikes out by day, so a busy June or a quiet winter is plain to see. Pick a day to open that hike."
+    },
+    "together": {
+      "title": "Share the trail with the people on it",
+      "tagged": "Tagged on this hike",
+      "taggedText": "It shows up on their map too.",
+      "who": "Who can see your hikes",
+      "private": "Only you, and the friends you tag on a hike.",
+      "friends": "Friends see your map, calendar and every hike.",
+      "public": "Anyone with your profile link, no account needed.",
+      "text": "Add friends by their ID and tag them on the hikes you did together. You choose who sees your hikes, and can change it any time."
+    },
+    "details": {
+      "title": "Straight from your watch",
+      "tracks": {
+        "term": "Tracks and routes",
+        "text": "GPX from Garmin, Suunto, Coros, Strava exports and phone apps. Import many files at once."
+      },
+      "sensors": {
+        "term": "Sensor data",
+        "text": "Heart rate, cadence and temperature are read from Garmin track point extensions."
+      },
+      "original": {
+        "term": "Your original file",
+        "text": "Every upload is kept as is, so nothing your device recorded is lost."
+      },
+      "maps": {
+        "term": "Map backgrounds",
+        "text": "Streets, topographic or satellite, with 3D terrain when you want to see the relief."
+      }
+    },
+    "closing": {
+      "title": "Bring your tracks home.",
+      "text": "Create an account, drop in your GPX files and watch the map fill up."
+    },
+    "source": "Source on GitHub"
   }
 }

@@ -14,8 +14,16 @@ export function isLanguage(v: unknown): v is Language {
   return languages.includes(v as Language)
 }
 
-/** The saved choice, else the browser's language when we have it, else English. */
+/**
+ * The last choice made on this device, else the browser's language when we
+ * have it, else English. Both the app and the home page's links (through the
+ * server) write the cookie, so it holds the latest choice; storage backs it up.
+ */
 function initialLanguage(): Language {
+  if (typeof document !== 'undefined') {
+    const cookie = document.cookie.match(new RegExp(`(?:^|; )${STORAGE_KEY}=([^;]*)`))?.[1]
+    if (isLanguage(cookie)) return cookie
+  }
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (isLanguage(saved)) return saved

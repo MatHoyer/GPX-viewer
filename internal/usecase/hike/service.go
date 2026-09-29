@@ -125,7 +125,7 @@ func (s *Service) MarkDone(ctx context.Context, userID, id uuid.UUID, data []byt
 		return nil, err
 	}
 	if !h.Planned {
-		return nil, &domain.ValidationError{Field: "planned", Message: "hike is already done"}
+		return nil, &domain.ValidationError{Field: "planned", Message: "hike is already done", Code: "already_done"}
 	}
 	if data == nil {
 		done := false
@@ -188,14 +188,14 @@ func (s *Service) Tag(ctx context.Context, owner, id, friend uuid.UUID) error {
 		return err
 	}
 	if friend == owner {
-		return &domain.ValidationError{Field: "user", Message: "you are already on your own hike"}
+		return &domain.ValidationError{Field: "user", Message: "you are already on your own hike", Code: "own_hike"}
 	}
 	ok, err := s.access.AreFriends(ctx, owner, friend)
 	if err != nil {
 		return err
 	}
 	if !ok {
-		return &domain.ValidationError{Field: "user", Message: "you can only tag your friends"}
+		return &domain.ValidationError{Field: "user", Message: "you can only tag your friends", Code: "not_friend"}
 	}
 	return s.hikes.AddParticipant(ctx, id, friend, s.now().UTC())
 }
@@ -226,17 +226,17 @@ func (s *Service) Update(ctx context.Context, userID, id uuid.UUID, u domain.Hik
 	if u.Name != nil {
 		name := strings.TrimSpace(*u.Name)
 		if name == "" {
-			return nil, &domain.ValidationError{Field: "name", Message: "must not be empty"}
+			return nil, &domain.ValidationError{Field: "name", Message: "must not be empty", Code: "required"}
 		}
 		if utf8.RuneCountInString(name) > MaxNameLength {
-			return nil, &domain.ValidationError{Field: "name", Message: fmt.Sprintf("must be at most %d characters", MaxNameLength)}
+			return nil, &domain.ValidationError{Field: "name", Message: fmt.Sprintf("must be at most %d characters", MaxNameLength), Code: "too_long", Params: map[string]any{"max": MaxNameLength}}
 		}
 		u.Name = &name
 	}
 	if u.Notes != nil {
 		notes := strings.TrimSpace(*u.Notes)
 		if utf8.RuneCountInString(notes) > MaxNotesLength {
-			return nil, &domain.ValidationError{Field: "notes", Message: fmt.Sprintf("must be at most %d characters", MaxNotesLength)}
+			return nil, &domain.ValidationError{Field: "notes", Message: fmt.Sprintf("must be at most %d characters", MaxNotesLength), Code: "too_long", Params: map[string]any{"max": MaxNotesLength}}
 		}
 		u.Notes = &notes
 	}
@@ -264,13 +264,13 @@ func normalizeLabels(in []string) ([]string, error) {
 			continue
 		}
 		if utf8.RuneCountInString(l) > MaxLabelLength {
-			return nil, &domain.ValidationError{Field: "labels", Message: fmt.Sprintf("each label must be at most %d characters", MaxLabelLength)}
+			return nil, &domain.ValidationError{Field: "labels", Message: fmt.Sprintf("each label must be at most %d characters", MaxLabelLength), Code: "label_too_long", Params: map[string]any{"max": MaxLabelLength}}
 		}
 		seen[l] = true
 		out = append(out, l)
 	}
 	if len(out) > MaxLabels {
-		return nil, &domain.ValidationError{Field: "labels", Message: fmt.Sprintf("at most %d labels per hike", MaxLabels)}
+		return nil, &domain.ValidationError{Field: "labels", Message: fmt.Sprintf("at most %d labels per hike", MaxLabels), Code: "too_many_labels", Params: map[string]any{"max": MaxLabels}}
 	}
 	slices.Sort(out)
 	return out, nil
@@ -299,10 +299,10 @@ func (s *Service) DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.U
 
 func validateBulk(ids []uuid.UUID) error {
 	if len(ids) == 0 {
-		return &domain.ValidationError{Field: "ids", Message: "select at least one hike"}
+		return &domain.ValidationError{Field: "ids", Message: "select at least one hike", Code: "no_hikes_selected"}
 	}
 	if len(ids) > MaxBulk {
-		return &domain.ValidationError{Field: "ids", Message: fmt.Sprintf("select at most %d hikes", MaxBulk)}
+		return &domain.ValidationError{Field: "ids", Message: fmt.Sprintf("select at most %d hikes", MaxBulk), Code: "too_many_hikes", Params: map[string]any{"max": MaxBulk}}
 	}
 	return nil
 }

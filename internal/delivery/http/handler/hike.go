@@ -98,7 +98,7 @@ func (h *HikeHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	mr, err := r.MultipartReader()
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "expected multipart/form-data"})
+		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "expected multipart/form-data", Code: "invalid_body"})
 		return
 	}
 
@@ -109,7 +109,7 @@ func (h *HikeHandler) Upload(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid multipart body"})
+			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid multipart body", Code: "invalid_body"})
 			return
 		}
 		if part.FormName() != "files" || part.FileName() == "" {
@@ -118,7 +118,7 @@ func (h *HikeHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(results) >= maxFilesPerUpload {
 			part.Close()
-			writeJSON(w, http.StatusBadRequest, dto.Error{Error: fmt.Sprintf("at most %d files per upload", maxFilesPerUpload)})
+			writeJSON(w, http.StatusBadRequest, dto.Error{Error: fmt.Sprintf("at most %d files per upload", maxFilesPerUpload), Code: "too_many_files", Params: map[string]any{"max": maxFilesPerUpload}})
 			return
 		}
 
@@ -127,10 +127,12 @@ func (h *HikeHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		part.Close()
 		switch {
 		case err != nil:
-			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "failed to read upload"})
+			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "failed to read upload", Code: "upload_failed"})
 			return
 		case int64(len(data)) > h.maxFileSize:
 			res.Error = fmt.Sprintf("file exceeds %d MB", h.maxFileSize>>20)
+			res.Code = "file_too_large"
+			res.Params = map[string]any{"max": h.maxFileSize >> 20}
 		default:
 			hike, err := importFile(r.Context(), user.ID, part.FileName(), data)
 			if err != nil {
@@ -139,6 +141,7 @@ func (h *HikeHandler) Upload(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				res.Error = "not a valid GPX file"
+				res.Code = "invalid_gpx"
 			} else {
 				d := dto.NewHike(hike)
 				res.Hike = &d
@@ -148,7 +151,7 @@ func (h *HikeHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(results) == 0 {
-		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "no files provided"})
+		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "no files provided", Code: "no_files"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"results": results})
@@ -208,7 +211,7 @@ func (h *HikeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.Name == nil && in.Notes == nil && in.Labels == nil {
-		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update"})
+		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update", Code: "invalid_body"})
 		return
 	}
 	u := domain.HikeUpdate{Name: in.Name, Notes: in.Notes, Labels: in.Labels}
@@ -234,24 +237,24 @@ func (h *HikeHandler) MarkDone(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, http.ErrMissingFile):
 		case err != nil:
-			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid multipart body"})
+			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid multipart body", Code: "invalid_body"})
 			return
 		default:
 			data, err = io.ReadAll(io.LimitReader(file, h.maxFileSize+1))
 			file.Close()
 			if err != nil {
-				writeJSON(w, http.StatusBadRequest, dto.Error{Error: "failed to read upload"})
+				writeJSON(w, http.StatusBadRequest, dto.Error{Error: "failed to read upload", Code: "upload_failed"})
 				return
 			}
 			if int64(len(data)) > h.maxFileSize {
-				writeJSON(w, http.StatusBadRequest, dto.Error{Error: fmt.Sprintf("file exceeds %d MB", h.maxFileSize>>20)})
+				writeJSON(w, http.StatusBadRequest, dto.Error{Error: fmt.Sprintf("file exceeds %d MB", h.maxFileSize>>20), Code: "file_too_large", Params: map[string]any{"max": h.maxFileSize >> 20}})
 				return
 			}
 		}
 	}
 	hike, err := h.svc.MarkDone(r.Context(), middleware.UserFrom(r.Context()).ID, id, data)
 	if errors.Is(err, domain.ErrInvalidGPX) {
-		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "not a valid GPX file"})
+		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "not a valid GPX file", Code: "invalid_gpx"})
 		return
 	}
 	if err != nil {
@@ -360,7 +363,7 @@ func parseIDs(w http.ResponseWriter, raw []string) ([]uuid.UUID, bool) {
 	for i, s := range raw {
 		id, err := uuid.Parse(s)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid hike id", Field: "ids"})
+			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid hike id", Field: "ids", Code: "invalid_body"})
 			return nil, false
 		}
 		ids[i] = id
@@ -450,7 +453,7 @@ func (h *HikeHandler) Feed(w http.ResponseWriter, r *http.Request) {
 	if c := r.URL.Query().Get("after"); c != "" {
 		cur, err := dto.ParseFeedCursor(c)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid cursor", Field: "after"})
+			writeJSON(w, http.StatusBadRequest, dto.Error{Error: "invalid cursor", Field: "after", Code: "invalid_body"})
 			return
 		}
 		after = cur
@@ -476,7 +479,7 @@ func (h *HikeHandler) Card(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.renderCard == nil {
-		writeJSON(w, http.StatusNotFound, dto.Error{Error: "not found"})
+		writeJSON(w, http.StatusNotFound, dto.Error{Error: "not found", Code: "not_found"})
 		return
 	}
 	hike, track, err := h.svc.Card(r.Context(), middleware.ViewerID(r.Context()), id)
@@ -578,7 +581,7 @@ func parseID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 func parseParam(w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, bool) {
 	id, err := uuid.Parse(chi.URLParam(r, name))
 	if err != nil {
-		writeJSON(w, http.StatusNotFound, dto.Error{Error: "not found"})
+		writeJSON(w, http.StatusNotFound, dto.Error{Error: "not found", Code: "not_found"})
 		return uuid.Nil, false
 	}
 	return id, true

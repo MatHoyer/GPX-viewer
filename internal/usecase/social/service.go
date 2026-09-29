@@ -83,7 +83,7 @@ func (s *Service) Connections(ctx context.Context, viewer uuid.UUID) ([]domain.C
 // AddFriend sends a friend request, or accepts the one other already sent.
 func (s *Service) AddFriend(ctx context.Context, viewer, other uuid.UUID) (domain.Relation, error) {
 	if viewer == other {
-		return "", &domain.ValidationError{Field: "user", Message: "you cannot befriend yourself"}
+		return "", &domain.ValidationError{Field: "user", Message: "you cannot befriend yourself", Code: "self_friend"}
 	}
 	f, err := s.friends.Get(ctx, viewer, other)
 	if errors.Is(err, domain.ErrNotFound) {

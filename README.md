@@ -7,6 +7,7 @@ Import your GPX files and see all your hikes on one map.
 - The Go binary embeds the built frontend and serves it alongside the API.
 - `/hikes/{id}` pages of hikes anyone may see get their title and Open Graph tags filled in server-side, pointing at the hike's `card.png`, so shared links unfurl with a preview.
 - The home page (`web/home.html`, `web/src/home/`) is prerendered to static HTML at build time and served at `/` to signed-out visitors; signed-in users get the app there. `robots.txt` and `sitemap.xml` are generated from `APP_URL`.
+- The app is in English and French. UI strings live in `web/src/locales/{en,fr}.json` (react-i18next); a test fails when a key is missing from either catalog or used in code without existing. The choice is kept in a `lang` cookie and on the account (`users.language`), so it follows the user across devices; emails go out in it. The home page is prerendered once per language (`home.html`, `home.fr.html`) and served by that cookie, else `Accept-Language`. API errors carry a `code` (and `params`) the app translates; a Go test checks every code has a translation.
 
 ## Quick start
 
@@ -69,7 +70,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 
 ### Data
 
-- `users` (with a `visibility`: `private`, `friends` or `public`, `email_verified_at`, `is_admin`, and `banned_at`/`ban_reason`; on startup the oldest user is made admin if there is none), `sessions` (server-side, only the SHA-256 of the token is stored, with a public `id`, the user agent and IP of the sign-in, and `last_used_at`, refreshed with the IP at most every 5 minutes), `email_verifications` (one pending link per user, hashed like sessions, valid 24h), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike), `hike_labels` (the owner's free-form labels; "labels" because tagging means adding a friend).
+- `users` (with a `visibility`: `private`, `friends` or `public`, a `language` (`en`, `fr`, or empty until picked), `email_verified_at`, `is_admin`, and `banned_at`/`ban_reason`; on startup the oldest user is made admin if there is none), `sessions` (server-side, only the SHA-256 of the token is stored, with a public `id`, the user agent and IP of the sign-in, and `last_used_at`, refreshed with the IP at most every 5 minutes), `email_verifications` (one pending link per user, hashed like sessions, valid 24h), `hikes`, `friendships` (one row per pair, accepted or pending), `hike_participants` (friends tagged on a hike), `hike_labels` (the owner's free-form labels; "labels" because tagging means adding a friend).
 - Avatars are [blobatars](https://github.com/Alain00/blobatar) generated from the user id; there is no picture upload.
 - A hike is visible to whoever may see its owner's hikes or those of a tagged participant; anything else answers 404.
 - Hike tracks are stored as `geometry(MultiLineStringZ, 4326)` with a GiST index; the original GPX is kept in `gpx_raw`.

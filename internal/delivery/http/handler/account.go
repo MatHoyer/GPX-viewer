@@ -31,7 +31,7 @@ func (h *AccountHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.Name == nil && in.Visibility == nil && in.Language == nil {
-		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update"})
+		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update", Code: "invalid_body"})
 		return
 	}
 	id := middleware.UserFrom(r.Context()).ID

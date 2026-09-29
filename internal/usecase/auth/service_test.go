@@ -324,7 +324,7 @@ func newTestService(t *testing.T) (*Service, *fakeSessions) {
 // registerVerified registers a user and follows their verification link.
 func (e *testEnv) registerVerified(t *testing.T, email, password string) *domain.User {
 	t.Helper()
-	u, err := e.svc.Register(context.Background(), email, password)
+	u, err := e.svc.Register(context.Background(), email, password, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,16 +370,16 @@ func TestRegisterValidation(t *testing.T) {
 	svc, _ := newTestService(t)
 
 	var ve *domain.ValidationError
-	if _, err := svc.Register(ctx, "not-an-email", "password123"); !errors.As(err, &ve) || ve.Field != "email" {
+	if _, err := svc.Register(ctx, "not-an-email", "password123", ""); !errors.As(err, &ve) || ve.Field != "email" {
 		t.Errorf("bad email err = %v", err)
 	}
-	if _, err := svc.Register(ctx, "a@b.co", "short"); !errors.As(err, &ve) || ve.Field != "password" {
+	if _, err := svc.Register(ctx, "a@b.co", "short", ""); !errors.As(err, &ve) || ve.Field != "password" {
 		t.Errorf("short password err = %v", err)
 	}
-	if _, err := svc.Register(ctx, "a@b.co", "password123"); err != nil {
+	if _, err := svc.Register(ctx, "a@b.co", "password123", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.Register(ctx, "A@b.co", "password123"); !errors.Is(err, domain.ErrEmailTaken) {
+	if _, err := svc.Register(ctx, "A@b.co", "password123", ""); !errors.Is(err, domain.ErrEmailTaken) {
 		t.Errorf("duplicate err = %v", err)
 	}
 }
@@ -422,7 +422,7 @@ func TestEmailVerification(t *testing.T) {
 	ctx := context.Background()
 	e := newTestEnv(t)
 
-	u, err := e.svc.Register(ctx, "a@b.co", "password123")
+	u, err := e.svc.Register(ctx, "a@b.co", "password123", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +465,7 @@ func TestEmailVerification(t *testing.T) {
 func TestVerifyEmailInvalidToken(t *testing.T) {
 	ctx := context.Background()
 	e := newTestEnv(t)
-	if _, err := e.svc.Register(ctx, "a@b.co", "password123"); err != nil {
+	if _, err := e.svc.Register(ctx, "a@b.co", "password123", ""); err != nil {
 		t.Fatal(err)
 	}
 	for _, token := range []string{"", "nope"} {
@@ -484,7 +484,7 @@ func TestVerifyEmailInvalidToken(t *testing.T) {
 func TestUnverifiedLoginSendsLinkOncePerTTL(t *testing.T) {
 	ctx := context.Background()
 	e := newTestEnv(t)
-	u, err := e.svc.Register(ctx, "a@b.co", "password123")
+	u, err := e.svc.Register(ctx, "a@b.co", "password123", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -530,7 +530,7 @@ func TestUnverifiedLoginSendsLinkOncePerTTL(t *testing.T) {
 func TestUnverifiedLoginWithoutLinkSendsOne(t *testing.T) {
 	ctx := context.Background()
 	e := newTestEnv(t)
-	if _, err := e.svc.Register(ctx, "a@b.co", "password123"); err != nil {
+	if _, err := e.svc.Register(ctx, "a@b.co", "password123", ""); err != nil {
 		t.Fatal(err)
 	}
 	e.verifications.byUser = map[uuid.UUID]*domain.EmailVerification{}
@@ -572,7 +572,7 @@ func TestFailedSendIsRetriedOnNextLogin(t *testing.T) {
 	ctx := context.Background()
 	e := newTestEnv(t)
 	e.mailer.err = errors.New("smtp down")
-	if _, err := e.svc.Register(ctx, "a@b.co", "password123"); err != nil {
+	if _, err := e.svc.Register(ctx, "a@b.co", "password123", ""); err != nil {
 		t.Fatal(err)
 	}
 	if len(e.verifications.byUser) != 0 {
@@ -606,7 +606,7 @@ func TestRegistrationClosed(t *testing.T) {
 		t.Fatalf("open before first account = %v, %v", open, err)
 	}
 	// The first account can always sign up, so the instance gets an admin.
-	u, err := e.svc.Register(ctx, "a@b.co", "password123")
+	u, err := e.svc.Register(ctx, "a@b.co", "password123", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -616,7 +616,7 @@ func TestRegistrationClosed(t *testing.T) {
 	if open, err := e.svc.RegistrationOpen(ctx); err != nil || open {
 		t.Fatalf("open after first account = %v, %v", open, err)
 	}
-	if _, err := e.svc.Register(ctx, "c@d.co", "password123"); !errors.Is(err, domain.ErrRegistrationClosed) {
+	if _, err := e.svc.Register(ctx, "c@d.co", "password123", ""); !errors.Is(err, domain.ErrRegistrationClosed) {
 		t.Errorf("second register err = %v", err)
 	}
 }
@@ -658,7 +658,7 @@ func TestBannedCannotSignIn(t *testing.T) {
 func TestBannedCannotVerify(t *testing.T) {
 	ctx := context.Background()
 	e := newTestEnv(t)
-	u, err := e.svc.Register(ctx, "a@b.co", "password123")
+	u, err := e.svc.Register(ctx, "a@b.co", "password123", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -680,7 +680,7 @@ func TestInvite(t *testing.T) {
 	e.svc.registration = false
 	sent := len(e.mailer.sent)
 
-	u, link, emailed, err := e.svc.Invite(ctx, " Friend@B.co ", "Friend", false)
+	u, link, emailed, err := e.svc.Invite(ctx, " Friend@B.co ", "Friend", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -690,7 +690,7 @@ func TestInvite(t *testing.T) {
 	if u.Email != "friend@b.co" || u.Name != "Friend" || u.IsAdmin || u.EmailVerifiedAt != nil || u.InvitedAt == nil {
 		t.Errorf("invited user = %+v", u)
 	}
-	if _, _, _, err := e.svc.Invite(ctx, "friend@b.co", "", false); !errors.Is(err, domain.ErrEmailTaken) {
+	if _, _, _, err := e.svc.Invite(ctx, "friend@b.co", "", "", false); !errors.Is(err, domain.ErrEmailTaken) {
 		t.Errorf("duplicate invite err = %v", err)
 	}
 
@@ -750,7 +750,7 @@ func TestWithoutEmail(t *testing.T) {
 	if e.svc.EmailEnabled() || e.svc.RequiresVerifiedEmail() {
 		t.Fatal("email should be off")
 	}
-	u, err := e.svc.Register(ctx, "a@b.co", "password123")
+	u, err := e.svc.Register(ctx, "a@b.co", "password123", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -765,7 +765,7 @@ func TestWithoutEmail(t *testing.T) {
 		t.Errorf("reset request err = %v", err)
 	}
 	// Asking to email an invite hands back the link instead.
-	_, link, emailed, err := e.svc.Invite(ctx, "c@d.co", "", true)
+	_, link, emailed, err := e.svc.Invite(ctx, "c@d.co", "", "", true)
 	if err != nil || emailed || link == "" {
 		t.Fatalf("invite = %q, %v, %v", link, emailed, err)
 	}
@@ -893,5 +893,29 @@ func TestAuthenticateTouchesStaleSession(t *testing.T) {
 	}
 	if !sess.LastUsedAt.Equal(start.Add(10*time.Minute)) || sess.IP != "10.0.0.9" {
 		t.Errorf("session = %+v", sess)
+	}
+}
+
+func TestEmailsFollowTheUserLanguage(t *testing.T) {
+	ctx := context.Background()
+	e := newTestEnv(t)
+
+	u, err := e.svc.Register(ctx, "a@b.co", "password123", domain.LanguageFrench)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Language != domain.LanguageFrench {
+		t.Errorf("language = %q", u.Language)
+	}
+	if got := e.mailer.sent[0].subject; got != "Confirmez votre adresse e-mail" {
+		t.Errorf("verification subject = %q", got)
+	}
+
+	// Unknown or missing languages fall back to English.
+	if _, err := e.svc.Register(ctx, "c@d.co", "password123", "xx"); err != nil {
+		t.Fatal(err)
+	}
+	if got := e.mailer.sent[1].subject; got != "Confirm your email address" {
+		t.Errorf("fallback subject = %q", got)
 	}
 }

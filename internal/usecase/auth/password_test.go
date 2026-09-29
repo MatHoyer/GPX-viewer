@@ -126,7 +126,7 @@ func TestPasswordResetFailedSendKeepsNoCooldown(t *testing.T) {
 func TestPasswordResetVerifiesEmail(t *testing.T) {
 	ctx := context.Background()
 	e := newTestEnv(t)
-	if _, err := e.svc.Register(ctx, "a@b.co", "password123"); err != nil {
+	if _, err := e.svc.Register(ctx, "a@b.co", "password123", ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.svc.RequestPasswordReset(ctx, "a@b.co"); err != nil {

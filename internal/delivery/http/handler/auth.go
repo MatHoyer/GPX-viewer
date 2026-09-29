@@ -13,7 +13,7 @@ import (
 )
 
 type AuthService interface {
-	Register(ctx context.Context, email, password string) (*domain.User, error)
+	Register(ctx context.Context, email, password string, lang domain.Language) (*domain.User, error)
 	Login(ctx context.Context, email, password string) (string, *domain.Session, error)
 	Logout(ctx context.Context, token string) error
 	VerifyEmail(ctx context.Context, token string) (string, *domain.Session, error)
@@ -36,11 +36,11 @@ func NewAuthHandler(svc AuthService, cookieSecure bool) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var in dto.Credentials
+	var in dto.Register
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	u, err := h.svc.Register(r.Context(), in.Email, in.Password)
+	u, err := h.svc.Register(r.Context(), in.Email, in.Password, domain.Language(in.Language))
 	if err != nil {
 		writeError(w, r, err)
 		return
