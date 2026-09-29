@@ -22,7 +22,6 @@
     "justNow": "à l'instant"
   },
   "nav": {
-    "views": "Vues",
     "map": "Carte",
     "hikes": "Randonnées",
     "calendar": "Calendrier",
@@ -37,7 +36,9 @@
     "admin": "Administration",
     "theme": "Thème",
     "language": "Langue",
-    "logOut": "Se déconnecter"
+    "logOut": "Se déconnecter",
+    "yourHikes": "Mes randonnées",
+    "social": "Social"
   },
   "theme": {
     "light": "Clair",

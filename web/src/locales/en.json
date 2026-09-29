@@ -22,7 +22,6 @@
     "justNow": "just now"
   },
   "nav": {
-    "views": "Views",
     "map": "Map",
     "hikes": "Hikes",
     "calendar": "Calendar",
@@ -36,7 +35,9 @@
     "admin": "Admin",
     "theme": "Theme",
     "language": "Language",
-    "logOut": "Log out"
+    "logOut": "Log out",
+    "yourHikes": "Your hikes",
+    "social": "Social"
   },
   "theme": {
     "light": "Light",
