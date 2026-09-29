@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { Bounds, Hike, Tracks } from './api'
 import { useHikeColors } from './colors'
@@ -45,6 +45,24 @@ export function HikesMapView({ hikes, colorFrom, tracks, userId, list = false }:
 
   const onViewChange = useCallback((b: Bounds) => setView(b), [])
 
+  // On your own map, start on your latest walked hike, once: closing it
+  // leaves the map on all hikes.
+  const autoSelected = useRef(false)
+  useEffect(() => {
+    if (!list || autoSelected.current || !tracks || hikes.length === 0) return
+    autoSelected.current = true
+    const latest = latestHike(hikes)
+    if (!latest) return
+    // The track's middle point sits mid-screen once the map fits the hike,
+    // clear of the list in the corner.
+    const line = tracks.features.find((f) => f.properties.id === latest.id)?.geometry.coordinates.flat()
+    const middle = line?.[Math.floor(line.length / 2)]
+    if (middle) openPopup(latest.id, middle[0], middle[1])
+    else select(latest)
+    // openPopup and select only read the tracks, which this waits for.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, tracks, hikes])
+
   return (
     <>
       <HikesMap
@@ -73,4 +91,11 @@ export function HikesMapView({ hikes, colorFrom, tracks, userId, list = false }:
       )}
     </>
   )
+}
+
+/** The most recently started walked hike, else the first one there is. */
+function latestHike(hikes: Hike[]): Hike | undefined {
+  const done = hikes.filter((h) => !h.planned && h.startedAt)
+  if (done.length === 0) return hikes[0]
+  return done.reduce((a, b) => (b.startedAt! > a.startedAt! ? b : a))
 }
