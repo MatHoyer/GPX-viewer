@@ -1,10 +1,40 @@
+import i18n, { currentLanguage } from '@/i18n'
+
+// Formatters follow the UI language, and are cached per language and options.
+const cache = new Map<string, Intl.DateTimeFormat | Intl.NumberFormat | Intl.RelativeTimeFormat>()
+
+function cached<T extends Intl.DateTimeFormat | Intl.NumberFormat | Intl.RelativeTimeFormat>(
+  kind: string,
+  options: object,
+  make: (locale: string) => T,
+): T {
+  const locale = currentLanguage()
+  const key = `${kind}|${locale}|${JSON.stringify(options)}`
+  let f = cache.get(key) as T | undefined
+  if (!f) {
+    f = make(locale)
+    cache.set(key, f)
+  }
+  return f
+}
+
+/** A date formatter in the UI language; an undefined timeZone is the viewer's. */
+export function dateFormat(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  return cached('date', options, (locale) => new Intl.DateTimeFormat(locale, options))
+}
+
+export function formatNumber(n: number, options: Intl.NumberFormatOptions = {}): string {
+  return cached('number', options, (locale) => new Intl.NumberFormat(locale, options)).format(n)
+}
+
 export function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)} m`
-  return `${(meters / 1000).toFixed(meters < 10_000 ? 2 : 1)} km`
+  if (meters < 1000) return `${formatNumber(Math.round(meters))} m`
+  const digits = meters < 10_000 ? 2 : 1
+  return `${formatNumber(meters / 1000, { minimumFractionDigits: digits, maximumFractionDigits: digits })} km`
 }
 
 export function formatElevation(meters: number): string {
-  return `${Math.round(meters)} m`
+  return `${formatNumber(Math.round(meters))} m`
 }
 
 export function formatDuration(seconds: number): string {
@@ -14,25 +44,12 @@ export function formatDuration(seconds: number): string {
   return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`
 }
 
-const formatters = new Map<string, Intl.DateTimeFormat>()
-
-/** A cached formatter; an undefined timeZone is the viewer's. */
-function formatter(style: 'date' | 'time', timeZone?: string): Intl.DateTimeFormat {
-  const key = `${style}|${timeZone ?? ''}`
-  let f = formatters.get(key)
-  if (!f) {
-    f = new Intl.DateTimeFormat(undefined, style === 'date' ? { dateStyle: 'medium', timeZone } : { timeStyle: 'short', timeZone })
-    formatters.set(key, f)
-  }
-  return f
-}
-
 export function formatDate(iso: string | null, timeZone?: string): string | null {
-  return iso ? formatter('date', timeZone).format(new Date(iso)) : null
+  return iso ? dateFormat({ dateStyle: 'medium', timeZone }).format(new Date(iso)) : null
 }
 
 export function formatTime(date: Date, timeZone?: string): string {
-  return formatter('time', timeZone).format(date)
+  return dateFormat({ timeStyle: 'short', timeZone }).format(date)
 }
 
 export function formatClock(seconds: number): string {
@@ -51,8 +68,6 @@ export function formatPace(minPerKm: number): string {
   return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, '0')}`
 }
 
-const relativeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
-
 const relativeUnits: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 365 * 24 * 3600],
   ['month', 30 * 24 * 3600],
@@ -65,8 +80,12 @@ const relativeUnits: [Intl.RelativeTimeFormatUnit, number][] = [
 /** How long ago iso was, e.g. "5 minutes ago"; under a minute is "just now". */
 export function formatRelative(iso: string, now = Date.now()): string {
   const seconds = (new Date(iso).getTime() - now) / 1000
+  const options = { numeric: 'auto' } as const
   for (const [unit, size] of relativeUnits) {
-    if (Math.abs(seconds) >= size) return relativeFormatter.format(Math.round(seconds / size), unit)
+    if (Math.abs(seconds) >= size) {
+      const f = cached('relative', options, (locale) => new Intl.RelativeTimeFormat(locale, options))
+      return f.format(Math.round(seconds / size), unit)
+    }
   }
-  return 'just now'
+  return i18n.t('time.justNow')
 }

@@ -1,7 +1,8 @@
 import { Monitor, Moon, Sun } from 'lucide-react'
 
+// Labels and descriptions are translated under theme.<value>.
 export const themes = [
-  { value: 'light', label: 'Light', description: 'Always light.', icon: Sun },
-  { value: 'dark', label: 'Dark', description: 'Always dark.', icon: Moon },
-  { value: 'system', label: 'System', description: 'Follows your device setting.', icon: Monitor },
-]
+  { value: 'light', icon: Sun },
+  { value: 'dark', icon: Moon },
+  { value: 'system', icon: Monitor },
+] as const

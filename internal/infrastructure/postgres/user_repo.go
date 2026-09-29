@@ -25,6 +25,7 @@ func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
 		Name:            u.Name,
 		PasswordHash:    u.PasswordHash,
 		Visibility:      string(u.Visibility),
+		Language:        string(u.Language),
 		EmailVerifiedAt: u.EmailVerifiedAt,
 		IsAdmin:         u.IsAdmin,
 		BannedAt:        u.BannedAt,
@@ -101,6 +102,17 @@ func (r *UserRepository) UpdateName(ctx context.Context, id uuid.UUID, name stri
 
 func (r *UserRepository) UpdateVisibility(ctx context.Context, id uuid.UUID, v domain.Visibility) error {
 	res := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ?", id).Update("visibility", string(v))
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) UpdateLanguage(ctx context.Context, id uuid.UUID, l domain.Language) error {
+	res := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ?", id).Update("language", string(l))
 	if res.Error != nil {
 		return res.Error
 	}

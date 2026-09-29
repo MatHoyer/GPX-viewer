@@ -1,4 +1,5 @@
-import { ChevronsUpDown, LogOut, Settings, Shield, SunMoon, UserRound } from 'lucide-react'
+import { ChevronsUpDown, Languages, LogOut, Settings, Shield, SunMoon, UserRound } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import {
@@ -15,12 +16,14 @@ import type { User } from '@/features/auth/api'
 import { useLogout, useMe } from '@/features/auth/useAuth'
 
 import { displayName } from './displayName'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { UserAvatar } from './UserAvatar'
 
 const itemClass = 'gap-2 px-2 py-2'
 
 export function NavUser() {
+  const { t } = useTranslation()
   const me = useMe()
   const logout = useLogout()
   const { isMobile, setOpenMobile } = useSidebar()
@@ -59,33 +62,38 @@ export function NavUser() {
               <DropdownMenuItem asChild className={itemClass}>
                 <Link to={`/u/${user.id}`} onClick={() => setOpenMobile(false)}>
                   <UserRound />
-                  Profile
+                  {t('nav.profile')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className={itemClass}>
                 <Link to="/settings" onClick={() => setOpenMobile(false)}>
                   <Settings />
-                  Settings
+                  {t('nav.settings')}
                 </Link>
               </DropdownMenuItem>
               {user.isAdmin && (
                 <DropdownMenuItem asChild className={itemClass}>
                   <Link to="/admin" onClick={() => setOpenMobile(false)}>
                     <Shield />
-                    Admin
+                    {t('nav.admin')}
                   </Link>
                 </DropdownMenuItem>
               )}
               <div className="flex items-center gap-2 px-2 py-1 text-sm">
                 <SunMoon className="text-muted-foreground size-4" />
-                Theme
+                {t('nav.theme')}
                 <ThemeSwitcher className="ml-auto" />
+              </div>
+              <div className="flex items-center gap-2 px-2 py-1 text-sm">
+                <Languages className="text-muted-foreground size-4" />
+                {t('nav.language')}
+                <LanguageSwitcher className="ml-auto" />
               </div>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" className={itemClass} onClick={() => logout.mutate()}>
               <LogOut />
-              Log out
+              {t('nav.logOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

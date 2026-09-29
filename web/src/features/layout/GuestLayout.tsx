@@ -1,10 +1,13 @@
 import { MountainSnow } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link, Outlet } from 'react-router'
 
 import { Button } from '@/components/ui/button'
+import { LanguageSwitcher } from '@/features/account/LanguageSwitcher'
 
 /** Chrome for pages that signed-out visitors can open, like public profiles. */
 export function GuestLayout() {
+  const { t } = useTranslation()
   return (
     <div className="flex h-svh flex-col">
       <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
@@ -13,12 +16,13 @@ export function GuestLayout() {
           <MountainSnow className="size-5" />
           GPX Viewer
         </a>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <Button asChild variant="ghost" size="sm">
-            <Link to="/login">Sign in</Link>
+            <Link to="/login">{t('common.signIn')}</Link>
           </Button>
           <Button asChild size="sm">
-            <Link to="/register">Create account</Link>
+            <Link to="/register">{t('common.createAccount')}</Link>
           </Button>
         </div>
       </header>

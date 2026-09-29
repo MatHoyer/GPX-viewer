@@ -1,6 +1,7 @@
-import { Download, ExternalLink, Globe, Lock, UsersRound, type LucideIcon } from 'lucide-react'
+import { Download, ExternalLink, Globe, Lock, UsersRound } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useState, type FormEvent } from 'react'
+import { useState, type ComponentType, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 
@@ -11,24 +12,29 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import type { User, Visibility } from '@/features/auth/api'
 import { useChangePassword, useConfig, useMe, useRequestPasswordReset } from '@/features/auth/useAuth'
 import { SessionsCard } from '@/features/sessions/SessionsCard'
+import { isLanguage } from '@/i18n'
+import { languageOptions } from '@/i18n/languages'
 import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errors'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import { MAX_NAME_LENGTH } from './api'
 import { DeleteAccountDialog } from './DeleteAccountDialog'
 import { useUpdateAccount } from './useAccount'
+import { useSetLanguage } from './useLanguage'
 import { themes } from './themes'
 import { UserAvatar } from './UserAvatar'
 
 export function SettingsPage() {
+  const { t } = useTranslation()
   const me = useMe()
 
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
         <SidebarTrigger />
-        <h1 className="text-lg font-semibold">Settings</h1>
+        <h1 className="text-lg font-semibold">{t('settings.title')}</h1>
       </header>
       <main className="flex-1 overflow-y-auto">
         {me.data && (
@@ -48,11 +54,8 @@ export function SettingsPage() {
   )
 }
 
-function errorMessage(err: unknown, fallback: string) {
-  return err instanceof ApiError ? err.message : fallback
-}
-
 function DetailsCard({ user }: { user: User }) {
+  const { t } = useTranslation()
   const [name, setName] = useState(user.name)
   const update = useUpdateAccount()
   const trimmed = name.trim()
@@ -64,8 +67,8 @@ function DetailsCard({ user }: { user: User }) {
     update.mutate(
       { name: trimmed },
       {
-        onSuccess: () => toast.success('Profile saved'),
-        onError: (err) => toast.error(errorMessage(err, 'Could not save profile')),
+        onSuccess: () => toast.success(t('settings.profileSaved')),
+        onError: (err) => toast.error(errorMessage(err, t('settings.profileSaveFailed'))),
       },
     )
   }
@@ -74,24 +77,24 @@ function DetailsCard({ user }: { user: User }) {
     <Card>
       <form onSubmit={onSubmit} className="contents">
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
+          <CardTitle>{t('settings.profile')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <UserAvatar user={user} className="mx-auto size-28" />
           <FloatingInput
-            label="Display name"
+            label={t('settings.displayName')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={user.email.split('@')[0]}
             maxLength={MAX_NAME_LENGTH}
-            description={`Leave empty to go by ${user.email.split('@')[0]}.`}
+            description={t('settings.displayNameHint', { name: user.email.split('@')[0] })}
           />
-          <FloatingInput label="Email" value={user.email} disabled />
-          <p className="text-muted-foreground text-sm">Member since {formatDate(user.createdAt)}</p>
+          <FloatingInput label={t('common.email')} value={user.email} disabled />
+          <p className="text-muted-foreground text-sm">{t('settings.memberSince', { date: formatDate(user.createdAt) })}</p>
         </CardContent>
         <CardFooter className="justify-end">
           <Button type="submit" disabled={!dirty || update.isPending}>
-            {update.isPending ? 'Saving…' : 'Save'}
+            {update.isPending ? t('common.saving') : t('common.save')}
           </Button>
         </CardFooter>
       </form>
@@ -100,6 +103,7 @@ function DetailsCard({ user }: { user: User }) {
 }
 
 function PasswordCard({ user }: { user: User }) {
+  const { t } = useTranslation()
   const [currentPassword, setCurrentPassword] = useState('')
   const [password, setPassword] = useState('')
   const change = useChangePassword()
@@ -115,7 +119,7 @@ function PasswordCard({ user }: { user: User }) {
         onSuccess: () => {
           setCurrentPassword('')
           setPassword('')
-          toast.success('Password changed', { description: 'Your other devices were signed out.' })
+          toast.success(t('settings.passwordChanged'), { description: t('settings.passwordChangedDescription') })
         },
       },
     )
@@ -123,8 +127,8 @@ function PasswordCard({ user }: { user: User }) {
 
   function onForgot() {
     sendReset.mutate(user.email, {
-      onSuccess: () => toast.success(`We sent a reset link to ${user.email}`),
-      onError: (err) => toast.error(errorMessage(err, 'Could not send the reset link')),
+      onSuccess: () => toast.success(t('settings.resetSent', { email: user.email })),
+      onError: (err) => toast.error(errorMessage(err, t('settings.resetFailed'))),
     })
   }
 
@@ -132,14 +136,14 @@ function PasswordCard({ user }: { user: User }) {
     <Card>
       <form onSubmit={onSubmit} className="contents">
         <CardHeader>
-          <CardTitle>Password</CardTitle>
-          <CardDescription>Changing it signs you out on your other devices.</CardDescription>
+          <CardTitle>{t('settings.password')}</CardTitle>
+          <CardDescription>{t('settings.passwordHint')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Lets password managers tie the new password to this account. */}
           <input type="email" autoComplete="username" value={user.email} readOnly hidden />
           <FloatingInput
-            label="Current password"
+            label={t('settings.currentPassword')}
             type="password"
             autoComplete="current-password"
             required
@@ -148,7 +152,7 @@ function PasswordCard({ user }: { user: User }) {
             aria-invalid={error?.field === 'currentPassword' || undefined}
           />
           <FloatingInput
-            label="New password"
+            label={t('settings.newPassword')}
             type="password"
             autoComplete="new-password"
             required
@@ -156,24 +160,24 @@ function PasswordCard({ user }: { user: User }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={error?.field === 'password' || undefined}
-            description="At least 8 characters."
+            description={t('settings.passwordRule')}
           />
           {change.error && (
             <p role="alert" className="text-destructive text-sm">
-              {errorMessage(change.error, 'Could not change password')}
+              {errorMessage(change.error, t('settings.passwordChangeFailed'))}
             </p>
           )}
         </CardContent>
         <CardFooter className="flex-wrap justify-between gap-2">
           {emailEnabled !== false ? (
             <Button type="button" variant="link" className="px-0" disabled={sendReset.isPending} onClick={onForgot}>
-              Forgot your current password?
+              {t('settings.forgotCurrent')}
             </Button>
           ) : (
-            <span className="text-muted-foreground text-sm">Forgot it? An admin can send you a link.</span>
+            <span className="text-muted-foreground text-sm">{t('settings.forgotNoEmail')}</span>
           )}
           <Button type="submit" disabled={!currentPassword || !password || change.isPending}>
-            {change.isPending ? 'Changing…' : 'Change password'}
+            {change.isPending ? t('settings.changing') : t('settings.changePassword')}
           </Button>
         </CardFooter>
       </form>
@@ -181,22 +185,25 @@ function PasswordCard({ user }: { user: User }) {
   )
 }
 
-const visibilityOptions: Option<Visibility>[] = [
-  { value: 'private', label: 'Private', description: 'Only you can see your hikes.', icon: Lock },
-  { value: 'friends', label: 'Friends', description: 'Your friends can see your profile and hikes.', icon: UsersRound },
-  { value: 'public', label: 'Public', description: 'Anyone with the link can, even without an account.', icon: Globe },
-]
+const visibilityIcons = { private: Lock, friends: UsersRound, public: Globe }
 
 function VisibilityCard({ user }: { user: User }) {
+  const { t } = useTranslation()
   const update = useUpdateAccount()
+  const visibilityOptions: Option<Visibility>[] = (['private', 'friends', 'public'] as const).map((value) => ({
+    value,
+    label: t(`settings.${value}`),
+    description: t(`settings.${value}Description`),
+    icon: visibilityIcons[value],
+  }))
 
   function select(visibility: Visibility) {
     if (visibility === user.visibility || update.isPending) return
     update.mutate(
       { visibility },
       {
-        onSuccess: () => toast.success('Visibility updated'),
-        onError: (err) => toast.error(errorMessage(err, 'Could not update visibility')),
+        onSuccess: () => toast.success(t('settings.visibilityUpdated')),
+        onError: (err) => toast.error(errorMessage(err, t('settings.visibilityFailed'))),
       },
     )
   }
@@ -204,12 +211,12 @@ function VisibilityCard({ user }: { user: User }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Who can see my hikes</CardTitle>
-        <CardDescription>Anyone with your friend ID can see your name and picture to send you a friend request.</CardDescription>
+        <CardTitle>{t('settings.visibilityTitle')}</CardTitle>
+        <CardDescription>{t('settings.visibilityDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <OptionCards
-          label="Profile visibility"
+          label={t('settings.visibilityLabel')}
           options={visibilityOptions}
           value={user.visibility}
           onChange={select}
@@ -220,7 +227,7 @@ function VisibilityCard({ user }: { user: User }) {
         <Button asChild variant="outline">
           <Link to={`/u/${user.id}`}>
             <ExternalLink />
-            View my profile
+            {t('settings.viewProfile')}
           </Link>
         </Button>
       </CardFooter>
@@ -229,19 +236,18 @@ function VisibilityCard({ user }: { user: User }) {
 }
 
 function ExportCard() {
+  const { t } = useTranslation()
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Export</CardTitle>
-        <CardDescription>
-          Download the original GPX files of all your hikes as a zip. Hikes you are tagged on stay with their owner.
-        </CardDescription>
+        <CardTitle>{t('settings.export')}</CardTitle>
+        <CardDescription>{t('settings.exportDescription')}</CardDescription>
       </CardHeader>
       <CardFooter className="justify-end">
         <Button asChild variant="outline">
           <a href="/api/hikes/export" download>
             <Download />
-            Download my hikes
+            {t('settings.exportButton')}
           </a>
         </Button>
       </CardFooter>
@@ -250,13 +256,12 @@ function ExportCard() {
 }
 
 function DangerZoneCard({ user }: { user: User }) {
+  const { t } = useTranslation()
   return (
     <Card className="ring-destructive/40">
       <CardHeader>
-        <CardTitle className="text-destructive">Danger zone</CardTitle>
-        <CardDescription>
-          Deleting your account removes your hikes, tags, friends, kudos and comments for good. It cannot be undone.
-        </CardDescription>
+        <CardTitle className="text-destructive">{t('settings.dangerZone')}</CardTitle>
+        <CardDescription>{t('settings.dangerDescription')}</CardDescription>
       </CardHeader>
       <CardFooter className="justify-end">
         <DeleteAccountDialog user={user} />
@@ -266,21 +271,42 @@ function DangerZoneCard({ user }: { user: User }) {
 }
 
 function AppearanceCard() {
+  const { t, i18n } = useTranslation()
   const { theme, setTheme } = useTheme()
+  const setLanguage = useSetLanguage()
+  const themeOptions: Option<string>[] = themes.map(({ value, icon }) => ({
+    value,
+    label: t(`theme.${value}`),
+    description: t(`theme.${value}Description`),
+    icon,
+  }))
+  const languageCards: Option<string>[] = languageOptions.map(({ value, label, flag: Flag }) => ({
+    value,
+    label,
+    // Named in the current language too, unless that is the same word.
+    description: t(`language.${value}`) === label ? '' : t(`language.${value}`),
+    icon: ({ className }) => <Flag className={cn(className, 'h-3 w-4.5 rounded-[2px] shadow-[0_0_0_0.5px_rgb(0_0_0/0.2)]')} />,
+  }))
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Appearance</CardTitle>
+        <CardTitle>{t('settings.appearance')}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <OptionCards label="Theme" options={themes} value={theme ?? 'system'} onChange={setTheme} />
+      <CardContent className="space-y-4">
+        <OptionCards label={t('settings.theme')} options={themeOptions} value={theme ?? 'system'} onChange={setTheme} />
+        <OptionCards
+          label={t('settings.language')}
+          options={languageCards}
+          value={i18n.language}
+          onChange={(v) => isLanguage(v) && setLanguage(v)}
+        />
       </CardContent>
     </Card>
   )
 }
 
-type Option<T> = { value: T; label: string; description: string; icon: LucideIcon }
+type Option<T> = { value: T; label: string; description: string; icon: ComponentType<{ className?: string }> }
 
 /** A radio group of cards, each with an icon, a label and a description. */
 function OptionCards<T extends string>({
@@ -317,7 +343,7 @@ function OptionCards<T extends string>({
               <Icon className="size-4" />
               {label}
             </span>
-            <span className="text-muted-foreground text-xs">{description}</span>
+            {description && <span className="text-muted-foreground text-xs">{description}</span>}
           </button>
         )
       })}

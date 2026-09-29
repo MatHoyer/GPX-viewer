@@ -14,6 +14,7 @@ import (
 type AccountService interface {
 	UpdateName(ctx context.Context, userID uuid.UUID, name string) (*domain.User, error)
 	UpdateVisibility(ctx context.Context, userID uuid.UUID, v domain.Visibility) (*domain.User, error)
+	UpdateLanguage(ctx context.Context, userID uuid.UUID, l domain.Language) (*domain.User, error)
 }
 
 type AccountHandler struct {
@@ -29,7 +30,7 @@ func (h *AccountHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if in.Name == nil && in.Visibility == nil {
+	if in.Name == nil && in.Visibility == nil && in.Language == nil {
 		writeJSON(w, http.StatusBadRequest, dto.Error{Error: "nothing to update"})
 		return
 	}
@@ -44,6 +45,12 @@ func (h *AccountHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Visibility != nil {
 		if u, err = h.svc.UpdateVisibility(r.Context(), id, domain.Visibility(*in.Visibility)); err != nil {
+			writeError(w, r, err)
+			return
+		}
+	}
+	if in.Language != nil {
+		if u, err = h.svc.UpdateLanguage(r.Context(), id, domain.Language(*in.Language)); err != nil {
 			writeError(w, r, err)
 			return
 		}

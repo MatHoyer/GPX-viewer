@@ -13,18 +13,18 @@ import { HikeActionsMenu } from '@/features/hikes/HikeActionsMenu'
 import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
 import { taggedBy } from '@/features/hikes/owner'
 import { useHikes } from '@/features/hikes/useHikes'
-import { formatDistance, formatDuration, formatElevation } from '@/lib/format'
+import { dateFormat, formatDistance, formatDuration, formatElevation } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import { addMonths, currentMonth, dayKey, formatMonthParam, monthGrid, parseMonth, type YearMonth } from './month'
 
 type DatedHike = { hike: Hike; color: string; start: Date }
 
-const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
-const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
-const dayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+const monthFormatter = () => dateFormat({ month: 'long', year: 'numeric' })
+const weekdayFormatter = () => dateFormat({ weekday: 'short' })
+const dayFormatter = () => dateFormat({ weekday: 'long', month: 'long', day: 'numeric' })
 // 2024-01-01 is a Monday; the grid starts weeks on Monday.
-const weekdays = Array.from({ length: 7 }, (_, i) => weekdayFormatter.format(new Date(2024, 0, 1 + i)))
+const weekdays = () => Array.from({ length: 7 }, (_, i) => weekdayFormatter().format(new Date(2024, 0, 1 + i)))
 
 export function CalendarPage() {
   const hikes = useHikes()
@@ -75,7 +75,7 @@ export function CalendarPage() {
       <header className="flex items-center gap-2 border-b px-2 py-2 sm:px-4">
         <SidebarTrigger />
         <h1 className="min-w-0 flex-1 truncate text-lg font-semibold capitalize">
-          {monthFormatter.format(new Date(month.year, month.month, 1))}
+          {monthFormatter().format(new Date(month.year, month.month, 1))}
         </h1>
         <p className="text-muted-foreground hidden text-sm tabular-nums sm:block">
           <MonthSummary count={inMonth.length} distance={monthDistance} elevation={monthElevation} />
@@ -100,7 +100,7 @@ export function CalendarPage() {
       )}
 
       <div className="grid grid-cols-7 border-b">
-        {weekdays.map((d) => (
+        {weekdays().map((d) => (
           <div key={d} className="text-muted-foreground px-2 py-1.5 text-center text-xs font-medium capitalize">
             {d}
           </div>
@@ -151,7 +151,7 @@ export function CalendarPage() {
                   <button
                     type="button"
                     className="absolute inset-0 sm:hidden"
-                    aria-label={`Show hikes on ${dayFormatter.format(day)}`}
+                    aria-label={`Show hikes on ${dayFormatter().format(day)}`}
                     onClick={() => document.getElementById(`day-${key}`)?.scrollIntoView({ behavior: 'smooth' })}
                   />
                 )}
@@ -207,7 +207,7 @@ function MonthAgenda({ byDay, days, loading, summary }: AgendaProps) {
             return (
               <li key={key} id={`day-${key}`} className="flex scroll-mt-2 gap-3 px-4 py-3">
                 <div className="w-9 shrink-0 text-center">
-                  <p className="text-muted-foreground text-[11px] uppercase">{weekdayFormatter.format(day)}</p>
+                  <p className="text-muted-foreground text-[11px] uppercase">{weekdayFormatter().format(day)}</p>
                   <p className="text-lg leading-tight font-semibold tabular-nums">{day.getDate()}</p>
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">

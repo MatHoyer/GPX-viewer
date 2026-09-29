@@ -1,4 +1,5 @@
 import { Activity, CalendarDays, ChartColumn, Map as MapIcon, MountainSnow, TableProperties, UsersRound } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
 import {
@@ -22,15 +23,16 @@ import { UploadDialog } from '@/features/hikes/UploadDialog'
 import { useConnections } from '@/features/social/useSocial'
 
 const views = [
-  { to: '/', label: 'Map', icon: MapIcon },
-  { to: '/hikes', label: 'Hikes', icon: TableProperties },
-  { to: '/calendar', label: 'Calendar', icon: CalendarDays },
-  { to: '/stats', label: 'Stats', icon: ChartColumn },
-  { to: '/feed', label: 'Activity', icon: Activity },
-  { to: '/friends', label: 'Friends', icon: UsersRound },
-]
+  { to: '/', label: 'map', icon: MapIcon },
+  { to: '/hikes', label: 'hikes', icon: TableProperties },
+  { to: '/calendar', label: 'calendar', icon: CalendarDays },
+  { to: '/stats', label: 'stats', icon: ChartColumn },
+  { to: '/feed', label: 'activity', icon: Activity },
+  { to: '/friends', label: 'friends', icon: UsersRound },
+] as const
 
 export function AppLayout() {
+  const { t } = useTranslation()
   return (
     <SidebarProvider>
       <Sidebar variant="inset">
@@ -44,7 +46,7 @@ export function AppLayout() {
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Views</SidebarGroupLabel>
+            <SidebarGroupLabel>{t('nav.views')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <ViewNav />
             </SidebarGroupContent>
@@ -64,6 +66,7 @@ export function AppLayout() {
 }
 
 function ViewNav() {
+  const { t } = useTranslation()
   const { pathname } = useLocation()
   const { setOpenMobile } = useSidebar()
   const requests = useConnections().data?.incoming.length ?? 0
@@ -75,11 +78,11 @@ function ViewNav() {
           <SidebarMenuButton asChild isActive={pathname === to}>
             <NavLink to={to} onClick={() => setOpenMobile(false)}>
               <Icon />
-              {label}
+              {t(`nav.${label}`)}
             </NavLink>
           </SidebarMenuButton>
           {to === '/friends' && requests > 0 && (
-            <SidebarMenuBadge aria-label={`${requests} friend requests`}>{requests}</SidebarMenuBadge>
+            <SidebarMenuBadge aria-label={t('nav.friendRequests', { count: requests })}>{requests}</SidebarMenuBadge>
           )}
         </SidebarMenuItem>
       ))}

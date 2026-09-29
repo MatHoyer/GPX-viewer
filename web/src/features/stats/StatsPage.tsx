@@ -14,7 +14,7 @@ import { FilterBar } from '@/features/hikes/FilterBar'
 import { filterHikes, useHikeFilters } from '@/features/hikes/filters'
 import { useHikes, useSummits, useTiles } from '@/features/hikes/useHikes'
 import { exploredTiles, maxSquare } from '@/features/map/tiles'
-import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
+import { dateFormat, formatDate, formatDistance, formatDuration, formatElevation, formatNumber } from '@/lib/format'
 
 import { personalRecords } from './records'
 import { firstVisit, summitsOn } from './summits'
@@ -32,7 +32,7 @@ import {
   type Totals,
 } from './stats'
 
-const tick = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 })
+const tick = { format: (v: number) => formatNumber(v, { maximumFractionDigits: 1 }) }
 
 const metrics: { value: Metric; label: string; format: (v: number) => string; axis: (v: number) => string }[] = [
   { value: 'distance', label: 'Distance', format: formatDistance, axis: (v) => `${tick.format(v / 1000)} km` },
@@ -41,9 +41,7 @@ const metrics: { value: Metric; label: string; format: (v: number) => string; ax
   { value: 'count', label: 'Hikes', format: (v) => String(v), axis: (v) => String(v) },
 ]
 
-const monthNames = Array.from({ length: 12 }, (_, i) =>
-  new Intl.DateTimeFormat(undefined, { month: 'short' }).format(new Date(2024, i, 1)),
-)
+const monthNames = () => Array.from({ length: 12 }, (_, i) => dateFormat({ month: 'short' }).format(new Date(2024, i, 1)))
 
 export function StatsPage() {
   const hikes = useHikes()
@@ -76,7 +74,7 @@ export function StatsPage() {
     () =>
       year === null
         ? yearlyTotals(shown).map((y) => ({ label: String(y.year), totals: y.totals }))
-        : monthlyTotals(shown, year).map((t, i) => ({ label: monthNames[i], totals: t })),
+        : monthlyTotals(shown, year).map((t, i) => ({ label: monthNames()[i], totals: t })),
     [shown, year],
   )
 
@@ -220,7 +218,7 @@ function Tiles({
     { label: 'Longest streak', value: `${streak} ${streak === 1 ? 'week' : 'weeks'}` },
     ...(exploration
       ? [
-          { label: 'Explored tiles', value: exploration.count.toLocaleString() },
+          { label: 'Explored tiles', value: formatNumber(exploration.count) },
           { label: 'Max square', value: exploration.square ? `${exploration.square}×${exploration.square}` : '—' },
         ]
       : []),

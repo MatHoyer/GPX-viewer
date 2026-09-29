@@ -11,11 +11,11 @@ import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import type { Hike } from '@/features/hikes/api'
 import { ApiError } from '@/lib/api'
+import { dateFormat } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import { MAX_COMMENT_LENGTH, useComments, useDeleteComment, usePostComment, type Comment } from './api'
 
-const timeFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 type Props = {
   hike: Hike
@@ -130,7 +130,7 @@ function Thread({
                 <MessageFooter className="gap-1">
                   {endsRun && (
                     <time dateTime={c.createdAt} className="font-normal">
-                      {timeFormatter.format(new Date(c.createdAt))}
+                      {dateFormat({ dateStyle: 'medium', timeStyle: 'short' }).format(new Date(c.createdAt))}
                     </time>
                   )}
                   {canDelete && (
