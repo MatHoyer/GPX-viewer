@@ -1,0 +1,30 @@
+# Production deployment on kipitiny, synced from git (project › Git).
+# Secrets are project variables set once in the kipitiny UI (project › Environment):
+# SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM.
+# Local development uses docker-compose.yml instead.
+name: gpx-viewer
+services:
+  app:
+    image: ghcr.io/mathoyer/gpx-viewer:1.2.0
+    environment:
+      DATABASE_URL: "{{ db.db.URL }}?sslmode=disable"
+      APP_URL: https://gpx.mathieuhoyer.fr
+      COOKIE_SECURE: "true"
+      MAX_UPLOAD_MB: "20"
+      REAL_IP_HEADER: CF-Connecting-IP
+      # Traefik reaches the app over a Docker network.
+      TRUSTED_PROXIES: 172.16.0.0/12
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+    expose: ["8080"]
+    x-kipitiny:
+      domain: gpx.mathieuhoyer.fr
+      health_path: /api/health
+      uptime: {path: /api/health}
+  db:
+    image: postgis/postgis:17-3.5
+    x-kipitiny:
+      kind: postgres
