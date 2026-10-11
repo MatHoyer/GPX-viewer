@@ -12,8 +12,8 @@ services:
       COOKIE_SECURE: "true"
       MAX_UPLOAD_MB: "20"
       REAL_IP_HEADER: CF-Connecting-IP
-      # Traefik reaches the app over a Docker network.
-      TRUSTED_PROXIES: 172.16.0.0/12
+      # kipitiny-proxy network, where Traefik runs.
+      TRUSTED_PROXIES: 172.19.0.0/16
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USERNAME: ${SMTP_USERNAME}
