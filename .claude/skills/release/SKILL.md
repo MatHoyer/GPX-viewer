@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a GPX-viewer release end to end - run scripts/release.sh, wait for the GHCR image, then bump the image in the homelab ops repo and push (deploys via ArgoCD).
+description: Cut a GPX-viewer release end to end - run scripts/release.sh, wait for the GHCR image, then bump the image in compose.yaml and push (kipitiny git sync deploys it).
 argument-hint: "[patch|minor|major|X.Y.Z]"
 disable-model-invocation: true
 ---
@@ -55,29 +55,34 @@ docker manifest inspect ghcr.io/mathoyer/gpx-viewer:X.Y.Z >/dev/null && echo ok
 Also check `gh release view X.Y.Z` exists; report if the Release workflow failed,
 but it doesn't block the deploy.
 
-## 4. Bump the homelab ops repo
+## 4. Bump compose.yaml
 
-Repo: `~/work/homelab/ops` (origin `git.mathieuhoyer.fr/homelab/ops`). ArgoCD
-auto-syncs `main`, so the push is the prod deploy.
+Prod runs on kipitiny (`manager.mathieuhoyer.fr`, project `gpx-viewer`),
+linked to `compose.yaml` on `main`. Pin the tag only now that the image
+exists, so a sync never asks for a missing image.
 
 ```bash
-cd ~/work/homelab/ops
 git status --porcelain            # must be empty, else stop
-git checkout main && git pull --ff-only
+git pull --ff-only
 ```
 
-Edit `clusters/homelab/infrastructure/gpx-viewer/deployment.yaml`: change the
-`image: ghcr.io/mathoyer/gpx-viewer:<old>` line to `:X.Y.Z` (pinned exact
-version, never `latest`). Verify with `git diff` that only that line changed.
+Edit `compose.yaml`: change the `image: ghcr.io/mathoyer/gpx-viewer:<old>`
+line to `:X.Y.Z` (pinned exact version, never `latest`). Verify with
+`git diff` that only that line changed.
 
 ```bash
-git commit -am "chore(gpx-viewer): bump image to X.Y.Z"
+git commit -am "chore(deploy): run X.Y.Z on kipitiny"
 git push origin main
 ```
 
 No AI attribution in the commit.
 
+kipitiny polls the branch every 5 min. To deploy at once, call the kipitiny
+MCP `sync_project_git` (project `gpx-viewer`), then check
+`get_app_status` for `gpx-viewer/app`. If the MCP isn't available, let the
+poll pick it up.
+
 ## 5. Report
 
-One short summary: version, GitHub release URL, image tag, ops commit hash.
-ArgoCD syncs within ~3 min (`argocd app sync gpx-viewer` to force).
+One short summary: version, GitHub release URL, image tag, deploy commit
+hash, and the kipitiny deployment status.
