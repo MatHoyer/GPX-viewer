@@ -8,7 +8,7 @@ services:
     image: ghcr.io/mathoyer/gpx-viewer:1.2.0
     environment:
       DATABASE_URL: "{{ db.db.URL }}?sslmode=disable"
-      APP_URL: https://gpx.mathieuhoyer.fr
+      APP_URL: "{{ app.app.URL }}"
       COOKIE_SECURE: "true"
       MAX_UPLOAD_MB: "20"
       REAL_IP_HEADER: CF-Connecting-IP
