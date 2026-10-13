@@ -1,0 +1,117 @@
+name: Preview
+
+# One kipitiny preview per stack of pull requests: only the top PR of a stack
+# builds and deploys, into a preview named after the bottom PR, at
+# gpx-pr-<bottom>.mathieuhoyer.fr: a stack of five PRs is one preview, and a
+# rebase of the stack one deploy. A new preview starts from production's latest
+# backup; email is off (preview settings), so it never mails real users.
+# Closing the bottom PR (e.g. merging the whole stack) closes the preview.
+# See https://kipitiny.mathieuhoyer.fr/docs/previews
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, closed]
+
+env:
+  KIPITINY_URL: https://manager.mathieuhoyer.fr
+  KIPITINY_IMAGE: ghcr.io/mathoyer/kipitiny:0.29.0
+  # Lowercase: github.repository is MatHoyer/GPX-viewer, invalid in an image name.
+  IMAGE: ghcr.io/mathoyer/gpx-viewer
+
+jobs:
+  plan:
+    name: Plan
+    # Forks get no secrets.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      deploy: ${{ steps.stack.outputs.deploy }}
+      name: ${{ steps.stack.outputs.name }}
+    steps:
+      - id: stack
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          MAIN: ${{ github.event.repository.default_branch }}
+        run: |
+          # The bottom of the stack: follow the bases down to the default branch.
+          root=$PR base=$BASE
+          while [ "$base" != "$MAIN" ]; do
+            below=$(gh pr list --head "$base" --state open --json number,baseRefName --jq '.[0] // empty')
+            [ -z "$below" ] && break
+            root=$(jq -r .number <<<"$below") base=$(jq -r .baseRefName <<<"$below")
+          done
+          # The top of the stack: no open PR is based on this branch.
+          above=$(gh pr list --base "$HEAD" --state open --json number --jq length)
+          echo "name=gpx-pr-$root" >> "$GITHUB_OUTPUT"
+          echo "deploy=$([ "$above" = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "gpx-pr-$root, top of stack: $([ "$above" = 0 ] && echo yes || echo no)"
+
+  deploy:
+    name: Deploy
+    needs: plan
+    # edited: only a new base (a restacked PR), not a new title.
+    if: >
+      github.event.action != 'closed' && needs.plan.outputs.deploy == 'true' &&
+      (github.event.action != 'edited' || github.event.changes.base)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    # One deploy per stack at a time: a rebase of the whole stack ends in one.
+    concurrency:
+      group: preview-${{ needs.plan.outputs.name }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Same cache as CI's Docker job, so this is mostly a push.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE }}:sha-${{ github.event.pull_request.head.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy preview
+        env:
+          KIPITINY_TOKEN: ${{ secrets.KIPITINY_TOKEN }}
+          NAME: ${{ needs.plan.outputs.name }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: >
+          docker run --rm -e KIPITINY_TOKEN "$KIPITINY_IMAGE" preview
+          --url "$KIPITINY_URL" --project gpx-viewer --name "$NAME"
+          --tag "app=sha-$SHA" --branch "$BRANCH" --commit "$SHA" --seed
+
+  close:
+    name: Close
+    needs: plan
+    # The bottom PR closing (merged or not) ends the stack's preview.
+    if: >
+      github.event.action == 'closed' &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close preview
+        env:
+          KIPITINY_TOKEN: ${{ secrets.KIPITINY_TOKEN }}
+          NAME: gpx-pr-${{ github.event.pull_request.number }}
+        run: >
+          docker run --rm -e KIPITINY_TOKEN "$KIPITINY_IMAGE" preview
+          --url "$KIPITINY_URL" --project gpx-viewer --name "$NAME" --close
