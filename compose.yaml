@@ -23,7 +23,6 @@ services:
     x-kipitiny:
       domain: gpx.mathieuhoyer.fr
       health_path: /api/health
-      uptime: {path: /api/health}
   db:
     image: postgis/postgis:17-3.6-alpine
     x-kipitiny:
