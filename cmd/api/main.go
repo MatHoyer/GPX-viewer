@@ -16,6 +16,7 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/domain"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/gpx"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/ogimage"
+	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/openmeteo"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/overpass"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/postgres"
 	"github.com/MatHoyer/gpx-viewer/internal/infrastructure/security"
@@ -27,6 +28,7 @@ import (
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/interaction"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/social"
 	"github.com/MatHoyer/gpx-viewer/internal/usecase/summit"
+	"github.com/MatHoyer/gpx-viewer/internal/usecase/weather"
 	"github.com/MatHoyer/gpx-viewer/web"
 )
 
@@ -95,6 +97,12 @@ func run() error {
 
 	go purgeExpired(ctx, authSvc)
 	go refreshDerived(ctx, hikeSvc)
+	if cfg.WeatherURL != "" {
+		weatherSvc := weather.NewService(postgres.NewWeatherRepository(db), gpx.NewParser(), openmeteo.NewClient(cfg.WeatherURL))
+		go fetchWeather(ctx, weatherSvc)
+	} else {
+		slog.Info("WEATHER_URL is empty: hikes get no weather")
+	}
 
 	router := httpdelivery.NewRouter(httpdelivery.Deps{
 		Auth:           handler.NewAuthHandler(authSvc, cfg.CookieSecure),
@@ -146,6 +154,29 @@ func refreshDerived(ctx context.Context, svc *hike.Service) {
 	}
 	if n > 0 {
 		slog.Info("refreshed derived hike stats", "hikes", n)
+	}
+}
+
+// fetchWeather fills in the weather of finished hikes, a batch at a time.
+func fetchWeather(ctx context.Context, svc *weather.Service) {
+	for {
+		n, err := svc.Fetch(ctx)
+		if err != nil && ctx.Err() == nil {
+			slog.Warn("fetch hike weather", "err", err)
+		}
+		if n > 0 {
+			slog.Info("fetched hike weather", "hikes", n)
+		}
+		// A full batch means more are waiting, e.g. while backfilling.
+		wait := 10 * time.Minute
+		if err == nil && n == weather.BatchSize {
+			wait = 10 * time.Second
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
+		}
 	}
 }
 

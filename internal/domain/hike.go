@@ -66,10 +66,13 @@ type Hike struct {
 	// DerivedVersion is the version of the code that computed HikeDerived;
 	// hikes below the current version are recomputed in the background.
 	DerivedVersion int
-	Segments       []Segment
-	Bounds         Bounds
-	RawGPX         []byte
-	CreatedAt      time.Time
+	// Weather is hourly along the track; empty until fetched in the
+	// background, and for hikes without timestamps.
+	Weather   []WeatherHour
+	Segments  []Segment
+	Bounds    Bounds
+	RawGPX    []byte
+	CreatedAt time.Time
 	// Owner is loaded by list and single-hike reads.
 	Owner *User
 	// Participants are the friends the owner tagged. Loaded by list and single-hike reads.

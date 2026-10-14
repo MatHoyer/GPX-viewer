@@ -145,14 +145,17 @@ type HikeModel struct {
 	MinEleM        *float64              `gorm:"type:double precision"`
 	MaxEleM        *float64              `gorm:"type:double precision"`
 	MovingS        *int64
-	DerivedVersion int              `gorm:"not null;default:0;index"`
-	MinLon         float64          `gorm:"type:double precision;not null"`
-	MinLat         float64          `gorm:"type:double precision;not null"`
-	MaxLon         float64          `gorm:"type:double precision;not null"`
-	MaxLat         float64          `gorm:"type:double precision;not null"`
-	Geom           MultiLineStringZ `gorm:"type:geometry(MultiLineStringZ,4326);not null;index:idx_hikes_geom,type:gist"`
-	GPXRaw         []byte           `gorm:"column:gpx_raw;type:bytea"`
-	CreatedAt      time.Time        `gorm:"not null"`
+	DerivedVersion int                  `gorm:"not null;default:0;index"`
+	Weather        []domain.WeatherHour `gorm:"type:jsonb;serializer:json"`
+	// WeatherAt is when weather was fetched; null until then.
+	WeatherAt *time.Time
+	MinLon    float64          `gorm:"type:double precision;not null"`
+	MinLat    float64          `gorm:"type:double precision;not null"`
+	MaxLon    float64          `gorm:"type:double precision;not null"`
+	MaxLat    float64          `gorm:"type:double precision;not null"`
+	Geom      MultiLineStringZ `gorm:"type:geometry(MultiLineStringZ,4326);not null;index:idx_hikes_geom,type:gist"`
+	GPXRaw    []byte           `gorm:"column:gpx_raw;type:bytea"`
+	CreatedAt time.Time        `gorm:"not null"`
 }
 
 func (HikeModel) TableName() string { return "hikes" }
@@ -239,6 +242,7 @@ func (m HikeModel) toDomain() domain.Hike {
 			BestEfforts:    bestEffortsToDomain(m.BestEfforts),
 		},
 		DerivedVersion: m.DerivedVersion,
+		Weather:        m.Weather,
 		Bounds:         domain.Bounds{MinLon: m.MinLon, MinLat: m.MinLat, MaxLon: m.MaxLon, MaxLat: m.MaxLat},
 		RawGPX:         m.GPXRaw,
 		CreatedAt:      m.CreatedAt,

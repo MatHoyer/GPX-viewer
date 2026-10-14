@@ -159,6 +159,10 @@ type Hike struct {
 	MaxEleM        *float64     `json:"maxEleM"`
 	MovingS        *int64       `json:"movingS"`
 	BestEfforts    []BestEffort `json:"bestEfforts"`
+	// Weather is null until fetched, and for hikes without timestamps.
+	Weather *WeatherSummary `json:"weather"`
+	// WeatherHours is set on single-hike reads.
+	WeatherHours []domain.WeatherHour `json:"weatherHours,omitempty"`
 	// Bounds is [minLon, minLat, maxLon, maxLat].
 	Bounds    [4]float64 `json:"bounds"`
 	CreatedAt time.Time  `json:"createdAt"`
@@ -197,10 +201,30 @@ func NewHike(h *domain.Hike) Hike {
 		MaxEleM:        h.MaxEleM,
 		MovingS:        h.MovingS,
 		BestEfforts:    NewBestEfforts(h.BestEfforts),
+		Weather:        newWeatherSummary(h.Weather),
 		Bounds:         [4]float64{h.Bounds.MinLon, h.Bounds.MinLat, h.Bounds.MaxLon, h.Bounds.MaxLat},
 		CreatedAt:      h.CreatedAt,
 		Participants:   NewPublicUsers(h.Participants),
 	}
+}
+
+type WeatherSummary struct {
+	MinTempC   float64 `json:"minTempC"`
+	MaxTempC   float64 `json:"maxTempC"`
+	PrecipMM   float64 `json:"precipMM"`
+	SnowCM     float64 `json:"snowCM"`
+	MaxWindKmh float64 `json:"maxWindKmh"`
+	MaxGustKmh float64 `json:"maxGustKmh"`
+	Code       int     `json:"code"`
+}
+
+func newWeatherSummary(hours []domain.WeatherHour) *WeatherSummary {
+	s := domain.SummarizeWeather(hours)
+	if s == nil {
+		return nil
+	}
+	w := WeatherSummary(*s)
+	return &w
 }
 
 type BestEffort struct {

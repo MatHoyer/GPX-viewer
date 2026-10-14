@@ -148,6 +148,7 @@ Adding a feature usually means: an entity/port in `domain`, a service in `usecas
 | `APP_URL` | `http://localhost:$PORT` | public URL, used in emailed links, canonical and Open Graph links, and the sitemap |
 | `REAL_IP_HEADER` | empty | header a reverse proxy sets to the client IP, e.g. `CF-Connecting-IP`, `X-Real-IP` or `X-Forwarded-For` (read right to left, past the trusted proxies) |
 | `TRUSTED_PROXIES` | empty | comma-separated IPs or CIDRs allowed to set `REAL_IP_HEADER`; required with it |
+| `WEATHER_URL` | `https://archive-api.open-meteo.com/v1/archive` | Open-Meteo historical API; hikes with timestamps get hourly weather along the track a day after they end. Set empty for no outbound calls |
 | `SMTP_HOST` | empty | mail server; without it email is off (see Self-hosting) |
 | `SMTP_PORT` | `587` | `465` uses implicit TLS, other ports STARTTLS when offered |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | empty | no auth when empty; never sent unencrypted except to localhost |
