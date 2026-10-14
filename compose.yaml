@@ -5,7 +5,7 @@
 name: gpx-viewer
 services:
   app:
-    image: ghcr.io/mathoyer/gpx-viewer:1.2.1
+    image: ghcr.io/mathoyer/gpx-viewer:1.3.0
     environment:
       DATABASE_URL: "{{ db.db.URL }}?sslmode=disable"
       APP_URL: "{{ app.app.URL }}"
