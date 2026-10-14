@@ -1,4 +1,4 @@
-import { Box, Flame, Grid3x3, Layers, Map as MapIcon, Mountain, Satellite } from 'lucide-react'
+import { Box, CloudRain, Flame, Grid3x3, Layers, Map as MapIcon, Mountain, Satellite } from 'lucide-react'
 import type { ExpressionSpecification, SkySpecification } from 'maplibre-gl'
 import { useTheme } from 'next-themes'
 import { forwardRef, useEffect, useRef, type ComponentProps } from 'react'
@@ -51,10 +51,12 @@ type Props = Omit<ComponentProps<typeof Map>, 'styles'> & {
   heatmapToggle?: boolean
   /** Offer the explored tiles toggle; the caller draws the tiles itself. */
   tilesToggle?: boolean
+  /** Offer the weather toggle; the caller draws the weather itself. */
+  weatherToggle?: boolean
 }
 
 /** Map with a switchable background (streets, topo, satellite) and optional 3D terrain. */
-export const LayeredMap = forwardRef<MapRef, Props>(function LayeredMap({ children, heatmapToggle = false, tilesToggle = false, ...props }, ref) {
+export const LayeredMap = forwardRef<MapRef, Props>(function LayeredMap({ children, heatmapToggle = false, tilesToggle = false, weatherToggle = false, ...props }, ref) {
   const basemap = useMapView((s) => s.basemap)
   const terrain = useMapView((s) => s.terrain)
 
@@ -68,7 +70,7 @@ export const LayeredMap = forwardRef<MapRef, Props>(function LayeredMap({ childr
     >
       <Terrain enabled={terrain} />
       <LocalizedLabels />
-      <LayersControl heatmapToggle={heatmapToggle} tilesToggle={tilesToggle} />
+      <LayersControl heatmapToggle={heatmapToggle} tilesToggle={tilesToggle} weatherToggle={weatherToggle} />
       {children}
     </Map>
   )
@@ -130,9 +132,9 @@ const basemaps: { value: Basemap; icon: typeof MapIcon }[] = [
   { value: 'satellite', icon: Satellite },
 ]
 
-function LayersControl({ heatmapToggle, tilesToggle }: { heatmapToggle: boolean; tilesToggle: boolean }) {
+function LayersControl({ heatmapToggle, tilesToggle, weatherToggle }: { heatmapToggle: boolean; tilesToggle: boolean; weatherToggle: boolean }) {
   const { t } = useTranslation()
-  const { basemap, terrain, heatmap, tiles, setBasemap, setTerrain, setHeatmap, setTiles } = useMapView()
+  const { basemap, terrain, heatmap, tiles, weather, setBasemap, setTerrain, setHeatmap, setTiles, setWeather } = useMapView()
 
   return (
     <div className="absolute top-2 right-2 z-10">
@@ -171,6 +173,12 @@ function LayersControl({ heatmapToggle, tilesToggle }: { heatmapToggle: boolean;
             <DropdownMenuCheckboxItem checked={tiles} onCheckedChange={(c) => setTiles(c === true)}>
               <Grid3x3 />
               {t('stats.exploredTiles')}
+            </DropdownMenuCheckboxItem>
+          )}
+          {weatherToggle && (
+            <DropdownMenuCheckboxItem checked={weather} onCheckedChange={(c) => setWeather(c === true)}>
+              <CloudRain />
+              {t('map.weather')}
             </DropdownMenuCheckboxItem>
           )}
         </DropdownMenuContent>

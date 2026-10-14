@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { MapControls, MapMarker, MapRoute, MarkerContent, useMap } from '@/components/ui/map'
 import { FitBounds } from '@/features/hikes/FitBounds'
+import type { WeatherHour } from '@/features/hikes/weather'
 import type { Peak } from '@/features/stats/summits'
 import { formatElevation } from '@/lib/format'
 import { basemapStyles, DEM_SOURCE_ID, demSource, useMapView } from '@/features/map/basemaps'
@@ -11,6 +12,7 @@ import { LayeredMap } from '@/features/map/LayeredMap'
 
 import { boundsBetween, linesBetween, positionAt, type Profile } from './profile'
 import { useReplay } from './store'
+import { PrecipitationOverlay, useTrackWeather, WeatherBadge, weatherAt, WeatherTrack, type TrackWeather } from './WeatherLayers'
 import { sunAtIndex, sunTint } from './sun'
 
 const TRACK_COLOR = '#2e86ab'
@@ -21,19 +23,25 @@ type Props = {
   peaks?: Peak[]
   /** Start of a walked hike: the map is lit by the sun as it stood at the replay position. */
   startedAt?: string | null
+  weatherHours?: WeatherHour[]
 }
 
-export function ReplayMap({ profile, peaks = [], startedAt = null }: Props) {
+export function ReplayMap({ profile, peaks = [], startedAt = null, weatherHours }: Props) {
   const fullLines = useMemo(() => linesBetween(profile, 0, profile.lon.length - 1), [profile])
+  const trackWeather = useTrackWeather(profile, startedAt, weatherHours)
+  const showWeather = useMapView((s) => s.weather)
+  const weather = showWeather ? trackWeather : null
 
   return (
-    <LayeredMap className="size-full" center={positionAt(profile, 0)} zoom={12}>
+    <LayeredMap className="size-full" center={positionAt(profile, 0)} zoom={12} weatherToggle={trackWeather !== null}>
       <MapControls position="bottom-right" showZoom showCompass showFullscreen />
       <ZoomToRange profile={profile} />
       <SunLighting profile={profile} startedAt={startedAt} />
       {fullLines.map((line, i) => (
         <MapRoute key={i} id={`track-${i}`} coordinates={line} color={TRACK_COLOR} width={4} opacity={0.35} interactive={false} />
       ))}
+      {weather && <WeatherTrack profile={profile} weather={weather} />}
+      {weather && <ReplayPrecipitation weather={weather} />}
       <RangeRoute profile={profile} />
       <TraveledRoute profile={profile} />
       <StartEndMarkers profile={profile} />
@@ -48,7 +56,7 @@ export function ReplayMap({ profile, peaks = [], startedAt = null }: Props) {
         </MapMarker>
       ))}
       <HoverMarker profile={profile} />
-      <HeadMarker profile={profile} />
+      <HeadMarker profile={profile} weather={weather} />
       <FollowCamera profile={profile} />
     </LayeredMap>
   )
@@ -98,13 +106,27 @@ function StartEndMarkers({ profile }: { profile: Profile }) {
   )
 }
 
-function HeadMarker({ profile }: { profile: Profile }) {
+/** Whether a replay is under way: playing, or paused away from the start. */
+function useReplaying() {
+  const playing = useReplay((s) => s.playing)
   const pos = useReplay((s) => s.pos)
+  return playing || pos > 0
+}
+
+function ReplayPrecipitation({ weather }: { weather: TrackWeather }) {
+  const pos = useReplay((s) => s.pos)
+  return <PrecipitationOverlay hour={useReplaying() ? weatherAt(weather, pos) : null} />
+}
+
+function HeadMarker({ profile, weather }: { profile: Profile; weather: TrackWeather | null }) {
+  const pos = useReplay((s) => s.pos)
+  const replaying = useReplaying()
   const [lon, lat] = positionAt(profile, pos)
   return (
     <MapMarker longitude={lon} latitude={lat}>
       <MarkerContent>
         <span className="relative flex size-4">
+          {weather && replaying && <WeatherBadge hour={weatherAt(weather, pos)} />}
           <span className="absolute inline-flex size-full animate-ping rounded-full opacity-50" style={{ backgroundColor: HEAD_COLOR }} />
           <span className="relative inline-flex size-4 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: HEAD_COLOR }} />
         </span>

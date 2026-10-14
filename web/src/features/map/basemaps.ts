@@ -54,10 +54,13 @@ type MapViewState = {
   heatmap: boolean
   /** Explored tiles on the user's own map. */
   tiles: boolean
+  /** Weather along the track, and its rain or snow during a replay. */
+  weather: boolean
   setBasemap: (basemap: Basemap) => void
   setTerrain: (terrain: boolean) => void
   setHeatmap: (heatmap: boolean) => void
   setTiles: (tiles: boolean) => void
+  setWeather: (weather: boolean) => void
 }
 
 // localStorage can throw (private mode, blocked storage); fall back to in-memory.
@@ -84,15 +87,17 @@ export const useMapView = create<MapViewState>()(
       terrain: false,
       heatmap: false,
       tiles: false,
+      weather: true,
       setBasemap: (basemap) => set({ basemap }),
       setTerrain: (terrain) => set({ terrain }),
       setHeatmap: (heatmap) => set({ heatmap }),
       setTiles: (tiles) => set({ tiles }),
+      setWeather: (weather) => set({ weather }),
     }),
     {
       name: 'map-view',
       storage: safeStorage,
-      partialize: ({ basemap, terrain, heatmap, tiles }) => ({ basemap, terrain, heatmap, tiles }),
+      partialize: ({ basemap, terrain, heatmap, tiles, weather }) => ({ basemap, terrain, heatmap, tiles, weather }),
     },
   ),
 )

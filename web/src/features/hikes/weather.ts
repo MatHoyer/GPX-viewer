@@ -88,7 +88,7 @@ export function weatherDetails(w: WeatherSummary): string {
   return [
     conditionLabel(conditionOf(w.code)),
     w.snowCM >= 0.5 ? t('weather.snowAmount', { value: formatNumber(Math.round(w.snowCM)) }) : null,
-    w.precipMM >= 0.5 && w.snowCM < 0.5 ? t('weather.rainAmount', { value: formatNumber(Math.round(w.precipMM)) }) : null,
+    w.precipMM >= 0.5 ? t('weather.rainAmount', { value: formatNumber(Math.round(w.precipMM)) }) : null,
     w.maxGustKmh >= 30 ? t('weather.gusts', { value: formatNumber(Math.round(w.maxGustKmh)) }) : null,
   ]
     .filter(Boolean)
@@ -100,11 +100,11 @@ export function weatherDetails(w: WeatherSummary): string {
  * fraction of the way to row k + 1. The profile's times are seconds since
  * startedAt; points without a time keep the previous place.
  */
-export function hourPlaces(t: (number | null)[] | undefined, startedAt: string | null, hours: WeatherHour[] | undefined) {
+export function hourPlaces(t: (number | null)[] | undefined, startedAt: string | null, hours: WeatherHour[] | undefined): HourPlace[] | null {
   if (!t || !startedAt || !hours?.length) return null
   const t0 = new Date(startedAt).getTime()
   const times = hours.map((h) => new Date(h.time).getTime())
-  const out: { k: number; f: number }[] = []
+  const out: HourPlace[] = []
   let k = 0
   let prev = { k: 0, f: 0 }
   for (const s of t) {
@@ -120,10 +120,36 @@ export function hourPlaces(t: (number | null)[] | undefined, startedAt: string |
 }
 
 /** Air temperature at each profile point, interpolated between hours. */
-export function airTemps(places: { k: number; f: number }[], hours: WeatherHour[]): number[] {
+export function airTemps(places: HourPlace[], hours: WeatherHour[]): number[] {
   return places.map(({ k, f }) => {
     const a = hours[k].tempC
     const b = hours[k + 1]?.tempC ?? a
     return a + (b - a) * f
   })
+}
+
+export type HourPlace = { k: number; f: number }
+
+/** Map colors of the conditions shaded along a track; the others are left plain. */
+export const conditionColors: Partial<Record<Condition, string>> = {
+  fog: '#94a3b8',
+  drizzle: '#7dd3fc',
+  rain: '#3b82f6',
+  heavyRain: '#1e3a8a',
+  snow: '#e879f9',
+  storm: '#f59e0b',
+}
+
+export type ConditionRun = { from: number; to: number; condition: Condition }
+
+/** Stretches of points, by index, walked in a shaded condition; each ends where the next point starts so runs meet. */
+export function conditionRuns(places: HourPlace[], hours: WeatherHour[]): ConditionRun[] {
+  const runs: ConditionRun[] = []
+  places.forEach(({ k }, i) => {
+    const condition = conditionOf(hours[k].code)
+    const last = runs.at(-1)
+    if (last && last.condition === condition && last.to === i) last.to = Math.min(i + 1, places.length - 1)
+    else if (conditionColors[condition]) runs.push({ from: i, to: Math.min(i + 1, places.length - 1), condition })
+  })
+  return runs.filter((r) => r.to > r.from)
 }
