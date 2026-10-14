@@ -1,5 +1,5 @@
 import { Box, Flame, Grid3x3, Layers, Map as MapIcon, Mountain, Satellite } from 'lucide-react'
-import type { SkySpecification } from 'maplibre-gl'
+import type { ExpressionSpecification, SkySpecification } from 'maplibre-gl'
 import { useTheme } from 'next-themes'
 import { forwardRef, useEffect, useRef, type ComponentProps } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -67,6 +67,7 @@ export const LayeredMap = forwardRef<MapRef, Props>(function LayeredMap({ childr
       {...props}
     >
       <Terrain enabled={terrain} />
+      <LocalizedLabels />
       <LayersControl heatmapToggle={heatmapToggle} tilesToggle={tilesToggle} />
       {children}
     </Map>
@@ -98,6 +99,26 @@ function Terrain({ enabled }: { enabled: boolean }) {
     previous.current = enabled
     map.easeTo({ pitch: enabled ? TERRAIN_PITCH : 0, duration: 800 })
   }, [map, enabled])
+
+  return null
+}
+
+/** Shows place names in the app's language where the street tiles have them, else the local name. */
+function LocalizedLabels() {
+  const { map, isLoaded } = useMap()
+  const { i18n } = useTranslation()
+  const lang = i18n.resolvedLanguage ?? i18n.language
+
+  useEffect(() => {
+    if (!map || !isLoaded) return
+    const field: ExpressionSpecification = ['coalesce', ['get', `name:${lang}`], ['get', 'name']]
+    for (const layer of map.getStyle().layers) {
+      if (layer.type !== 'symbol') continue
+      // Only name labels: keeps house numbers and our own cluster counts as they are.
+      if (!/name/.test(JSON.stringify(layer.layout?.['text-field'] ?? ''))) continue
+      map.setLayoutProperty(layer.id, 'text-field', field)
+    }
+  }, [map, isLoaded, lang])
 
   return null
 }

@@ -7,6 +7,8 @@ export type Basemap = 'streets' | 'topo' | 'satellite'
 function rasterStyle(id: string, tiles: string, attribution: string, maxzoom: number): StyleSpecification {
   return {
     version: 8,
+    // Fonts for our own labels (cluster counts); raster tiles bring none.
+    glyphs: 'https://tiles.basemaps.cartocdn.com/fonts/{fontstack}/{range}.pbf',
     sources: { [id]: { type: 'raster', tiles: [tiles], tileSize: 256, maxzoom, attribution } },
     layers: [{ id, type: 'raster', source: id }],
   }
