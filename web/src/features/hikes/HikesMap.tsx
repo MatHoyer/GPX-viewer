@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 
 import { MapControls, MapRoute, useMap } from '@/components/ui/map'
 import { useMapView } from '@/features/map/basemaps'
+import { ClustersLayer } from '@/features/map/ClustersLayer'
 import { HeatmapLayer } from '@/features/map/HeatmapLayer'
 import { exploredTiles, maxSquare } from '@/features/map/tiles'
 import { TilesLayer } from '@/features/map/TilesLayer'
@@ -49,6 +50,21 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
     [tracks, planned],
   )
 
+  // Walked hikes only, at the middle of their bounds.
+  const points = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>>(
+    () => ({
+      type: 'FeatureCollection',
+      features: hikes
+        .filter((h) => !h.planned)
+        .map(({ id, bounds: [w, s, e, n] }) => ({
+          type: 'Feature',
+          properties: { id },
+          geometry: { type: 'Point', coordinates: [(w + e) / 2, (s + n) / 2] },
+        })),
+    }),
+    [hikes],
+  )
+
   // Two fits: all hikes when the list changes (e.g. filters), and the selected
   // hike when one is picked. Unselecting keeps the view where it is.
   const allBounds = useMemo(() => unionBounds(hikes.map((h) => h.bounds)), [hikes])
@@ -85,6 +101,7 @@ export function HikesMap({ hikes, colorFrom, userId, tracks, selectedId, hovered
           />
         ))
       })}
+      {!heatmap && <ClustersLayer points={points} onPointClick={onRouteClick} />}
       {popup && popupHike && (
         <HikePopup
           key={popup.nonce}
