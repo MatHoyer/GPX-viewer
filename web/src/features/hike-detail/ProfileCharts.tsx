@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { airTemps, hourPlaces, type WeatherHour } from '@/features/hikes/weather'
 
 import { ChartOverlay } from './ChartOverlay'
 import { ChartValue } from './ChartValue'
@@ -14,8 +15,10 @@ import { buildSeries, type SpeedUnit } from './series'
 import { useReplay, visibleSpan } from './store'
 import { lightBands } from './sun'
 
-/** startedAt places the profile's relative times in the day, to shade night. */
-export function ProfileCharts({ profile, startedAt }: { profile: Profile; startedAt: string | null }) {
+type Props = { profile: Profile; startedAt: string | null; weatherHours?: WeatherHour[] }
+
+/** startedAt places the profile's relative times in the day, to shade night and match the weather's hours. */
+export function ProfileCharts({ profile, startedAt, weatherHours }: Props) {
   const { t, i18n } = useTranslation()
   const axis = useReplay((s) => s.axis)
   const range = useReplay((s) => s.range)
@@ -23,9 +26,13 @@ export function ProfileCharts({ profile, startedAt }: { profile: Profile; starte
   const [speedUnit, setSpeedUnit] = useState<SpeedUnit>('kmh')
 
   const xs = useMemo(() => xValues(profile, axis), [profile, axis])
+  const airTemp = useMemo(() => {
+    const places = hourPlaces(profile.t, startedAt, weatherHours)
+    return places && weatherHours ? airTemps(places, weatherHours) : undefined
+  }, [profile, startedAt, weatherHours])
   // Labels and units follow the language.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const series = useMemo(() => buildSeries(profile, speedUnit), [profile, speedUnit, i18n.language])
+  const series = useMemo(() => buildSeries(profile, speedUnit, airTemp), [profile, speedUnit, airTemp, i18n.language])
   const bands = useMemo(() => lightBands(profile, startedAt), [profile, startedAt])
   const [lo, hi] = visibleSpan({ range, count })
   const domain = useMemo<[number, number]>(() => [xAt(xs, lo), xAt(xs, hi)], [xs, lo, hi])

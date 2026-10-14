@@ -19,7 +19,8 @@ export type SeriesDef = {
 const round = (v: number, digits = 0) => formatNumber(v, { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
 /** Chart series available for a profile, in display order. */
-export function buildSeries(p: Profile, speedUnit: SpeedUnit): SeriesDef[] {
+/** airTemp is the weather's temperature at each point, when known. */
+export function buildSeries(p: Profile, speedUnit: SpeedUnit, airTemp?: Series): SeriesDef[] {
   const t = i18n.t
   const out: SeriesDef[] = []
   if (p.has.ele && p.ele) {
@@ -40,6 +41,9 @@ export function buildSeries(p: Profile, speedUnit: SpeedUnit): SeriesDef[] {
   }
   if (p.has.temp && p.temp) {
     out.push({ key: 'temp', label: t('series.temperature'), color: 'var(--chart-temp)', kind: 'line', values: p.temp, format: (v) => `${round(v, 1)} °C` })
+  }
+  if (airTemp) {
+    out.push({ key: 'air', label: t('series.airTemperature'), color: 'var(--chart-air)', kind: 'line', values: airTemp, format: (v) => `${round(v, 1)} °C` })
   }
   return out
 }

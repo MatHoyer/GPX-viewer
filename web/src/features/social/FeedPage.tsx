@@ -9,6 +9,7 @@ import { displayName } from '@/features/account/displayName'
 import { UserAvatar } from '@/features/account/UserAvatar'
 import { useMe } from '@/features/auth/useAuth'
 import type { Hike } from '@/features/hikes/api'
+import { conditionIcons, conditionLabel, conditionOf, tempRange, weatherDetails } from '@/features/hikes/weather'
 import { KudosButton } from '@/features/interactions/KudosButton'
 import { api } from '@/lib/api'
 import { formatDate, formatDistance, formatDuration, formatElevation } from '@/lib/format'
@@ -73,6 +74,7 @@ function FeedCard({ hike, viewerId }: { hike: Hike; viewerId: string | undefined
     t('hike.gainValue', { value: formatElevation(hike.elevationGainM) }),
     hike.durationS > 0 ? formatDuration(hike.movingS ?? hike.durationS) : null,
   ].filter(Boolean)
+  const WeatherIcon = hike.weather && conditionIcons[conditionOf(hike.weather.code)]
 
   return (
     <article className="bg-card space-y-2 rounded-xl border p-4">
@@ -88,7 +90,14 @@ function FeedCard({ hike, viewerId }: { hike: Hike; viewerId: string | undefined
       <Link to={`/hikes/${hike.id}`} className="block text-base font-semibold hover:underline">
         {hike.name}
       </Link>
-      <p className="text-muted-foreground text-sm tabular-nums">{stats.join(' · ')}</p>
+      <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-sm tabular-nums">
+        {stats.join(' · ')}
+        {hike.weather && WeatherIcon && (
+          <span className="inline-flex items-center gap-1" title={weatherDetails(hike.weather)}>
+            · <WeatherIcon className="size-4" aria-label={conditionLabel(conditionOf(hike.weather.code))} /> {tempRange(hike.weather)}
+          </span>
+        )}
+      </p>
       {(taggedMe || others.length > 0) && (
         <p className="text-muted-foreground text-xs">
           {others.length === 0

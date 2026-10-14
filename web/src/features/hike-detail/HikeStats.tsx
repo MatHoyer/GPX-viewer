@@ -1,13 +1,15 @@
+import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { estimateNote, estimatedDurationS } from '@/features/hikes/estimate'
+import { conditionIcons, conditionOf, tempRange, weatherDetails, type WeatherSummary } from '@/features/hikes/weather'
 import i18n from '@/i18n'
 import { formatDistance, formatDuration, formatElevation, formatNumber, formatTime } from '@/lib/format'
 
 import type { ProfileSummary } from './profile'
 import { daylightAt } from './sun'
 
-type Stat = { label: string; value: string; hint?: string }
+type Stat = { label: string; value: string; hint?: string; icon?: LucideIcon }
 
 type Props = {
   summary: ProfileSummary
@@ -17,6 +19,7 @@ type Props = {
   start?: [number, number]
   /** The hike's own time zone; the viewer's when undefined. */
   timeZone?: string
+  weather?: WeatherSummary | null
 }
 
 /** Sunrise and sunset where and when a walked hike started. */
@@ -33,7 +36,7 @@ function daylightStat(startedAt: string, [lon, lat]: [number, number], timeZone?
 }
 
 /** A planned route has no times of its own, so its duration is estimated from its distance. */
-export function HikeStats({ summary, planned = false, startedAt = null, start, timeZone }: Props) {
+export function HikeStats({ summary, planned = false, startedAt = null, start, timeZone, weather }: Props) {
   const { t } = useTranslation()
   const s = summary
   const oneDecimal = (n: number) => formatNumber(n, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -55,6 +58,12 @@ export function HikeStats({ summary, planned = false, startedAt = null, start, t
       hint: s.movingS !== null ? t('stat.moving', { duration: formatDuration(s.movingS) }) : undefined,
     },
     !planned && startedAt && start && daylightStat(startedAt, start, timeZone),
+    weather && {
+      label: t('stat.weather'),
+      value: tempRange(weather),
+      hint: weatherDetails(weather),
+      icon: conditionIcons[conditionOf(weather.code)],
+    },
     s.avgSpeedMS !== null && {
       label: t('stat.avgSpeed'),
       value: `${oneDecimal(s.avgSpeedMS * 3.6)} km/h`,
@@ -80,7 +89,10 @@ export function HikeStats({ summary, planned = false, startedAt = null, start, t
       {stats.map((stat) => (
         <div key={stat.label} className="bg-card rounded-lg border px-3 py-2.5">
           <dt className="text-muted-foreground text-xs">{stat.label}</dt>
-          <dd className="text-lg font-semibold tabular-nums">{stat.value}</dd>
+          <dd className="flex items-center gap-1.5 text-lg font-semibold tabular-nums">
+            {stat.icon && <stat.icon className="text-muted-foreground size-4 shrink-0" aria-hidden />}
+            {stat.value}
+          </dd>
           {stat.hint && <dd className="text-muted-foreground text-xs tabular-nums">{stat.hint}</dd>}
         </div>
       ))}

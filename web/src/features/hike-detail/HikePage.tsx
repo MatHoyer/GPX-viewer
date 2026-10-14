@@ -142,6 +142,7 @@ export function HikePage() {
             startedAt={hike.data?.startedAt}
             start={start}
             timeZone={timeZone}
+            weather={hike.data?.weather}
           /> : <Skeleton className="h-20 w-full" />}
         {hike.data?.planned && profile.data && start && (
           <PlannedStart distanceM={profile.data.summary.distanceM} start={start} timeZone={timeZone} />
@@ -175,7 +176,7 @@ export function HikePage() {
 
           <section className="bg-card rounded-xl border p-4">
             {profile.data ? (
-              <ProfileCharts profile={profile.data} startedAt={hike.data?.startedAt ?? null} />
+              <ProfileCharts profile={profile.data} startedAt={hike.data?.startedAt ?? null} weatherHours={hike.data?.weatherHours} />
             ) : (
               <div className="space-y-4">
                 {Array.from({ length: 3 }, (_, i) => (

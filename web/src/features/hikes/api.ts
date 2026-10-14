@@ -4,6 +4,8 @@ import type { Person } from '@/features/account/displayName'
 import type { HikeTiles } from '@/features/map/tiles'
 import { api, ApiError } from '@/lib/api'
 
+import type { WeatherHour, WeatherSummary } from './weather'
+
 export type Bounds = [minLon: number, minLat: number, maxLon: number, maxLat: number]
 
 /** Mirror the API limits. */
@@ -34,6 +36,10 @@ export type Hike = {
   movingS: number | null
   /** Fastest times over standard distances the hike covers, shortest first. */
   bestEfforts: BestEffort[]
+  /** Null until fetched (a day after the hike), and for hikes without timestamps. */
+  weather: WeatherSummary | null
+  /** Hourly along the track, on single-hike reads. */
+  weatherHours?: WeatherHour[]
   bounds: Bounds
   createdAt: string
   /** Omitted on hikes just returned by an upload. */

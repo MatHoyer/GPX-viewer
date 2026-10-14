@@ -21,6 +21,7 @@ function hike(id: string, over: Partial<Hike> = {}): Hike {
     maxEleM: null,
     movingS: null,
     bestEfforts: [],
+    weather: null,
     bounds: [0, 0, 1, 1],
     createdAt: '2026-01-01T00:00:00Z',
     ...over,
