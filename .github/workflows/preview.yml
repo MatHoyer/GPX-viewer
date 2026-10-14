@@ -85,10 +85,8 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          # The preview tag lets closing the stack find and delete its images.
-          tags: |
-            ${{ env.IMAGE }}:sha-${{ github.event.pull_request.head.sha }}
-            ${{ env.IMAGE }}:${{ needs.plan.outputs.name }}-${{ github.event.pull_request.head.sha }}
+          # Tagged after the preview, so closing the stack finds and deletes its images.
+          tags: ${{ env.IMAGE }}:${{ needs.plan.outputs.name }}-${{ github.event.pull_request.head.sha }}
           # One manifest per image: an attestation would stay behind, untagged, once it is deleted.
           provenance: false
           cache-from: type=gha
@@ -103,7 +101,7 @@ jobs:
         run: >
           docker run --rm -e KIPITINY_TOKEN "$KIPITINY_IMAGE" preview
           --url "$KIPITINY_URL" --project gpx-viewer --name "$NAME"
-          --tag "app=sha-$SHA" --branch "$BRANCH" --commit "$SHA" --seed
+          --tag "app=$NAME-$SHA" --branch "$BRANCH" --commit "$SHA" --seed
 
   close:
     name: Close
