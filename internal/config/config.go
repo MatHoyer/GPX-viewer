@@ -30,6 +30,10 @@ type Config struct {
 	// SMTP is nil when no mail server is configured: accounts then sign in
 	// without verifying their email, and nothing is emailed.
 	SMTP *SMTP
+	// WeatherURL is the Open-Meteo historical API; empty turns weather off.
+	// Its recent days come from forecast models until reanalysis replaces
+	// them about five days later.
+	WeatherURL string
 }
 
 type SMTP struct {
@@ -73,6 +77,10 @@ func Load() (*Config, error) {
 			}
 			c.SMTP.Port = n
 		}
+	}
+	c.WeatherURL = "https://archive-api.open-meteo.com/v1/archive"
+	if v, ok := os.LookupEnv("WEATHER_URL"); ok {
+		c.WeatherURL = strings.TrimSpace(v)
 	}
 	c.RealIPHeader = http.CanonicalHeaderKey(strings.TrimSpace(os.Getenv("REAL_IP_HEADER")))
 	for _, v := range strings.Split(os.Getenv("TRUSTED_PROXIES"), ",") {

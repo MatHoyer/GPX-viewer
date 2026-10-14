@@ -194,6 +194,7 @@ func (h *HikeHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := []dto.Hike{dto.NewHike(hike)}
+	out[0].WeatherHours = hike.Weather
 	if err := h.withInteractions(r.Context(), viewer, out); err != nil {
 		writeError(w, r, err)
 		return

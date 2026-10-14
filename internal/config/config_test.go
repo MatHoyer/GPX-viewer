@@ -57,3 +57,14 @@ func TestLoadWithoutSMTP(t *testing.T) {
 		t.Errorf("config = %+v", c)
 	}
 }
+
+func TestLoadWeatherURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://x")
+	if c, err := Load(); err != nil || c.WeatherURL == "" {
+		t.Fatalf("weather should default on: %q, %v", c.WeatherURL, err)
+	}
+	t.Setenv("WEATHER_URL", "")
+	if c, err := Load(); err != nil || c.WeatherURL != "" {
+		t.Fatalf("empty WEATHER_URL should turn weather off: %q, %v", c.WeatherURL, err)
+	}
+}
