@@ -556,7 +556,8 @@
     "lowest": "lowest {{value}}",
     "heartRate": "Heart rate",
     "cadence": "Cadence",
-    "temperature": "Temperature"
+    "temperature": "Temperature",
+    "weather": "Weather"
   },
   "participants": {
     "removed": "Removed from this hike",
@@ -596,7 +597,8 @@
     "pace": "Pace",
     "heartRate": "Heart rate",
     "cadence": "Cadence",
-    "temperature": "Temperature"
+    "temperature": "Temperature",
+    "airTemperature": "Air temperature"
   },
   "records": {
     "count_one": "{{count}} record",
@@ -756,5 +758,19 @@
       "text": "Create an account, drop in your GPX files and watch the map fill up."
     },
     "source": "Source on GitHub"
+  },
+  "weather": {
+    "clear": "Clear",
+    "partly": "Partly cloudy",
+    "cloudy": "Cloudy",
+    "fog": "Fog",
+    "drizzle": "Drizzle",
+    "rain": "Rain",
+    "heavyRain": "Heavy rain",
+    "snow": "Snow",
+    "storm": "Thunderstorm",
+    "rainAmount": "{{value}} mm",
+    "snowAmount": "{{value}} cm of snow",
+    "gusts": "gusts {{value}} km/h"
   }
 }

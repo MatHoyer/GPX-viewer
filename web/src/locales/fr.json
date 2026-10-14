@@ -571,7 +571,8 @@
     "lowest": "plus bas {{value}}",
     "heartRate": "Fréquence cardiaque",
     "cadence": "Cadence",
-    "temperature": "Température"
+    "temperature": "Température",
+    "weather": "Météo"
   },
   "participants": {
     "removed": "Retiré de cette randonnée",
@@ -611,7 +612,8 @@
     "pace": "Allure",
     "heartRate": "Fréquence cardiaque",
     "cadence": "Cadence",
-    "temperature": "Température"
+    "temperature": "Température",
+    "airTemperature": "Température de l'air"
   },
   "records": {
     "count_one": "{{count}} record",
@@ -775,5 +777,19 @@
       "text": "Créez un compte, déposez vos fichiers GPX et regardez la carte se remplir."
     },
     "source": "Code source sur GitHub"
+  },
+  "weather": {
+    "clear": "Dégagé",
+    "partly": "Partiellement nuageux",
+    "cloudy": "Nuageux",
+    "fog": "Brouillard",
+    "drizzle": "Bruine",
+    "rain": "Pluie",
+    "heavyRain": "Forte pluie",
+    "snow": "Neige",
+    "storm": "Orage",
+    "rainAmount": "{{value}} mm",
+    "snowAmount": "{{value}} cm de neige",
+    "gusts": "rafales {{value}} km/h"
   }
 }
