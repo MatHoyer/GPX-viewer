@@ -671,7 +671,8 @@
     "layers": "Map layers",
     "background": "Background",
     "terrain": "3D terrain",
-    "heatmap": "Heatmap"
+    "heatmap": "Heatmap",
+    "weather": "Weather"
   },
   "ui": {
     "sidebar": "Sidebar",

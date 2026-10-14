@@ -690,7 +690,8 @@
     "layers": "Calques de la carte",
     "background": "Fond de carte",
     "terrain": "Relief 3D",
-    "heatmap": "Carte de chaleur"
+    "heatmap": "Carte de chaleur",
+    "weather": "Météo"
   },
   "ui": {
     "sidebar": "Barre latérale",
