@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, ChartColumn, Map as MapIcon, MountainSnow, TableProperties, UsersRound } from 'lucide-react'
+import { Activity, CalendarDays, ChartColumn, Footprints, Map as MapIcon, MountainSnow, TableProperties, UsersRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/sidebar'
 import { NavUser } from '@/features/account/NavUser'
 import { UploadDialog } from '@/features/hikes/UploadDialog'
+import { useRecord } from '@/features/record/store'
+import { useGps } from '@/features/record/useGps'
 import { useConnections } from '@/features/social/useSocial'
 
 // Your own hikes, then what friends share; labels are under nav.
@@ -29,6 +31,7 @@ const groups = [
     items: [
       { to: '/', label: 'map', icon: MapIcon },
       { to: '/hikes', label: 'hikes', icon: TableProperties },
+      { to: '/record', label: 'record', icon: Footprints },
       { to: '/calendar', label: 'calendar', icon: CalendarDays },
       { to: '/stats', label: 'stats', icon: ChartColumn },
     ],
@@ -44,6 +47,10 @@ const groups = [
 
 export function AppLayout() {
   const { t } = useTranslation()
+  const { pathname } = useLocation()
+  const status = useRecord((s) => s.status)
+  // Here rather than on the record page, so browsing the app doesn't stop a recording.
+  useGps(status === 'recording' || pathname === '/record')
   return (
     <SidebarProvider>
       <Sidebar variant="inset">
@@ -83,6 +90,7 @@ function ViewNav({ items }: { items: (typeof groups)[number]['items'] }) {
   const { pathname } = useLocation()
   const { setOpenMobile } = useSidebar()
   const requests = useConnections().data?.incoming.length ?? 0
+  const recording = useRecord((s) => s.status !== 'idle')
 
   return (
     <SidebarMenu>
@@ -94,6 +102,11 @@ function ViewNav({ items }: { items: (typeof groups)[number]['items'] }) {
               {t(`nav.${label}`)}
             </NavLink>
           </SidebarMenuButton>
+          {to === '/record' && recording && (
+            <SidebarMenuBadge aria-label={t('nav.recording')}>
+              <span className="size-2 animate-pulse rounded-full bg-red-500" />
+            </SidebarMenuBadge>
+          )}
           {to === '/friends' && requests > 0 && (
             <SidebarMenuBadge aria-label={t('nav.friendRequests', { count: requests })}>{requests}</SidebarMenuBadge>
           )}

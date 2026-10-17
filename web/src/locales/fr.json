@@ -38,7 +38,9 @@
     "language": "Langue",
     "logOut": "Se déconnecter",
     "yourHikes": "Mes randonnées",
-    "social": "Social"
+    "social": "Social",
+    "record": "Enregistrer",
+    "recording": "Enregistrement en cours"
   },
   "theme": {
     "light": "Clair",
@@ -792,5 +794,29 @@
     "rainAmount": "{{value}} mm",
     "snowAmount": "{{value}} cm de neige",
     "gusts": "rafales {{value}} km/h"
+  },
+  "record": {
+    "title": "Enregistrer",
+    "start": "Démarrer l'enregistrement",
+    "pause": "Pause",
+    "resume": "Reprendre",
+    "save": "Enregistrer la rando",
+    "discard": "Supprimer",
+    "discardTitle": "Supprimer cet enregistrement ?",
+    "discardBody": "La trace enregistrée jusqu'ici sera perdue.",
+    "defaultName": "Rando du {{date}}",
+    "saveFailed": "Impossible d'enregistrer la rando. La trace reste sur ce téléphone : réessayez une fois connecté.",
+    "screenOn": "L'écran reste allumé pendant l'enregistrement. Le verrouiller ou quitter l'app coupe le GPS.",
+    "follow": "Suivre ma position",
+    "time": "Durée",
+    "distance": "Distance",
+    "gain": "D+",
+    "gps": {
+      "waiting": "En attente du GPS…",
+      "accuracy": "GPS ± {{accuracy}} m",
+      "denied": "L'accès à la position est bloqué. Autorisez-le dans les réglages du navigateur pour enregistrer.",
+      "unavailable": "Pas de signal GPS.",
+      "unsupported": "Ce navigateur ne peut pas donner sa position."
+    }
   }
 }
