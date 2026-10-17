@@ -16,9 +16,13 @@ type RecordState = {
   status: RecordStatus
   segments: Segments
   startedAt: number | null
+  /** The planned hike being followed, which the recording completes. */
+  plannedId: string | null
   here: Here | null
   /** Why there is no position. */
   gpsError: GpsError | null
+  /** Picks the planned hike to follow; only before a recording starts. */
+  follow: (plannedId: string | null) => void
   start: () => void
   pause: () => void
   resume: () => void
@@ -38,12 +42,14 @@ export const useRecord = create<RecordState>()(
       status: 'idle',
       segments: [],
       startedAt: null,
+      plannedId: null,
       here: null,
       gpsError: null,
+      follow: (plannedId) => set((s) => (s.status === 'idle' ? { plannedId } : {})),
       start: () => set({ status: 'recording', segments: [[]], startedAt: Date.now() }),
       pause: () => set({ status: 'paused' }),
       resume: () => set((s) => ({ status: 'recording', segments: [...s.segments, []] })),
-      reset: () => set({ status: 'idle', segments: [], startedAt: null }),
+      reset: () => set({ status: 'idle', segments: [], startedAt: null, plannedId: null }),
       locate: (fix, accuracyM) =>
         set((s) => {
           const here = { lat: fix.lat, lon: fix.lon, accuracyM }
@@ -58,7 +64,7 @@ export const useRecord = create<RecordState>()(
     {
       name: 'recording',
       storage: safeStorage,
-      partialize: ({ status, segments, startedAt }) => ({ status, segments, startedAt }),
+      partialize: ({ status, segments, startedAt, plannedId }) => ({ status, segments, startedAt, plannedId }),
     },
   ),
 )

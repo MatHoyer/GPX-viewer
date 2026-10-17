@@ -9,11 +9,12 @@ export function useHike(id: string) {
   return useQuery({ queryKey: ['hikes', 'detail', id], queryFn: () => api<Hike>(`/hikes/${id}`) })
 }
 
-export function useProfile(id: string) {
+export function useProfile(id: string, enabled = true) {
   return useQuery({
     queryKey: ['hikes', 'profile', id],
     queryFn: () => api<Profile>(`/hikes/${id}/profile`),
     staleTime: Infinity,
+    enabled,
   })
 }
 

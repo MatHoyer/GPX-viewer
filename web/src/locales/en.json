@@ -798,6 +798,12 @@
       "denied": "Location access is blocked. Allow it in your browser settings to record.",
       "unavailable": "No GPS signal.",
       "unsupported": "This browser can't share its location."
-    }
+    },
+    "following": "Following {{name}}",
+    "stopFollowing": "Stop following this route",
+    "followRoute": "Follow on the trail",
+    "left": "{{distance}} left · {{gain}} D+",
+    "arrival": "Arrival around {{time}}",
+    "elevationAhead": "Elevation along the route"
   }
 }
