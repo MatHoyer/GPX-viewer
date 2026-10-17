@@ -817,6 +817,12 @@
       "denied": "L'accès à la position est bloqué. Autorisez-le dans les réglages du navigateur pour enregistrer.",
       "unavailable": "Pas de signal GPS.",
       "unsupported": "Ce navigateur ne peut pas donner sa position."
-    }
+    },
+    "following": "Itinéraire : {{name}}",
+    "stopFollowing": "Ne plus suivre cet itinéraire",
+    "followRoute": "Suivre sur le terrain",
+    "left": "Reste {{distance}} · {{gain}} D+",
+    "arrival": "Arrivée vers {{time}}",
+    "elevationAhead": "Dénivelé de l'itinéraire"
   }
 }

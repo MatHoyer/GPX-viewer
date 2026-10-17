@@ -21,6 +21,7 @@ import { useHike, useProfile } from './api'
 import { EditableTitle } from './EditableTitle'
 import { HikeSummits } from './HikeSummits'
 import { LabelPicker } from './LabelPicker'
+import { FollowButton } from './FollowButton'
 import { MarkDoneDialog } from './MarkDoneDialog'
 import { NotesBlock } from './NotesBlock'
 import { HikeStats } from './HikeStats'
@@ -109,6 +110,7 @@ export function HikePage() {
                 </a>
               </Button>
             )}
+            {isOwner && hike.data?.planned && <FollowButton id={id} />}
             {isOwner && hike.data?.planned && <MarkDoneDialog id={id} />}
             {isOwner && (
               <Button
