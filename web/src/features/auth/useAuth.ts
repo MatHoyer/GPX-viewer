@@ -87,6 +87,8 @@ function useSignOut<T = void>(fn: (input: T) => Promise<void>) {
       navigate('/login', { replace: true })
       qc.clear()
       qc.setQueryData(meQueryKey, null)
+      // The service worker keeps API answers for offline use; they were this account's.
+      void globalThis.caches?.delete('api')
     },
   })
 }
