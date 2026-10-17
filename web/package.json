@@ -6,7 +6,7 @@
   "scripts": {
     "copy-maplibre-worker": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/",
     "dev": "pnpm copy-maplibre-worker && vite",
-    "build": "pnpm copy-maplibre-worker && tsc -b && vite build && vite build --ssr src/home/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && touch dist/.gitkeep",
+    "build": "pnpm copy-maplibre-worker && tsc -b && vite build && vite build --ssr src/home/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && node scripts/precache.mjs && touch dist/.gitkeep",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run"
