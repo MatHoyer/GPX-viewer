@@ -37,7 +37,9 @@
     "language": "Language",
     "logOut": "Log out",
     "yourHikes": "Your hikes",
-    "social": "Social"
+    "social": "Social",
+    "record": "Record",
+    "recording": "Recording"
   },
   "theme": {
     "light": "Light",
@@ -773,5 +775,29 @@
     "rainAmount": "{{value}} mm",
     "snowAmount": "{{value}} cm of snow",
     "gusts": "gusts {{value}} km/h"
+  },
+  "record": {
+    "title": "Record",
+    "start": "Start recording",
+    "pause": "Pause",
+    "resume": "Resume",
+    "save": "Save hike",
+    "discard": "Discard",
+    "discardTitle": "Discard this recording?",
+    "discardBody": "The track recorded so far will be lost.",
+    "defaultName": "Hike on {{date}}",
+    "saveFailed": "Couldn't save the hike. The track stays on this phone: try again once you're online.",
+    "screenOn": "The screen stays on while recording. Locking it or leaving the app stops the GPS.",
+    "follow": "Follow my position",
+    "time": "Time",
+    "distance": "Distance",
+    "gain": "D+",
+    "gps": {
+      "waiting": "Waiting for GPS…",
+      "accuracy": "GPS ± {{accuracy}} m",
+      "denied": "Location access is blocked. Allow it in your browser settings to record.",
+      "unavailable": "No GPS signal.",
+      "unsupported": "This browser can't share its location."
+    }
   }
 }

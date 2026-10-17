@@ -21,6 +21,7 @@ import { MapPage } from '@/features/hikes/MapPage'
 import { AppLayout } from '@/features/layout/AppLayout'
 import { GuestLayout } from '@/features/layout/GuestLayout'
 import { FriendsPage } from '@/features/social/FriendsPage'
+import { RecordPage } from '@/features/record/RecordPage'
 import { UserProfilePage } from '@/features/social/UserProfilePage'
 import { FeedPage } from '@/features/social/FeedPage'
 import { StatsPage } from '@/features/stats/StatsPage'
@@ -52,6 +53,7 @@ export default function App() {
               <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route path="/" element={<MapPage />} />
                 <Route path="/hikes" element={<HikesPage />} />
+                <Route path="/record" element={<RecordPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/feed" element={<FeedPage />} />

@@ -1,6 +1,8 @@
 import type { RasterDEMSourceSpecification, StyleSpecification } from 'maplibre-gl'
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+
+import { safeStorage } from '@/lib/storage'
 
 export type Basemap = 'streets' | 'topo' | 'satellite'
 
@@ -62,22 +64,6 @@ type MapViewState = {
   setTiles: (tiles: boolean) => void
   setWeather: (weather: boolean) => void
 }
-
-// localStorage can throw (private mode, blocked storage); fall back to in-memory.
-const safeStorage = createJSONStorage(() => {
-  try {
-    localStorage.setItem('__probe', '1')
-    localStorage.removeItem('__probe')
-    return localStorage
-  } catch {
-    const mem = new Map<string, string>()
-    return {
-      getItem: (k: string) => mem.get(k) ?? null,
-      setItem: (k: string, v: string) => void mem.set(k, v),
-      removeItem: (k: string) => void mem.delete(k),
-    }
-  }
-})
 
 /** Background and 3D choice, shared by every map and remembered per browser. */
 export const useMapView = create<MapViewState>()(
